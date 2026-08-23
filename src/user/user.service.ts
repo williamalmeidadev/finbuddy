@@ -17,11 +17,13 @@ export class UserService {
     ) { }
 
     async create(dto: CreateUserDto): Promise<UserResponseDto> {
+        const email = dto.email.trim().toLowerCase();
+
         const passwordHash = await this.passwordService.hash(dto.password);
 
         try {
             const user = await this.userRepository.create({
-                email: dto.email,
+                email,
                 passwordHash,
             });
 

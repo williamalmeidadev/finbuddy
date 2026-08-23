@@ -137,6 +137,34 @@ describe('UserService', () => {
                     email: dto.email,
                     passwordHash,
                 });
+            }),
+
+            it('should normalize the email before creating the user', async () => {
+                const dto = {
+                    email: '  Test@FinBuddy.Dev  ',
+                    password: '12345678',
+                };
+
+                const user = {
+                    id: 'user-id',
+                    email: 'test@finbuddy.dev',
+                    passwordHash: 'hashed-password',
+                    status: 'ACTIVE',
+                    emailVerifiedAt: null,
+                    lastLoginAt: null,
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                };
+
+                passwordService.hash.mockResolvedValue('hashed-password');
+                userRepository.create.mockResolvedValue(user);
+
+                await service.create(dto);
+
+                expect(userRepository.create).toHaveBeenCalledWith({
+                    email: 'test@finbuddy.dev',
+                    passwordHash: 'hashed-password',
+                });
             });
     });
 
