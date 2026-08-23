@@ -40,13 +40,25 @@ export class UserService {
         }
     }
 
-    async findById(id: string) {
-        return this.userRepository.findById(id);
+    async findById(id: string): Promise<UserResponseDto | null> {
+        const user = await this.userRepository.findById(id);
+
+        if (!user) {
+            return null;
+        }
+
+        return new UserResponseDto(user);
     }
 
-    async findByEmail(email: string) {
+    async findByEmail(email: string): Promise<UserResponseDto | null> {
         const normalizedEmail = email.trim().toLowerCase();
 
-        return this.userRepository.findByEmail(normalizedEmail);
+        const user = await this.userRepository.findByEmail(normalizedEmail);
+
+        if (!user) {
+            return null;
+        }
+
+        return new UserResponseDto(user);
     }
 }

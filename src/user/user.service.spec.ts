@@ -172,6 +172,13 @@ describe('UserService', () => {
         it('should return the user found by id', async () => {
             const user = {
                 id: 'user-id',
+                email: 'test@finbuddy.dev',
+                passwordHash: 'hashed-password',
+                status: UserStatus.ACTIVE,
+                emailVerifiedAt: null,
+                lastLoginAt: null,
+                createdAt: new Date(),
+                updatedAt: new Date(),
             };
 
             userRepository.findById.mockResolvedValue(user);
@@ -179,19 +186,32 @@ describe('UserService', () => {
             const result = await service.findById(user.id);
 
             expect(userRepository.findById).toHaveBeenCalledWith(user.id);
-            expect(result).toEqual(user);
-        }),
 
-            it('should return null when user is not found', async () => {
-                const id = 'non-existent-id';
+            expect(result).toEqual(
+                expect.objectContaining({
+                    id: user.id,
+                    email: user.email,
+                    status: UserStatus.ACTIVE,
+                    emailVerifiedAt: null,
+                    lastLoginAt: null,
+                    createdAt: user.createdAt,
+                    updatedAt: user.updatedAt,
+                }),
+            );
 
-                userRepository.findById.mockResolvedValue(null);
+            expect(result).not.toHaveProperty('passwordHash');
+        });
 
-                const result = await service.findById(id);
+        it('should return null when user is not found', async () => {
+            const id = 'non-existent-id';
 
-                expect(userRepository.findById).toHaveBeenCalledWith(id);
-                expect(result).toBeNull();
-            });
+            userRepository.findById.mockResolvedValue(null);
+
+            const result = await service.findById(id);
+
+            expect(userRepository.findById).toHaveBeenCalledWith(id);
+            expect(result).toBeNull();
+        });
     });
 
     describe('findByEmail', () => {
@@ -201,6 +221,12 @@ describe('UserService', () => {
             const user = {
                 id: 'user-id',
                 email,
+                passwordHash: 'hashed-password',
+                status: UserStatus.ACTIVE,
+                emailVerifiedAt: null,
+                lastLoginAt: null,
+                createdAt: new Date(),
+                updatedAt: new Date(),
             };
 
             userRepository.findByEmail.mockResolvedValue(user);
@@ -208,7 +234,19 @@ describe('UserService', () => {
             const result = await service.findByEmail(email);
 
             expect(userRepository.findByEmail).toHaveBeenCalledWith(email);
-            expect(result).toEqual(user);
+            expect(result).toEqual(
+                expect.objectContaining({
+                    id: 'user-id',
+                    email: 'test@finbuddy.dev',
+                    status: 'ACTIVE',
+                    emailVerifiedAt: null,
+                    lastLoginAt: null,
+                    createdAt: user.createdAt,
+                    updatedAt: user.updatedAt,
+                }),
+            );
+
+            expect(result).not.toHaveProperty('passwordHash');
         }),
 
             it('should return null when user is not found', async () => {
@@ -241,7 +279,19 @@ describe('UserService', () => {
                     'test@finbuddy.dev',
                 );
 
-                expect(result).toEqual(user);
+                expect(result).toEqual(
+                    expect.objectContaining({
+                        id: 'user-id',
+                        email: 'test@finbuddy.dev',
+                        status: 'ACTIVE',
+                        emailVerifiedAt: null,
+                        lastLoginAt: null,
+                        createdAt: user.createdAt,
+                        updatedAt: user.updatedAt,
+                    }),
+                );
+
+                expect(result).not.toHaveProperty('passwordHash');
             });
     });
 });
