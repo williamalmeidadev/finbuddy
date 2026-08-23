@@ -192,15 +192,18 @@ describe('AppController (e2e)', () => {
 
     expect(response.body).toEqual(
       expect.objectContaining({
-        id: expect.any(String),
-        email,
-        status: 'ACTIVE',
-        emailVerifiedAt: null,
-        lastLoginAt: null,
+        accessToken: expect.any(String),
+        user: expect.objectContaining({
+          id: expect.any(String),
+          email,
+          status: 'ACTIVE',
+          emailVerifiedAt: null,
+          lastLoginAt: null,
+        }),
       }),
     );
 
-    expect(response.body).not.toHaveProperty('passwordHash');
+    expect(response.body.user).not.toHaveProperty('passwordHash');
   });
 
   afterEach(async () => {

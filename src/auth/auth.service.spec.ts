@@ -1,3 +1,5 @@
+import { JwtService } from '@nestjs/jwt';
+
 import { PasswordService } from './password.service';
 import { UserRepository } from '../user/user.repository';
 import { AuthService } from './auth.service';
@@ -13,6 +15,10 @@ describe('AuthService', () => {
         verify: jest.Mock;
     };
 
+    let jwtService: {
+        signAsync: jest.Mock;
+    };
+
     beforeEach(() => {
         userRepository = {
             findByEmail: jest.fn(),
@@ -22,9 +28,14 @@ describe('AuthService', () => {
             verify: jest.fn(),
         };
 
+        jwtService = {
+            signAsync: jest.fn().mockResolvedValue('access-token'),
+        };
+
         service = new AuthService(
             userRepository as unknown as UserRepository,
             passwordService as unknown as PasswordService,
+            jwtService as unknown as JwtService,
         );
     });
 
@@ -44,14 +55,16 @@ describe('AuthService', () => {
             const result = await service.login(email, '12345678');
 
             expect(userRepository.findByEmail).toHaveBeenCalledWith(email);
-            expect(result).toEqual(
-                expect.objectContaining({
+
+            expect(result).toEqual({
+                user: expect.objectContaining({
                     id: user.id,
                     email: user.email,
                 }),
-            );
+                accessToken: 'access-token',
+            });
 
-            expect(result).not.toHaveProperty('passwordHash');
+            expect(result.user).not.toHaveProperty('passwordHash');
         });
 
         it('should throw UnauthorizedException when user is not found', async () => {
@@ -65,6 +78,7 @@ describe('AuthService', () => {
             ).rejects.toThrow('Invalid credentials');
 
             expect(passwordService.verify).not.toHaveBeenCalled();
+            expect(jwtService.signAsync).not.toHaveBeenCalled();
         });
 
         it('should verify the password', async () => {
@@ -104,6 +118,8 @@ describe('AuthService', () => {
                     'wrong-password',
                 ),
             ).rejects.toThrow('Invalid credentials');
+
+            expect(jwtService.signAsync).not.toHaveBeenCalled();
         });
 
         it('should normalize the email before searching', async () => {
@@ -124,6 +140,27 @@ describe('AuthService', () => {
             expect(userRepository.findByEmail).toHaveBeenCalledWith(
                 'test@finbuddy.dev',
             );
+        });
+
+        it('should generate an access token', async () => {
+            const user = {
+                id: 'user-id',
+                email: 'test@finbuddy.dev',
+                passwordHash: 'hashed-password',
+            };
+
+            userRepository.findByEmail.mockResolvedValue(user);
+            passwordService.verify.mockResolvedValue(true);
+
+            await service.login(
+                user.email,
+                '12345678',
+            );
+
+            expect(jwtService.signAsync).toHaveBeenCalledWith({
+                sub: user.id,
+                email: user.email,
+            });
         });
     });
 });

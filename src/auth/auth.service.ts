@@ -6,12 +6,14 @@ import {
 import { UserRepository } from '../user/user.repository';
 import { PasswordService } from '../password/password.service';
 import { UserResponseDto } from '../user/dto/user-response.dto';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
     constructor(
         private readonly userRepository: UserRepository,
         private readonly passwordService: PasswordService,
+        private readonly jwtService: JwtService,
     ) { }
 
     async login(email: string, password: string) {
@@ -33,6 +35,14 @@ export class AuthService {
             throw new UnauthorizedException('Invalid credentials');
         }
 
-        return new UserResponseDto(user);
+        const accessToken = await this.jwtService.signAsync({
+            sub: user.id,
+            email: user.email,
+        });
+
+        return {
+            accessToken,
+            user: new UserResponseDto(user),
+        };
     }
 }
