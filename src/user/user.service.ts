@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 
 import { Prisma } from '../generated/prisma/client';
-import { PasswordService } from '../auth/password.service';
+import { PasswordService } from '../password/password.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { UserRepository } from './user.repository';

@@ -170,6 +170,39 @@ describe('AppController (e2e)', () => {
     });
   });
 
+  it('POST /auth/login should authenticate a user', async () => {
+    const email = `login-${Date.now()}@finbuddy.dev`;
+    const password = '12345678';
+
+    await request(app.getHttpServer())
+      .post('/users')
+      .send({
+        email,
+        password,
+      })
+      .expect(201);
+
+    const response = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({
+        email,
+        password,
+      })
+      .expect(201);
+
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        id: expect.any(String),
+        email,
+        status: 'ACTIVE',
+        emailVerifiedAt: null,
+        lastLoginAt: null,
+      }),
+    );
+
+    expect(response.body).not.toHaveProperty('passwordHash');
+  });
+
   afterEach(async () => {
     await app.close();
   });
