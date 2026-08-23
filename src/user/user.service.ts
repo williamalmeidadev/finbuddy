@@ -1,6 +1,7 @@
 import {
     ConflictException,
     Injectable,
+    NotFoundException
 } from '@nestjs/common';
 
 import { Prisma } from '../generated/prisma/client';
@@ -40,11 +41,11 @@ export class UserService {
         }
     }
 
-    async findById(id: string): Promise<UserResponseDto | null> {
+    async findById(id: string): Promise<UserResponseDto> {
         const user = await this.userRepository.findById(id);
 
         if (!user) {
-            return null;
+            throw new NotFoundException('User not found');
         }
 
         return new UserResponseDto(user);

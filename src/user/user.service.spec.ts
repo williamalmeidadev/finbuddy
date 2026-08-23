@@ -5,6 +5,7 @@ import { UserRepository } from './user.repository';
 import { UserService } from './user.service';
 import {
     ConflictException,
+    NotFoundException
 } from '@nestjs/common';
 
 import { Prisma } from '../generated/prisma/client';
@@ -202,15 +203,16 @@ describe('UserService', () => {
             expect(result).not.toHaveProperty('passwordHash');
         });
 
-        it('should return null when user is not found', async () => {
+        it('should throw NotFoundException when user is not found', async () => {
             const id = 'non-existent-id';
 
             userRepository.findById.mockResolvedValue(null);
 
-            const result = await service.findById(id);
+            await expect(service.findById(id)).rejects.toThrow(
+                NotFoundException,
+            );
 
             expect(userRepository.findById).toHaveBeenCalledWith(id);
-            expect(result).toBeNull();
         });
     });
 
