@@ -1,16 +1,25 @@
 import { Injectable } from '@nestjs/common';
 
+import { PasswordService } from '../auth/password.service';
 import { UserRepository } from './user.repository';
 
 @Injectable()
 export class UserService {
-  constructor(private readonly userRepository: UserRepository) {}
+  constructor(
+    private readonly userRepository: UserRepository,
+    private readonly passwordService: PasswordService,
+  ) {}
 
   async createUser(data: {
     email: string;
-    passwordHash: string;
+    password: string;
   }) {
-    return this.userRepository.create(data);
+    const passwordHash = await this.passwordService.hash(data.password);
+
+    return this.userRepository.create({
+      email: data.email,
+      passwordHash,
+    });
   }
 
   async findById(id: string) {
