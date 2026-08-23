@@ -6,6 +6,9 @@ import {
     Post,
 } from '@nestjs/common';
 
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { AuthenticatedUserDto } from '../auth/dto/authenticated-user.dto';
+
 import { UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -23,7 +26,10 @@ export class UserController {
 
     @UseGuards(JwtAuthGuard)
     @Get(':id')
-    async findById(@Param('id') id: string) {
+    async findById(
+        @Param('id') id: string,
+        @CurrentUser() user: AuthenticatedUserDto,
+    ) {
         return this.userService.findById(id);
     }
 }
