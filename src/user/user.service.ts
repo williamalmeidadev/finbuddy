@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 
 import { PasswordService } from '../auth/password.service';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UserResponseDto } from './dto/user-response.dto';
 import { UserRepository } from './user.repository';
 
 @Injectable()
@@ -10,16 +12,15 @@ export class UserService {
     private readonly passwordService: PasswordService,
   ) {}
 
-  async createUser(data: {
-    email: string;
-    password: string;
-  }) {
-    const passwordHash = await this.passwordService.hash(data.password);
+  async create(dto: CreateUserDto): Promise<UserResponseDto> {
+    const passwordHash = await this.passwordService.hash(dto.password);
 
-    return this.userRepository.create({
-      email: data.email,
+    const user = await this.userRepository.create({
+      email: dto.email,
       passwordHash,
     });
+
+    return new UserResponseDto(user);
   }
 
   async findById(id: string) {
