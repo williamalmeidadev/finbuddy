@@ -220,6 +220,28 @@ describe('UserService', () => {
 
                 expect(userRepository.findByEmail).toHaveBeenCalledWith(email);
                 expect(result).toBeNull();
+            }),
+            it('should normalize the email before searching', async () => {
+                const user = {
+                    id: 'user-id',
+                    email: 'test@finbuddy.dev',
+                    passwordHash: 'hashed-password',
+                    status: 'ACTIVE',
+                    emailVerifiedAt: null,
+                    lastLoginAt: null,
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                };
+
+                userRepository.findByEmail.mockResolvedValue(user);
+
+                const result = await service.findByEmail('  Test@FinBuddy.Dev  ');
+
+                expect(userRepository.findByEmail).toHaveBeenCalledWith(
+                    'test@finbuddy.dev',
+                );
+
+                expect(result).toEqual(user);
             });
     });
 });

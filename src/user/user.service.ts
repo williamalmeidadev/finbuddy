@@ -45,6 +45,8 @@ export class UserService {
     }
 
     async findByEmail(email: string) {
-        return this.userRepository.findByEmail(email);
+        const normalizedEmail = email.trim().toLowerCase();
+
+        return this.userRepository.findByEmail(normalizedEmail);
     }
 }
