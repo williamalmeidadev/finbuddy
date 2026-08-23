@@ -152,7 +152,18 @@ describe('UserService', () => {
 
             expect(userRepository.findById).toHaveBeenCalledWith(user.id);
             expect(result).toEqual(user);
-        });
+        }),
+
+            it('should return null when user is not found', async () => {
+                const id = 'non-existent-id';
+
+                userRepository.findById.mockResolvedValue(null);
+
+                const result = await service.findById(id);
+
+                expect(userRepository.findById).toHaveBeenCalledWith(id);
+                expect(result).toBeNull();
+            });
     });
 
     describe('findByEmail', () => {
@@ -170,6 +181,17 @@ describe('UserService', () => {
 
             expect(userRepository.findByEmail).toHaveBeenCalledWith(email);
             expect(result).toEqual(user);
-        });
+        }),
+
+            it('should return null when user is not found', async () => {
+                const email = 'nonexistent@finbuddy.dev';
+
+                userRepository.findByEmail.mockResolvedValue(null);
+
+                const result = await service.findByEmail(email);
+
+                expect(userRepository.findByEmail).toHaveBeenCalledWith(email);
+                expect(result).toBeNull();
+            });
     });
 });
