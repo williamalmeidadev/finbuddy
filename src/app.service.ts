@@ -2,10 +2,10 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class AppService {
-  getHealth() {
-    return {
-      status: 'ok',
-      service: 'finbuddy-api',
-    };
-  }
+    getHealth() {
+        return {
+            status: 'ok',
+            service: 'finbuddy-api',
+        };
+    }
 }

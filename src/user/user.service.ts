@@ -1,5 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import {
+    ConflictException,
+    Injectable,
+} from '@nestjs/common';
 
+import { Prisma } from '../generated/prisma/client';
 import { PasswordService } from '../auth/password.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
@@ -7,27 +11,38 @@ import { UserRepository } from './user.repository';
 
 @Injectable()
 export class UserService {
-  constructor(
-    private readonly userRepository: UserRepository,
-    private readonly passwordService: PasswordService,
-  ) {}
+    constructor(
+        private readonly userRepository: UserRepository,
+        private readonly passwordService: PasswordService,
+    ) { }
 
-  async create(dto: CreateUserDto): Promise<UserResponseDto> {
-    const passwordHash = await this.passwordService.hash(dto.password);
+    async create(dto: CreateUserDto): Promise<UserResponseDto> {
+        const passwordHash = await this.passwordService.hash(dto.password);
 
-    const user = await this.userRepository.create({
-      email: dto.email,
-      passwordHash,
-    });
+        try {
+            const user = await this.userRepository.create({
+                email: dto.email,
+                passwordHash,
+            });
 
-    return new UserResponseDto(user);
-  }
+            return new UserResponseDto(user);
+        } catch (error) {
+            if (
+                error instanceof Prisma.PrismaClientKnownRequestError &&
+                error.code === 'P2002'
+            ) {
+                throw new ConflictException('Email already exists');
+            }
 
-  async findById(id: string) {
-    return this.userRepository.findById(id);
-  }
+            throw error;
+        }
+    }
 
-  async findByEmail(email: string) {
-    return this.userRepository.findByEmail(email);
-  }
+    async findById(id: string) {
+        return this.userRepository.findById(id);
+    }
+
+    async findByEmail(email: string) {
+        return this.userRepository.findByEmail(email);
+    }
 }
