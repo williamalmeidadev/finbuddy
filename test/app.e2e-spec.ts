@@ -2,16 +2,16 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
-
 import { AppModule } from './../src/app.module';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
 
   beforeEach(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
+    const moduleFixture: TestingModule =
+      await Test.createTestingModule({
+        imports: [AppModule],
+      }).compile();
 
     app = moduleFixture.createNestApplication();
 
@@ -130,19 +130,46 @@ describe('AppController (e2e)', () => {
       .expect(409);
   });
 
+  it('GET /users/:id should return 401 without a token', async () => {
+    await request(app.getHttpServer())
+      .get('/users/00000000-0000-0000-0000-000000000000')
+      .expect(401);
+  });
+
+  it('GET /users/:id should return 401 with an invalid token', async () => {
+    await request(app.getHttpServer())
+      .get('/users/00000000-0000-0000-0000-000000000000')
+      .set('Authorization', 'Bearer invalid-token')
+      .expect(401);
+  });
+
   it('GET /users/:id should return the user', async () => {
+    const email = `get-${Date.now()}@finbuddy.dev`;
+    const password = '12345678';
+
     const createResponse = await request(app.getHttpServer())
       .post('/users')
       .send({
-        email: `get-${Date.now()}@finbuddy.dev`,
-        password: '12345678',
+        email,
+        password,
       })
       .expect(201);
 
     const userId = createResponse.body.id;
 
+    const loginResponse = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({
+        email,
+        password,
+      })
+      .expect(201);
+
+    const accessToken = loginResponse.body.accessToken;
+
     const response = await request(app.getHttpServer())
       .get(`/users/${userId}`)
+      .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
 
     expect(response.body).toEqual(
@@ -159,8 +186,30 @@ describe('AppController (e2e)', () => {
   });
 
   it('GET /users/:id should return 404 when user does not exist', async () => {
+    const email = `get-not-found-${Date.now()}@finbuddy.dev`;
+    const password = '12345678';
+
+    await request(app.getHttpServer())
+      .post('/users')
+      .send({
+        email,
+        password,
+      })
+      .expect(201);
+
+    const loginResponse = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({
+        email,
+        password,
+      })
+      .expect(201);
+
+    const accessToken = loginResponse.body.accessToken;
+
     const response = await request(app.getHttpServer())
       .get('/users/00000000-0000-0000-0000-000000000000')
+      .set('Authorization', `Bearer ${accessToken}`)
       .expect(404);
 
     expect(response.body).toEqual({
