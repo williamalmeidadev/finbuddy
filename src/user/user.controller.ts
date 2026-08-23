@@ -1,10 +1,4 @@
-import {
-    Body,
-    Controller,
-    Get,
-    Param,
-    Post,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthenticatedUserDto } from '../auth/dto/authenticated-user.dto';
@@ -17,19 +11,19 @@ import { UserService } from './user.service';
 
 @Controller('users')
 export class UserController {
-    constructor(private readonly userService: UserService) { }
+  constructor(private readonly userService: UserService) {}
 
-    @Post()
-    create(@Body() dto: CreateUserDto) {
-        return this.userService.create(dto);
-    }
+  @Post()
+  create(@Body() dto: CreateUserDto) {
+    return this.userService.create(dto);
+  }
 
-    @UseGuards(JwtAuthGuard)
-    @Get(':id')
-    async findById(
-        @Param('id') id: string,
-        @CurrentUser() user: AuthenticatedUserDto,
-    ) {
-        return this.userService.findById(id);
-    }
+  @UseGuards(JwtAuthGuard)
+  @Get(':id')
+  async findById(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUserDto,
+  ) {
+    return this.userService.findById(id);
+  }
 }
