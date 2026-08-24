@@ -5,6 +5,7 @@ import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { execSync } from 'child_process';
+import net from 'net';
 
 // Override DATABASE_URL to use the test database
 const originalUrl = process.env.DATABASE_URL || 'postgresql://finbuddy:senhaDB232@@postgres:5432/finbuddy';
@@ -18,12 +19,47 @@ try {
 }
 process.env.DATABASE_URL = testDbUrl;
 
+function waitForDatabase(urlStr: string, timeoutMs = 15000): Promise<void> {
+  return new Promise((resolve, reject) => {
+    let hostname = 'postgres';
+    let port = 5432;
+    try {
+      const parsed = new URL(urlStr);
+      hostname = parsed.hostname;
+      port = parseInt(parsed.port, 10) || 5432;
+    } catch (e) {
+      // fallback
+    }
+
+    const startTime = Date.now();
+    const tryConnect = () => {
+      const socket = new net.Socket();
+      socket.connect(port, hostname, () => {
+        socket.destroy();
+        resolve();
+      });
+      socket.on('error', (err) => {
+        socket.destroy();
+        if (Date.now() - startTime > timeoutMs) {
+          reject(new Error(`Timeout waiting for database at ${hostname}:${port}: ${err.message}`));
+        } else {
+          setTimeout(tryConnect, 500);
+        }
+      });
+    };
+    tryConnect();
+  });
+}
+
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
 
-  beforeAll(() => {
-    // Push the schema to the test database
-    execSync('npx prisma db push --accept-data-loss', { stdio: 'inherit' });
+  beforeAll(async () => {
+    // Wait for the database server to be reachable
+    await waitForDatabase(process.env.DATABASE_URL!);
+
+    // Push the schema to the test database explicitly passing --url
+    execSync(`npx prisma db push --accept-data-loss --url "${process.env.DATABASE_URL}"`, { stdio: 'inherit' });
   });
 
   beforeEach(async () => {
