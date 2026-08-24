@@ -18,7 +18,7 @@ describe('AppController (e2e)', () => {
 
   beforeAll(() => {
     // Push the schema to the test database
-    execSync('npx prisma db push --skip-generate', { stdio: 'inherit' });
+    execSync('npx prisma db push --accept-data-loss', { stdio: 'inherit' });
   });
 
   beforeEach(async () => {
