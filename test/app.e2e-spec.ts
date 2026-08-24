@@ -247,13 +247,15 @@ describe('AppController (e2e)', () => {
     const email = `get-not-found-${Date.now()}@finbuddy.dev`;
     const password = '12345678';
 
-    await request(app.getHttpServer())
+    const createResponse = await request(app.getHttpServer())
       .post('/users')
       .send({
         email,
         password,
       })
       .expect(201);
+
+    const userId = createResponse.body.id;
 
     const loginResponse = await request(app.getHttpServer())
       .post('/auth/login')
@@ -265,8 +267,14 @@ describe('AppController (e2e)', () => {
 
     const accessToken = loginResponse.body.accessToken;
 
+    // Delete user from DB so they don't exist anymore
+    const prisma = app.get(PrismaService);
+    await prisma.user.delete({
+      where: { id: userId },
+    });
+
     const response = await request(app.getHttpServer())
-      .get('/users/00000000-0000-0000-0000-000000000000')
+      .get(`/users/${userId}`)
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(404);
 
