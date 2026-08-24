@@ -8,9 +8,14 @@ import { execSync } from 'child_process';
 
 // Override DATABASE_URL to use the test database
 const originalUrl = process.env.DATABASE_URL || 'postgresql://finbuddy:senhaDB232@@postgres:5432/finbuddy';
-const testDbUrl = originalUrl.includes('/finbuddy') 
-  ? originalUrl.replace('/finbuddy', '/finbuddy_test')
-  : originalUrl + '_test';
+let testDbUrl: string;
+try {
+  const urlObj = new URL(originalUrl);
+  urlObj.pathname = urlObj.pathname === '/finbuddy' ? '/finbuddy_test' : urlObj.pathname + '_test';
+  testDbUrl = urlObj.toString();
+} catch (e) {
+  testDbUrl = originalUrl + '_test';
+}
 process.env.DATABASE_URL = testDbUrl;
 
 describe('AppController (e2e)', () => {
