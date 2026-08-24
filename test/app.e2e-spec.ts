@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
+import { PrismaService } from '../src/prisma/prisma.service';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
@@ -252,6 +253,198 @@ describe('AppController (e2e)', () => {
     );
 
     expect(response.body.user).not.toHaveProperty('passwordHash');
+  });
+
+  describe('POST /auth/refresh', () => {
+    it('should refresh the tokens', async () => {
+      const email = `refresh-${Date.now()}@finbuddy.dev`;
+      const password = '12345678';
+
+      await request(app.getHttpServer())
+        .post('/users')
+        .send({
+          email,
+          password,
+        })
+        .expect(201);
+
+      const loginResponse = await request(app.getHttpServer())
+        .post('/auth/login')
+        .send({
+          email,
+          password,
+        })
+        .expect(201);
+
+      const oldRefreshToken =
+        loginResponse.body.refreshToken;
+
+      expect(oldRefreshToken).toEqual(expect.any(String));
+
+      const refreshResponse =
+        await request(app.getHttpServer())
+          .post('/auth/refresh')
+          .send({
+            refreshToken: oldRefreshToken,
+          })
+          .expect(200);
+
+      expect(refreshResponse.body).toEqual({
+        accessToken: expect.any(String),
+        refreshToken: expect.any(String),
+        user: expect.objectContaining({
+          email,
+        }),
+      });
+
+      expect(
+        refreshResponse.body.refreshToken,
+      ).not.toBe(oldRefreshToken);
+
+      expect(
+        refreshResponse.body.accessToken,
+      ).not.toBe(loginResponse.body.accessToken);
+    });
+
+    it('should reject an invalid refresh token', async () => {
+      await request(app.getHttpServer())
+        .post('/auth/refresh')
+        .send({
+          refreshToken: 'invalid-refresh-token',
+        })
+        .expect(401);
+    });
+
+    it('should reject a revoked refresh token', async () => {
+      const email = `revoked-${Date.now()}@finbuddy.dev`;
+      const password = '12345678';
+
+      await request(app.getHttpServer())
+        .post('/users')
+        .send({
+          email,
+          password,
+        })
+        .expect(201);
+
+      const loginResponse = await request(app.getHttpServer())
+        .post('/auth/login')
+        .send({
+          email,
+          password,
+        })
+        .expect(201);
+
+      const refreshToken =
+        loginResponse.body.refreshToken;
+
+      await request(app.getHttpServer())
+        .post('/auth/refresh')
+        .send({
+          refreshToken,
+        })
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .post('/auth/refresh')
+        .send({
+          refreshToken,
+        })
+        .expect(401);
+    });
+
+    it('should reject a missing refresh token', async () => {
+      await request(app.getHttpServer())
+        .post('/auth/refresh')
+        .send({})
+        .expect(400);
+    });
+  });
+
+  describe('GET /auth/me', () => {
+    it('should return the authenticated user', async () => {
+      const email = `me-${Date.now()}@finbuddy.dev`;
+      const password = '12345678';
+
+      await request(app.getHttpServer())
+        .post('/users')
+        .send({
+          email,
+          password,
+        })
+        .expect(201);
+
+      const loginResponse = await request(app.getHttpServer())
+        .post('/auth/login')
+        .send({
+          email,
+          password,
+        })
+        .expect(201);
+
+      const accessToken = loginResponse.body.accessToken;
+
+      const response = await request(app.getHttpServer())
+        .get('/auth/me')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      expect(response.body).toEqual(
+        expect.objectContaining({
+          email,
+          status: 'ACTIVE',
+        }),
+      );
+
+      expect(response.body).toHaveProperty('id');
+      expect(response.body).not.toHaveProperty('passwordHash');
+    });
+
+    it('should reject without a token', async () => {
+      await request(app.getHttpServer())
+        .get('/auth/me')
+        .expect(401);
+    });
+
+    it('should reject with an invalid token', async () => {
+      await request(app.getHttpServer())
+        .get('/auth/me')
+        .set('Authorization', 'Bearer invalid-token')
+        .expect(401);
+    });
+
+    it('should reject when the user no longer exists', async () => {
+      const email = `me-deleted-${Date.now()}@finbuddy.dev`;
+      const password = '12345678';
+
+      await request(app.getHttpServer())
+        .post('/users')
+        .send({
+          email,
+          password,
+        })
+        .expect(201);
+
+      const loginResponse = await request(app.getHttpServer())
+        .post('/auth/login')
+        .send({
+          email,
+          password,
+        })
+        .expect(201);
+
+      const accessToken = loginResponse.body.accessToken;
+
+      const prisma = app.get(PrismaService);
+      await prisma.user.delete({
+        where: { email },
+      });
+
+      await request(app.getHttpServer())
+        .get('/auth/me')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(401);
+    });
   });
 
   afterEach(async () => {

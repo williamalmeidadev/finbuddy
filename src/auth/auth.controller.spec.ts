@@ -6,11 +6,15 @@ describe('AuthController', () => {
 
   let authService: {
     login: jest.Mock;
+    refresh: jest.Mock;
+    me: jest.Mock;
   };
 
   beforeEach(() => {
     authService = {
       login: jest.fn(),
+      refresh: jest.fn(),
+      me: jest.fn(),
     };
 
     controller = new AuthController(authService as unknown as AuthService);
@@ -47,6 +51,73 @@ describe('AuthController', () => {
 
       await expect(controller.login(dto)).rejects.toThrow(
         'Invalid credentials',
+      );
+    });
+  });
+
+  describe('refresh', () => {
+    it('should refresh a token', async () => {
+      const dto = {
+        refreshToken: 'refresh-token',
+      };
+
+      const response = {
+        accessToken: 'new-access-token',
+        refreshToken: 'new-refresh-token',
+      };
+
+      authService.refresh.mockResolvedValue(response);
+
+      const result = await controller.refresh(dto);
+
+      expect(authService.refresh).toHaveBeenCalledWith(dto.refreshToken);
+      expect(result).toEqual(response);
+    });
+
+    it('should propagate service errors on refresh', async () => {
+      const dto = {
+        refreshToken: 'invalid-token',
+      };
+
+      authService.refresh.mockRejectedValue(new Error('Invalid refresh token'));
+
+      await expect(controller.refresh(dto)).rejects.toThrow(
+        'Invalid refresh token',
+      );
+    });
+  });
+
+  describe('me', () => {
+    it('should call authService.me and return the user', async () => {
+      const user = {
+        id: 'user-id',
+        email: 'test@finbuddy.dev',
+      };
+
+      const response = {
+        id: 'user-id',
+        email: 'test@finbuddy.dev',
+        status: 'ACTIVE',
+      };
+
+      authService.me.mockResolvedValue(response);
+
+      const result = await controller.me(user);
+
+      expect(authService.me).toHaveBeenCalledWith(user.id);
+      expect(result).toEqual(response);
+    });
+
+    it('should propagate service errors', async () => {
+      const user = {
+        id: 'user-id',
+        email: 'test@finbuddy.dev',
+      };
+
+      authService.me.mockRejectedValue(new Error('User no longer exists'));
+
+      await expect(controller.me(user)).rejects.toThrow(
+        'User no longer exists',
       );
     });
   });
