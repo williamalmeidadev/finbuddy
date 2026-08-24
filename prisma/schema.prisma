@@ -67,7 +67,7 @@ model UserIdentity {
 model RefreshToken {
   id         String    @id @default(uuid()) @db.Uuid
   userId     String    @map("user_id") @db.Uuid
-  tokenHash  String    @map("token_hash") @db.VarChar
+  tokenHash  String    @unique @map("token_hash") @db.VarChar
   expiresAt  DateTime  @map("expires_at") @db.Timestamptz
   revokedAt  DateTime? @map("revoked_at") @db.Timestamptz
   lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz

@@ -1,3 +1,4 @@
+import { ForbiddenException } from '@nestjs/common';
 import { UserResponseDto } from './dto/user-response.dto';
 import { UserService } from './user.service';
 import { UserController } from './user.controller';
@@ -78,10 +79,21 @@ describe('UserController', () => {
 
       userService.findById.mockResolvedValue(response);
 
-      const result = await controller.findById(userId);
+      const result = await controller.findById(userId, { id: userId, email: 'test@finbuddy.dev' });
 
       expect(userService.findById).toHaveBeenCalledWith(userId);
       expect(result).toBe(response);
+    });
+
+    it('should throw ForbiddenException if user tries to access another profile', async () => {
+      const userId = 'user-id';
+      const currentUser = { id: 'other-id', email: 'other@finbuddy.dev' };
+
+      await expect(
+        controller.findById(userId, currentUser),
+      ).rejects.toThrow(new ForbiddenException('You can only access your own profile'));
+
+      expect(userService.findById).not.toHaveBeenCalled();
     });
 
     it('should propagate service errors', async () => {
@@ -90,7 +102,7 @@ describe('UserController', () => {
 
       userService.findById.mockRejectedValue(error);
 
-      await expect(controller.findById(userId)).rejects.toThrow(error);
+      await expect(controller.findById(userId, { id: userId, email: 'test@finbuddy.dev' })).rejects.toThrow(error);
 
       expect(userService.findById).toHaveBeenCalledWith(userId);
     });

@@ -22,7 +22,7 @@ export class RefreshTokenRepository {
     async findByTokenHash(
         tokenHash: string,
     ): Promise<RefreshToken | null> {
-        return this.prisma.refreshToken.findFirst({
+        return this.prisma.refreshToken.findUnique({
             where: {
                 tokenHash,
             },

@@ -7,7 +7,7 @@ describe('RefreshTokenRepository', () => {
     let prisma: {
         refreshToken: {
             create: jest.Mock;
-            findFirst: jest.Mock;
+            findUnique: jest.Mock;
             update: jest.Mock;
         };
     };
@@ -16,7 +16,7 @@ describe('RefreshTokenRepository', () => {
         prisma = {
             refreshToken: {
                 create: jest.fn(),
-                findFirst: jest.fn(),
+                findUnique: jest.fn(),
                 update: jest.fn(),
             },
         };
@@ -59,13 +59,13 @@ describe('RefreshTokenRepository', () => {
                 tokenHash: 'token-hash',
             };
 
-            prisma.refreshToken.findFirst.mockResolvedValue(refreshToken);
+            prisma.refreshToken.findUnique.mockResolvedValue(refreshToken);
 
             const result = await repository.findByTokenHash(
                 'token-hash',
             );
 
-            expect(prisma.refreshToken.findFirst).toHaveBeenCalledWith({
+            expect(prisma.refreshToken.findUnique).toHaveBeenCalledWith({
                 where: {
                     tokenHash: 'token-hash',
                 },
@@ -75,7 +75,7 @@ describe('RefreshTokenRepository', () => {
         });
 
         it('should return null when token does not exist', async () => {
-            prisma.refreshToken.findFirst.mockResolvedValue(null);
+            prisma.refreshToken.findUnique.mockResolvedValue(null);
 
             const result = await repository.findByTokenHash(
                 'unknown-hash',

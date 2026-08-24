@@ -4,9 +4,22 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { execSync } from 'child_process';
+
+// Override DATABASE_URL to use the test database
+const originalUrl = process.env.DATABASE_URL || 'postgresql://finbuddy:senhaDB232@@postgres:5432/finbuddy';
+const testDbUrl = originalUrl.includes('/finbuddy') 
+  ? originalUrl.replace('/finbuddy', '/finbuddy_test')
+  : originalUrl + '_test';
+process.env.DATABASE_URL = testDbUrl;
 
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
+
+  beforeAll(() => {
+    // Push the schema to the test database
+    execSync('npx prisma db push --skip-generate', { stdio: 'inherit' });
+  });
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -24,6 +37,10 @@ describe('AppController (e2e)', () => {
     );
 
     await app.init();
+
+    // Clean up database tables for isolation
+    const prisma = app.get(PrismaService);
+    await prisma.$executeRawUnsafe(`TRUNCATE TABLE "users", "user_profiles", "user_identities", "refresh_tokens" CASCADE;`);
   });
 
   it('POST /users should create a user', async () => {
@@ -217,6 +234,35 @@ describe('AppController (e2e)', () => {
       message: 'User not found',
       error: 'Not Found',
     });
+  });
+
+  it('GET /users/:id should return 403 when user is different from authenticated user (IDOR prevention)', async () => {
+    const email1 = `idor1-${Date.now()}@finbuddy.dev`;
+    const password = '12345678';
+
+    const createResponse1 = await request(app.getHttpServer())
+      .post('/users')
+      .send({ email: email1, password })
+      .expect(201);
+    const user1Id = createResponse1.body.id;
+
+    const email2 = `idor2-${Date.now()}@finbuddy.dev`;
+    const createResponse2 = await request(app.getHttpServer())
+      .post('/users')
+      .send({ email: email2, password })
+      .expect(201);
+    const user2Id = createResponse2.body.id;
+
+    const loginResponse = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: email1, password })
+      .expect(201);
+    const accessToken1 = loginResponse.body.accessToken;
+
+    await request(app.getHttpServer())
+      .get(`/users/${user2Id}`)
+      .set('Authorization', `Bearer ${accessToken1}`)
+      .expect(403);
   });
 
   it('POST /auth/login should authenticate a user', async () => {
@@ -448,6 +494,8 @@ describe('AppController (e2e)', () => {
   });
 
   afterEach(async () => {
-    await app.close();
+    if (app) {
+      await app.close();
+    }
   });
 });

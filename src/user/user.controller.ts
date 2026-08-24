@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Param, Post } from '@nestjs/common';
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthenticatedUserDto } from '../auth/dto/authenticated-user.dto';
@@ -24,6 +24,9 @@ export class UserController {
     @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUserDto,
   ) {
+    if (user.id !== id) {
+      throw new ForbiddenException('You can only access your own profile');
+    }
     return this.userService.findById(id);
   }
 }
