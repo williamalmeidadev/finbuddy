@@ -250,7 +250,7 @@ describe('AppController (e2e)', () => {
         email: createResponse.body.email,
         status: 'ACTIVE',
         emailVerifiedAt: null,
-        lastLoginAt: null,
+        lastLoginAt: expect.any(String),
       }),
     );
 
@@ -355,7 +355,7 @@ describe('AppController (e2e)', () => {
           email,
           status: 'ACTIVE',
           emailVerifiedAt: null,
-          lastLoginAt: null,
+          lastLoginAt: expect.any(String),
         }),
       }),
     );
@@ -544,6 +544,46 @@ describe('AppController (e2e)', () => {
       await request(app.getHttpServer())
         .get('/auth/me')
         .set('Authorization', `Bearer ${accessToken}`)
+        .expect(401);
+    });
+  });
+
+  describe('POST /auth/logout', () => {
+    it('should revoke the refresh token', async () => {
+      const email = `logout-${Date.now()}@finbuddy.dev`;
+      const password = '12345678';
+
+      await request(app.getHttpServer())
+        .post('/users')
+        .send({
+          email,
+          password,
+        })
+        .expect(201);
+
+      const loginResponse = await request(app.getHttpServer())
+        .post('/auth/login')
+        .send({
+          email,
+          password,
+        })
+        .expect(201);
+
+      const refreshToken = loginResponse.body.refreshToken;
+
+      await request(app.getHttpServer())
+        .post('/auth/logout')
+        .send({
+          refreshToken,
+        })
+        .expect(200);
+
+      // Verify that refreshing with the logged out token now fails
+      await request(app.getHttpServer())
+        .post('/auth/refresh')
+        .send({
+          refreshToken,
+        })
         .expect(401);
     });
   });

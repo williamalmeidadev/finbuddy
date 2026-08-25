@@ -6,6 +6,7 @@ import { UserRepository } from '../user/user.repository';
 import { PasswordService } from '../password/password.service';
 import { UserResponseDto } from '../user/dto/user-response.dto';
 import { RefreshTokenService } from './refresh-token.service';
+import { UserStatus } from '../generated/prisma/enums';
 
 @Injectable()
 export class AuthService {
@@ -34,14 +35,25 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const accessToken = await this.generateAccessToken(user.id, user.email);
+    if (user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException(`User is ${user.status.toLowerCase()}`);
+    }
 
-    const refreshToken = await this.refreshTokenService.create(user.id);
+    const updatedUser = await this.userRepository.update(user.id, {
+      lastLoginAt: new Date(),
+    });
+
+    const accessToken = await this.generateAccessToken(
+      updatedUser.id,
+      updatedUser.email,
+    );
+
+    const refreshToken = await this.refreshTokenService.create(updatedUser.id);
 
     return {
       accessToken,
       refreshToken,
-      user: new UserResponseDto(user),
+      user: new UserResponseDto(updatedUser),
     };
   }
 
@@ -52,6 +64,10 @@ export class AuthService {
 
     if (!user) {
       throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    if (user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException(`User is ${user.status.toLowerCase()}`);
     }
 
     await this.refreshTokenService.revoke(refreshToken);
@@ -74,7 +90,15 @@ export class AuthService {
       throw new UnauthorizedException('User no longer exists');
     }
 
+    if (user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException(`User is ${user.status.toLowerCase()}`);
+    }
+
     return new UserResponseDto(user);
+  }
+
+  async logout(refreshToken: string): Promise<void> {
+    await this.refreshTokenService.revoke(refreshToken);
   }
 
   private async generateAccessToken(

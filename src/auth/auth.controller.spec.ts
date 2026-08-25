@@ -8,6 +8,7 @@ describe('AuthController', () => {
     login: jest.Mock;
     refresh: jest.Mock;
     me: jest.Mock;
+    logout: jest.Mock;
   };
 
   beforeEach(() => {
@@ -15,6 +16,7 @@ describe('AuthController', () => {
       login: jest.fn(),
       refresh: jest.fn(),
       me: jest.fn(),
+      logout: jest.fn(),
     };
 
     controller = new AuthController(authService as unknown as AuthService);
@@ -119,6 +121,31 @@ describe('AuthController', () => {
       await expect(controller.me(user)).rejects.toThrow(
         'User no longer exists',
       );
+    });
+  });
+
+  describe('logout', () => {
+    it('should logout a user and revoke refresh token', async () => {
+      const dto = {
+        refreshToken: 'refresh-token',
+      };
+
+      authService.logout.mockResolvedValue(undefined);
+
+      const result = await controller.logout(dto);
+
+      expect(authService.logout).toHaveBeenCalledWith(dto.refreshToken);
+      expect(result).toEqual({ message: 'Logged out successfully' });
+    });
+
+    it('should propagate service errors on logout', async () => {
+      const dto = {
+        refreshToken: 'invalid-token',
+      };
+
+      authService.logout.mockRejectedValue(new Error('Some error'));
+
+      await expect(controller.logout(dto)).rejects.toThrow('Some error');
     });
   });
 });

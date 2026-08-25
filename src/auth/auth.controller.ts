@@ -30,6 +30,13 @@ export class AuthController {
     return this.authService.refresh(dto.refreshToken);
   }
 
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  async logout(@Body() dto: RefreshDto) {
+    await this.authService.logout(dto.refreshToken);
+    return { message: 'Logged out successfully' };
+  }
+
   @Get('me')
   @UseGuards(JwtAuthGuard)
   me(@CurrentUser() user: AuthenticatedUserDto) {

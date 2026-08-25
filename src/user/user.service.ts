@@ -2,6 +2,7 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 
 import { Prisma } from '../generated/prisma/client';
@@ -9,6 +10,7 @@ import { PasswordService } from '../password/password.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { UserRepository } from './user.repository';
+import { UserStatus } from '../generated/prisma/enums';
 
 @Injectable()
 export class UserService {
@@ -46,6 +48,10 @@ export class UserService {
 
     if (!user) {
       throw new NotFoundException('User not found');
+    }
+
+    if (user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException(`User is ${user.status.toLowerCase()}`);
     }
 
     return new UserResponseDto(user);

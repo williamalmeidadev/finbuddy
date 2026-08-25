@@ -4,6 +4,7 @@ import { PasswordService } from '../password/password.service';
 import { UserRepository } from '../user/user.repository';
 import { AuthService } from './auth.service';
 import { RefreshTokenService } from './refresh-token.service';
+import { UserStatus } from '../generated/prisma/enums';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -11,6 +12,7 @@ describe('AuthService', () => {
   let userRepository: {
     findByEmail: jest.Mock;
     findById: jest.Mock;
+    update: jest.Mock;
   };
 
   let passwordService: {
@@ -31,6 +33,7 @@ describe('AuthService', () => {
     userRepository = {
       findByEmail: jest.fn(),
       findById: jest.fn(),
+      update: jest.fn(),
     };
 
     passwordService = {
@@ -60,11 +63,12 @@ describe('AuthService', () => {
       id: 'user-id',
       email: 'test@finbuddy.dev',
       passwordHash: 'hashed-password',
+      status: UserStatus.ACTIVE,
     };
 
     beforeEach(() => {
       userRepository.findByEmail.mockResolvedValue(user);
-
+      userRepository.update.mockResolvedValue(user);
       passwordService.verify.mockResolvedValue(true);
     });
 
@@ -145,6 +149,28 @@ describe('AuthService', () => {
 
       expect(result.refreshToken).toBe('refresh-token');
     });
+
+    it('should throw UnauthorizedException when user status is SUSPENDED', async () => {
+      userRepository.findByEmail.mockResolvedValue({
+        ...user,
+        status: UserStatus.SUSPENDED,
+      });
+
+      await expect(service.login(user.email, '12345678')).rejects.toThrow(
+        'User is suspended',
+      );
+    });
+
+    it('should throw UnauthorizedException when user status is INACTIVE', async () => {
+      userRepository.findByEmail.mockResolvedValue({
+        ...user,
+        status: UserStatus.INACTIVE,
+      });
+
+      await expect(service.login(user.email, '12345678')).rejects.toThrow(
+        'User is inactive',
+      );
+    });
   });
 
   describe('refresh', () => {
@@ -154,6 +180,7 @@ describe('AuthService', () => {
       id: 'user-id',
       email: 'test@finbuddy.dev',
       passwordHash: 'hashed-password',
+      status: UserStatus.ACTIVE,
     };
 
     const storedToken = {
@@ -257,6 +284,28 @@ describe('AuthService', () => {
 
       expect(jwtService.signAsync).not.toHaveBeenCalled();
     });
+
+    it('should throw UnauthorizedException when user status is SUSPENDED', async () => {
+      userRepository.findById.mockResolvedValue({
+        ...user,
+        status: UserStatus.SUSPENDED,
+      });
+
+      await expect(service.refresh(refreshToken)).rejects.toThrow(
+        'User is suspended',
+      );
+    });
+
+    it('should throw UnauthorizedException when user status is INACTIVE', async () => {
+      userRepository.findById.mockResolvedValue({
+        ...user,
+        status: UserStatus.INACTIVE,
+      });
+
+      await expect(service.refresh(refreshToken)).rejects.toThrow(
+        'User is inactive',
+      );
+    });
   });
 
   describe('me', () => {
@@ -265,6 +314,7 @@ describe('AuthService', () => {
       id: userId,
       email: 'test@finbuddy.dev',
       passwordHash: 'hashed-password',
+      status: UserStatus.ACTIVE,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -295,6 +345,34 @@ describe('AuthService', () => {
       userRepository.findById.mockResolvedValue(null);
 
       await expect(service.me(userId)).rejects.toThrow('User no longer exists');
+    });
+
+    it('should throw UnauthorizedException when user status is SUSPENDED', async () => {
+      userRepository.findById.mockResolvedValue({
+        ...user,
+        status: UserStatus.SUSPENDED,
+      });
+
+      await expect(service.me(userId)).rejects.toThrow('User is suspended');
+    });
+
+    it('should throw UnauthorizedException when user status is INACTIVE', async () => {
+      userRepository.findById.mockResolvedValue({
+        ...user,
+        status: UserStatus.INACTIVE,
+      });
+
+      await expect(service.me(userId)).rejects.toThrow('User is inactive');
+    });
+  });
+
+  describe('logout', () => {
+    it('should revoke the refresh token', async () => {
+      const refreshToken = 'some-refresh-token';
+
+      await service.logout(refreshToken);
+
+      expect(refreshTokenService.revoke).toHaveBeenCalledWith(refreshToken);
     });
   });
 });
