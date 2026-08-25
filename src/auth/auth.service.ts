@@ -1,7 +1,4 @@
-import {
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { randomUUID } from 'crypto';
 
@@ -22,9 +19,7 @@ export class AuthService {
   async login(email: string, password: string) {
     const normalizedEmail = email.trim().toLowerCase();
 
-    const user = await this.userRepository.findByEmail(
-      normalizedEmail,
-    );
+    const user = await this.userRepository.findByEmail(normalizedEmail);
 
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
@@ -39,14 +34,9 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const accessToken = await this.generateAccessToken(
-      user.id,
-      user.email,
-    );
+    const accessToken = await this.generateAccessToken(user.id, user.email);
 
-    const refreshToken = await this.refreshTokenService.create(
-      user.id,
-    );
+    const refreshToken = await this.refreshTokenService.create(user.id);
 
     return {
       accessToken,
@@ -56,28 +46,19 @@ export class AuthService {
   }
 
   async refresh(refreshToken: string) {
-    const storedToken =
-      await this.refreshTokenService.validate(refreshToken);
+    const storedToken = await this.refreshTokenService.validate(refreshToken);
 
-    const user = await this.userRepository.findById(
-      storedToken.userId,
-    );
+    const user = await this.userRepository.findById(storedToken.userId);
 
     if (!user) {
-      throw new UnauthorizedException(
-        'Invalid refresh token',
-      );
+      throw new UnauthorizedException('Invalid refresh token');
     }
 
     await this.refreshTokenService.revoke(refreshToken);
 
-    const accessToken = await this.generateAccessToken(
-      user.id,
-      user.email,
-    );
+    const accessToken = await this.generateAccessToken(user.id, user.email);
 
-    const newRefreshToken =
-      await this.refreshTokenService.create(user.id);
+    const newRefreshToken = await this.refreshTokenService.create(user.id);
 
     return {
       accessToken,

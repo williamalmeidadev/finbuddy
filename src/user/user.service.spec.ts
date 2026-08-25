@@ -1,5 +1,5 @@
 import { UserStatus } from '../generated/prisma/enums';
-import { PasswordService } from '../auth/password.service';
+import { PasswordService } from '../password/password.service';
 import { UserResponseDto } from './dto/user-response.dto';
 import { UserRepository } from './user.repository';
 import { UserService } from './user.service';
@@ -77,7 +77,7 @@ describe('UserService', () => {
       expect(result).not.toHaveProperty('passwordHash');
     });
 
-    (it('should not store the plain password', async () => {
+    it('should not store the plain password', async () => {
       const dto = {
         email: 'test@finbuddy.dev',
         password: '12345678',
@@ -105,58 +105,60 @@ describe('UserService', () => {
           password: dto.password,
         }),
       );
-    }),
-      it('should throw ConflictException when email already exists', async () => {
-        const dto = {
-          email: 'test@finbuddy.dev',
-          password: '12345678',
-        };
+    });
 
-        const passwordHash = 'hashed-password';
+    it('should throw ConflictException when email already exists', async () => {
+      const dto = {
+        email: 'test@finbuddy.dev',
+        password: '12345678',
+      };
 
-        passwordService.hash.mockResolvedValue(passwordHash);
+      const passwordHash = 'hashed-password';
 
-        userRepository.create.mockRejectedValue(
-          new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
-            code: 'P2002',
-            clientVersion: '7.9.1',
-          }),
-        );
+      passwordService.hash.mockResolvedValue(passwordHash);
 
-        await expect(service.create(dto)).rejects.toThrow(ConflictException);
+      userRepository.create.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+          code: 'P2002',
+          clientVersion: '7.9.1',
+        }),
+      );
 
-        expect(userRepository.create).toHaveBeenCalledWith({
-          email: dto.email,
-          passwordHash,
-        });
-      }),
-      it('should normalize the email before creating the user', async () => {
-        const dto = {
-          email: '  Test@FinBuddy.Dev  ',
-          password: '12345678',
-        };
+      await expect(service.create(dto)).rejects.toThrow(ConflictException);
 
-        const user = {
-          id: 'user-id',
-          email: 'test@finbuddy.dev',
-          passwordHash: 'hashed-password',
-          status: 'ACTIVE',
-          emailVerifiedAt: null,
-          lastLoginAt: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
+      expect(userRepository.create).toHaveBeenCalledWith({
+        email: dto.email,
+        passwordHash,
+      });
+    });
 
-        passwordService.hash.mockResolvedValue('hashed-password');
-        userRepository.create.mockResolvedValue(user);
+    it('should normalize the email before creating the user', async () => {
+      const dto = {
+        email: '  Test@FinBuddy.Dev  ',
+        password: '12345678',
+      };
 
-        await service.create(dto);
+      const user = {
+        id: 'user-id',
+        email: 'test@finbuddy.dev',
+        passwordHash: 'hashed-password',
+        status: 'ACTIVE',
+        emailVerifiedAt: null,
+        lastLoginAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
 
-        expect(userRepository.create).toHaveBeenCalledWith({
-          email: 'test@finbuddy.dev',
-          passwordHash: 'hashed-password',
-        });
-      }));
+      passwordService.hash.mockResolvedValue('hashed-password');
+      userRepository.create.mockResolvedValue(user);
+
+      await service.create(dto);
+
+      expect(userRepository.create).toHaveBeenCalledWith({
+        email: 'test@finbuddy.dev',
+        passwordHash: 'hashed-password',
+      });
+    });
   });
 
   describe('findById', () => {
@@ -205,7 +207,7 @@ describe('UserService', () => {
   });
 
   describe('findByEmail', () => {
-    (it('should return the user found by email', async () => {
+    it('should return the user found by email', async () => {
       const email = 'test@finbuddy.dev';
 
       const user = {
@@ -237,50 +239,52 @@ describe('UserService', () => {
       );
 
       expect(result).not.toHaveProperty('passwordHash');
-    }),
-      it('should return null when user is not found', async () => {
-        const email = 'nonexistent@finbuddy.dev';
+    });
 
-        userRepository.findByEmail.mockResolvedValue(null);
+    it('should return null when user is not found', async () => {
+      const email = 'nonexistent@finbuddy.dev';
 
-        const result = await service.findByEmail(email);
+      userRepository.findByEmail.mockResolvedValue(null);
 
-        expect(userRepository.findByEmail).toHaveBeenCalledWith(email);
-        expect(result).toBeNull();
-      }),
-      it('should normalize the email before searching', async () => {
-        const user = {
+      const result = await service.findByEmail(email);
+
+      expect(userRepository.findByEmail).toHaveBeenCalledWith(email);
+      expect(result).toBeNull();
+    });
+
+    it('should normalize the email before searching', async () => {
+      const user = {
+        id: 'user-id',
+        email: 'test@finbuddy.dev',
+        passwordHash: 'hashed-password',
+        status: 'ACTIVE',
+        emailVerifiedAt: null,
+        lastLoginAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      userRepository.findByEmail.mockResolvedValue(user);
+
+      const result = await service.findByEmail('  Test@FinBuddy.Dev  ');
+
+      expect(userRepository.findByEmail).toHaveBeenCalledWith(
+        'test@finbuddy.dev',
+      );
+
+      expect(result).toEqual(
+        expect.objectContaining({
           id: 'user-id',
           email: 'test@finbuddy.dev',
-          passwordHash: 'hashed-password',
           status: 'ACTIVE',
           emailVerifiedAt: null,
           lastLoginAt: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt,
+        }),
+      );
 
-        userRepository.findByEmail.mockResolvedValue(user);
-
-        const result = await service.findByEmail('  Test@FinBuddy.Dev  ');
-
-        expect(userRepository.findByEmail).toHaveBeenCalledWith(
-          'test@finbuddy.dev',
-        );
-
-        expect(result).toEqual(
-          expect.objectContaining({
-            id: 'user-id',
-            email: 'test@finbuddy.dev',
-            status: 'ACTIVE',
-            emailVerifiedAt: null,
-            lastLoginAt: null,
-            createdAt: user.createdAt,
-            updatedAt: user.updatedAt,
-          }),
-        );
-
-        expect(result).not.toHaveProperty('passwordHash');
-      }));
+      expect(result).not.toHaveProperty('passwordHash');
+    });
   });
 });

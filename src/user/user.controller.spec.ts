@@ -45,7 +45,6 @@ describe('UserController', () => {
       const response = new UserResponseDto({
         id: 'user-id',
         email: dto.email,
-        passwordHash: 'hashed-password',
         status: 'ACTIVE',
         emailVerifiedAt: null,
         lastLoginAt: null,
@@ -69,7 +68,6 @@ describe('UserController', () => {
       const response = new UserResponseDto({
         id: userId,
         email: 'test@finbuddy.dev',
-        passwordHash: 'hashed-password',
         status: 'ACTIVE',
         emailVerifiedAt: null,
         lastLoginAt: null,
@@ -79,7 +77,10 @@ describe('UserController', () => {
 
       userService.findById.mockResolvedValue(response);
 
-      const result = await controller.findById(userId, { id: userId, email: 'test@finbuddy.dev' });
+      const result = await controller.findById(userId, {
+        id: userId,
+        email: 'test@finbuddy.dev',
+      });
 
       expect(userService.findById).toHaveBeenCalledWith(userId);
       expect(result).toBe(response);
@@ -89,9 +90,9 @@ describe('UserController', () => {
       const userId = 'user-id';
       const currentUser = { id: 'other-id', email: 'other@finbuddy.dev' };
 
-      await expect(
-        controller.findById(userId, currentUser),
-      ).rejects.toThrow(new ForbiddenException('You can only access your own profile'));
+      await expect(controller.findById(userId, currentUser)).rejects.toThrow(
+        new ForbiddenException('You can only access your own profile'),
+      );
 
       expect(userService.findById).not.toHaveBeenCalled();
     });
@@ -102,7 +103,9 @@ describe('UserController', () => {
 
       userService.findById.mockRejectedValue(error);
 
-      await expect(controller.findById(userId, { id: userId, email: 'test@finbuddy.dev' })).rejects.toThrow(error);
+      await expect(
+        controller.findById(userId, { id: userId, email: 'test@finbuddy.dev' }),
+      ).rejects.toThrow(error);
 
       expect(userService.findById).toHaveBeenCalledWith(userId);
     });

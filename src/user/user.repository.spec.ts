@@ -34,7 +34,7 @@ describe('UserRepository', () => {
     expect(repository).toBeDefined();
   });
 
-  (describe('create', () => {
+  describe('create', () => {
     it('should create a user', async () => {
       const data = {
         email: 'test@finbuddy.dev',
@@ -61,108 +61,111 @@ describe('UserRepository', () => {
 
       expect(result).toEqual(createdUser);
     });
-  }),
-    describe('findById', () => {
-      it('should return the user found by id', async () => {
-        const user = {
-          id: 'user-id',
-          email: 'test@finbuddy.dev',
-          passwordHash: 'hashed-password',
-          status: 'ACTIVE',
-          emailVerifiedAt: null,
-          lastLoginAt: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
+  });
 
-        prismaMock.user.findUnique.mockResolvedValue(user);
+  describe('findById', () => {
+    it('should return the user found by id', async () => {
+      const user = {
+        id: 'user-id',
+        email: 'test@finbuddy.dev',
+        passwordHash: 'hashed-password',
+        status: 'ACTIVE',
+        emailVerifiedAt: null,
+        lastLoginAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
 
-        const result = await repository.findById(user.id);
+      prismaMock.user.findUnique.mockResolvedValue(user);
 
-        expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
-          where: { id: user.id },
-        });
+      const result = await repository.findById(user.id);
 
-        expect(result).toEqual(user);
+      expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
+        where: { id: user.id },
       });
 
-      it('should return null when user is not found', async () => {
-        prismaMock.user.findUnique.mockResolvedValue(null);
+      expect(result).toEqual(user);
+    });
 
-        const result = await repository.findById('non-existent-id');
+    it('should return null when user is not found', async () => {
+      prismaMock.user.findUnique.mockResolvedValue(null);
 
-        expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
-          where: { id: 'non-existent-id' },
-        });
+      const result = await repository.findById('non-existent-id');
 
-        expect(result).toBeNull();
-      });
-    }),
-    describe('findByEmail', () => {
-      it('should return the user found by email', async () => {
-        const user = {
-          id: 'user-id',
-          email: 'test@finbuddy.dev',
-          passwordHash: 'hashed-password',
-          status: 'ACTIVE',
-          emailVerifiedAt: null,
-          lastLoginAt: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-
-        prismaMock.user.findUnique.mockResolvedValue(user);
-
-        const result = await repository.findByEmail(user.email);
-
-        expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
-          where: { email: user.email },
-        });
-
-        expect(result).toEqual(user);
+      expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
+        where: { id: 'non-existent-id' },
       });
 
-      it('should return null when user is not found', async () => {
-        prismaMock.user.findUnique.mockResolvedValue(null);
+      expect(result).toBeNull();
+    });
+  });
 
-        const result = await repository.findByEmail('nonexistent@finbuddy.dev');
+  describe('findByEmail', () => {
+    it('should return the user found by email', async () => {
+      const user = {
+        id: 'user-id',
+        email: 'test@finbuddy.dev',
+        passwordHash: 'hashed-password',
+        status: 'ACTIVE',
+        emailVerifiedAt: null,
+        lastLoginAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
 
-        expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
-          where: { email: 'nonexistent@finbuddy.dev' },
-        });
+      prismaMock.user.findUnique.mockResolvedValue(user);
 
-        expect(result).toBeNull();
+      const result = await repository.findByEmail(user.email);
+
+      expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
+        where: { email: user.email },
       });
-    }),
-    describe('update', () => {
-      it('should update a user', async () => {
-        const id = 'user-id';
 
-        const data = {
-          email: 'updated@finbuddy.dev',
-        };
+      expect(result).toEqual(user);
+    });
 
-        const updatedUser = {
-          id,
-          email: data.email,
-          passwordHash: 'hashed-password',
-          status: 'ACTIVE',
-          emailVerifiedAt: null,
-          lastLoginAt: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
+    it('should return null when user is not found', async () => {
+      prismaMock.user.findUnique.mockResolvedValue(null);
 
-        prismaMock.user.update.mockResolvedValue(updatedUser);
+      const result = await repository.findByEmail('nonexistent@finbuddy.dev');
 
-        const result = await repository.update(id, data);
-
-        expect(prismaMock.user.update).toHaveBeenCalledWith({
-          where: { id },
-          data,
-        });
-
-        expect(result).toEqual(updatedUser);
+      expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
+        where: { email: 'nonexistent@finbuddy.dev' },
       });
-    }));
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('update', () => {
+    it('should update a user', async () => {
+      const id = 'user-id';
+
+      const data = {
+        email: 'updated@finbuddy.dev',
+      };
+
+      const updatedUser = {
+        id,
+        email: data.email,
+        passwordHash: 'hashed-password',
+        status: 'ACTIVE',
+        emailVerifiedAt: null,
+        lastLoginAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      prismaMock.user.update.mockResolvedValue(updatedUser);
+
+      const result = await repository.update(id, data);
+
+      expect(prismaMock.user.update).toHaveBeenCalledWith({
+        where: { id },
+        data,
+      });
+
+      expect(result).toEqual(updatedUser);
+    });
+  });
 });

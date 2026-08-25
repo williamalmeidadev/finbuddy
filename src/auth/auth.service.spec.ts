@@ -1,6 +1,6 @@
 import { JwtService } from '@nestjs/jwt';
 
-import { PasswordService } from './password.service';
+import { PasswordService } from '../password/password.service';
 import { UserRepository } from '../user/user.repository';
 import { AuthService } from './auth.service';
 import { RefreshTokenService } from './refresh-token.service';
@@ -38,15 +38,11 @@ describe('AuthService', () => {
     };
 
     jwtService = {
-      signAsync: jest.fn().mockResolvedValue(
-        'access-token',
-      ),
+      signAsync: jest.fn().mockResolvedValue('access-token'),
     };
 
     refreshTokenService = {
-      create: jest.fn().mockResolvedValue(
-        'refresh-token',
-      ),
+      create: jest.fn().mockResolvedValue('refresh-token'),
       validate: jest.fn(),
       revoke: jest.fn(),
     };
@@ -57,7 +53,6 @@ describe('AuthService', () => {
       jwtService as unknown as JwtService,
       refreshTokenService as unknown as RefreshTokenService,
     );
-
   });
 
   describe('login', () => {
@@ -68,24 +63,15 @@ describe('AuthService', () => {
     };
 
     beforeEach(() => {
-      userRepository.findByEmail.mockResolvedValue(
-        user,
-      );
+      userRepository.findByEmail.mockResolvedValue(user);
 
-      passwordService.verify.mockResolvedValue(
-        true,
-      );
+      passwordService.verify.mockResolvedValue(true);
     });
 
     it('should find the user by email', async () => {
-      const result = await service.login(
-        user.email,
-        '12345678',
-      );
+      const result = await service.login(user.email, '12345678');
 
-      expect(
-        userRepository.findByEmail,
-      ).toHaveBeenCalledWith(user.email);
+      expect(userRepository.findByEmail).toHaveBeenCalledWith(user.email);
 
       expect(result).toEqual({
         accessToken: 'access-token',
@@ -96,93 +82,56 @@ describe('AuthService', () => {
         }),
       });
 
-      expect(result.user).not.toHaveProperty(
-        'passwordHash',
-      );
+      expect(result.user).not.toHaveProperty('passwordHash');
     });
 
     it('should throw UnauthorizedException when user is not found', async () => {
-      userRepository.findByEmail.mockResolvedValue(
-        null,
-      );
+      userRepository.findByEmail.mockResolvedValue(null);
 
       await expect(
-        service.login(
-          'nonexistent@finbuddy.dev',
-          '12345678',
-        ),
+        service.login('nonexistent@finbuddy.dev', '12345678'),
       ).rejects.toThrow('Invalid credentials');
 
-      expect(
-        passwordService.verify,
-      ).not.toHaveBeenCalled();
+      expect(passwordService.verify).not.toHaveBeenCalled();
 
-      expect(
-        jwtService.signAsync,
-      ).not.toHaveBeenCalled();
+      expect(jwtService.signAsync).not.toHaveBeenCalled();
 
-      expect(
-        refreshTokenService.create,
-      ).not.toHaveBeenCalled();
+      expect(refreshTokenService.create).not.toHaveBeenCalled();
     });
 
     it('should verify the password', async () => {
-      await service.login(
-        user.email,
-        '12345678',
-      );
+      await service.login(user.email, '12345678');
 
-      expect(
-        passwordService.verify,
-      ).toHaveBeenCalledWith(
+      expect(passwordService.verify).toHaveBeenCalledWith(
         user.passwordHash,
         '12345678',
       );
     });
 
     it('should throw UnauthorizedException when password is invalid', async () => {
-      passwordService.verify.mockResolvedValue(
-        false,
+      passwordService.verify.mockResolvedValue(false);
+
+      await expect(service.login(user.email, 'wrong-password')).rejects.toThrow(
+        'Invalid credentials',
       );
 
-      await expect(
-        service.login(
-          user.email,
-          'wrong-password',
-        ),
-      ).rejects.toThrow('Invalid credentials');
+      expect(jwtService.signAsync).not.toHaveBeenCalled();
 
-      expect(
-        jwtService.signAsync,
-      ).not.toHaveBeenCalled();
-
-      expect(
-        refreshTokenService.create,
-      ).not.toHaveBeenCalled();
+      expect(refreshTokenService.create).not.toHaveBeenCalled();
     });
 
     it('should normalize the email before searching', async () => {
-      await service.login(
-        '  Test@FinBuddy.Dev  ',
-        '12345678',
-      );
+      await service.login('  Test@FinBuddy.Dev  ', '12345678');
 
-      expect(
-        userRepository.findByEmail,
-      ).toHaveBeenCalledWith(
+      expect(userRepository.findByEmail).toHaveBeenCalledWith(
         'test@finbuddy.dev',
       );
     });
 
     it('should generate an access token', async () => {
-      await service.login(
-        user.email,
-        '12345678',
-      );
+      await service.login(user.email, '12345678');
 
-      expect(
-        jwtService.signAsync,
-      ).toHaveBeenCalledWith({
+      expect(jwtService.signAsync).toHaveBeenCalledWith({
         sub: user.id,
         email: user.email,
         jti: expect.any(String),
@@ -190,20 +139,12 @@ describe('AuthService', () => {
     });
 
     it('should create a refresh token', async () => {
-      const result = await service.login(
-        user.email,
-        '12345678',
-      );
+      const result = await service.login(user.email, '12345678');
 
-      expect(
-        refreshTokenService.create,
-      ).toHaveBeenCalledWith(user.id);
+      expect(refreshTokenService.create).toHaveBeenCalledWith(user.id);
 
-      expect(result.refreshToken).toBe(
-        'refresh-token',
-      );
+      expect(result.refreshToken).toBe('refresh-token');
     });
-
   });
 
   describe('refresh', () => {
@@ -219,9 +160,7 @@ describe('AuthService', () => {
       id: 'refresh-token-id',
       userId: user.id,
       tokenHash: 'hashed-refresh-token',
-      expiresAt: new Date(
-        Date.now() + 86400000,
-      ),
+      expiresAt: new Date(Date.now() + 86400000),
       revokedAt: null,
       lastUsedAt: new Date(),
       createdAt: new Date(),
@@ -229,47 +168,27 @@ describe('AuthService', () => {
     };
 
     beforeEach(() => {
-      refreshTokenService.validate.mockResolvedValue(
-        storedToken,
-      );
+      refreshTokenService.validate.mockResolvedValue(storedToken);
 
-      refreshTokenService.create.mockResolvedValue(
-        'new-refresh-token',
-      );
+      refreshTokenService.create.mockResolvedValue('new-refresh-token');
 
-      refreshTokenService.revoke.mockResolvedValue(
-        undefined,
-      );
+      refreshTokenService.revoke.mockResolvedValue(undefined);
 
-      userRepository.findById.mockResolvedValue(
-        user,
-      );
+      userRepository.findById.mockResolvedValue(user);
     });
 
     it('should refresh the tokens', async () => {
-      const result = await service.refresh(
-        refreshToken,
-      );
+      const result = await service.refresh(refreshToken);
 
-      expect(
-        refreshTokenService.validate,
-      ).toHaveBeenCalledWith(refreshToken);
+      expect(refreshTokenService.validate).toHaveBeenCalledWith(refreshToken);
 
-      expect(
-        userRepository.findById,
-      ).toHaveBeenCalledWith(user.id);
+      expect(userRepository.findById).toHaveBeenCalledWith(user.id);
 
-      expect(
-        refreshTokenService.revoke,
-      ).toHaveBeenCalledWith(refreshToken);
+      expect(refreshTokenService.revoke).toHaveBeenCalledWith(refreshToken);
 
-      expect(
-        refreshTokenService.create,
-      ).toHaveBeenCalledWith(user.id);
+      expect(refreshTokenService.create).toHaveBeenCalledWith(user.id);
 
-      expect(
-        jwtService.signAsync,
-      ).toHaveBeenCalledWith({
+      expect(jwtService.signAsync).toHaveBeenCalledWith({
         sub: user.id,
         email: user.email,
         jti: expect.any(String),
@@ -284,9 +203,7 @@ describe('AuthService', () => {
         }),
       });
 
-      expect(result.user).not.toHaveProperty(
-        'passwordHash',
-      );
+      expect(result.user).not.toHaveProperty('passwordHash');
     });
 
     it('should reject an invalid refresh token', async () => {
@@ -294,27 +211,17 @@ describe('AuthService', () => {
         new Error('Invalid refresh token'),
       );
 
-      await expect(
-        service.refresh(refreshToken),
-      ).rejects.toThrow(
+      await expect(service.refresh(refreshToken)).rejects.toThrow(
         'Invalid refresh token',
       );
 
-      expect(
-        userRepository.findById,
-      ).not.toHaveBeenCalled();
+      expect(userRepository.findById).not.toHaveBeenCalled();
 
-      expect(
-        refreshTokenService.revoke,
-      ).not.toHaveBeenCalled();
+      expect(refreshTokenService.revoke).not.toHaveBeenCalled();
 
-      expect(
-        refreshTokenService.create,
-      ).not.toHaveBeenCalled();
+      expect(refreshTokenService.create).not.toHaveBeenCalled();
 
-      expect(
-        jwtService.signAsync,
-      ).not.toHaveBeenCalled();
+      expect(jwtService.signAsync).not.toHaveBeenCalled();
     });
 
     it('should reject an expired refresh token', async () => {
@@ -322,57 +229,34 @@ describe('AuthService', () => {
         new Error('Invalid refresh token'),
       );
 
-      await expect(
-        service.refresh(refreshToken),
-      ).rejects.toThrow(
+      await expect(service.refresh(refreshToken)).rejects.toThrow(
         'Invalid refresh token',
       );
 
-      expect(
-        userRepository.findById,
-      ).not.toHaveBeenCalled();
+      expect(userRepository.findById).not.toHaveBeenCalled();
 
-      expect(
-        refreshTokenService.revoke,
-      ).not.toHaveBeenCalled();
+      expect(refreshTokenService.revoke).not.toHaveBeenCalled();
 
-      expect(
-        refreshTokenService.create,
-      ).not.toHaveBeenCalled();
+      expect(refreshTokenService.create).not.toHaveBeenCalled();
 
-      expect(
-        jwtService.signAsync,
-      ).not.toHaveBeenCalled();
+      expect(jwtService.signAsync).not.toHaveBeenCalled();
     });
 
     it('should reject when the user no longer exists', async () => {
-      userRepository.findById.mockResolvedValue(
-        null,
-      );
+      userRepository.findById.mockResolvedValue(null);
 
-      await expect(
-        service.refresh(refreshToken),
-      ).rejects.toThrow(
+      await expect(service.refresh(refreshToken)).rejects.toThrow(
         'Invalid refresh token',
       );
 
-      expect(
-        refreshTokenService.validate,
-      ).toHaveBeenCalledWith(refreshToken);
+      expect(refreshTokenService.validate).toHaveBeenCalledWith(refreshToken);
 
-      expect(
-        refreshTokenService.revoke,
-      ).not.toHaveBeenCalled();
+      expect(refreshTokenService.revoke).not.toHaveBeenCalled();
 
-      expect(
-        refreshTokenService.create,
-      ).not.toHaveBeenCalled();
+      expect(refreshTokenService.create).not.toHaveBeenCalled();
 
-      expect(
-        jwtService.signAsync,
-      ).not.toHaveBeenCalled();
+      expect(jwtService.signAsync).not.toHaveBeenCalled();
     });
-
   });
 
   describe('me', () => {
@@ -410,9 +294,7 @@ describe('AuthService', () => {
     it('should reject when the user no longer exists', async () => {
       userRepository.findById.mockResolvedValue(null);
 
-      await expect(service.me(userId)).rejects.toThrow(
-        'User no longer exists',
-      );
+      await expect(service.me(userId)).rejects.toThrow('User no longer exists');
     });
   });
 });

@@ -8,13 +8,18 @@ import { execSync } from 'child_process';
 import net from 'net';
 
 // Override DATABASE_URL to use the test database
-const originalUrl = process.env.DATABASE_URL || 'postgresql://finbuddy:senhaDB232@@postgres:5432/finbuddy';
+const originalUrl =
+  process.env.DATABASE_URL ||
+  'postgresql://finbuddy:senhaDB232@@postgres:5432/finbuddy';
 let testDbUrl: string;
 try {
   const urlObj = new URL(originalUrl);
-  urlObj.pathname = urlObj.pathname === '/finbuddy' ? '/finbuddy_test' : urlObj.pathname + '_test';
+  urlObj.pathname =
+    urlObj.pathname === '/finbuddy'
+      ? '/finbuddy_test'
+      : urlObj.pathname + '_test';
   testDbUrl = urlObj.toString();
-} catch (e) {
+} catch {
   testDbUrl = originalUrl + '_test';
 }
 process.env.DATABASE_URL = testDbUrl;
@@ -27,7 +32,7 @@ function waitForDatabase(urlStr: string, timeoutMs = 15000): Promise<void> {
       const parsed = new URL(urlStr);
       hostname = parsed.hostname;
       port = parseInt(parsed.port, 10) || 5432;
-    } catch (e) {
+    } catch {
       // fallback
     }
 
@@ -41,7 +46,11 @@ function waitForDatabase(urlStr: string, timeoutMs = 15000): Promise<void> {
       socket.on('error', (err) => {
         socket.destroy();
         if (Date.now() - startTime > timeoutMs) {
-          reject(new Error(`Timeout waiting for database at ${hostname}:${port}: ${err.message}`));
+          reject(
+            new Error(
+              `Timeout waiting for database at ${hostname}:${port}: ${err.message}`,
+            ),
+          );
         } else {
           setTimeout(tryConnect, 500);
         }
@@ -59,7 +68,10 @@ describe('AppController (e2e)', () => {
     await waitForDatabase(process.env.DATABASE_URL!);
 
     // Push the schema to the test database explicitly passing --url
-    execSync(`npx prisma db push --accept-data-loss --url "${process.env.DATABASE_URL}"`, { stdio: 'inherit' });
+    execSync(
+      `npx prisma db push --accept-data-loss --url "${process.env.DATABASE_URL}"`,
+      { stdio: 'inherit' },
+    );
   });
 
   beforeEach(async () => {
@@ -81,7 +93,9 @@ describe('AppController (e2e)', () => {
 
     // Clean up database tables for isolation
     const prisma = app.get(PrismaService);
-    await prisma.$executeRawUnsafe(`TRUNCATE TABLE "users", "user_profiles", "user_identities", "refresh_tokens" CASCADE;`);
+    await prisma.$executeRawUnsafe(
+      `TRUNCATE TABLE "users", "user_profiles", "user_identities", "refresh_tokens" CASCADE;`,
+    );
   });
 
   it('POST /users should create a user', async () => {
@@ -289,11 +303,10 @@ describe('AppController (e2e)', () => {
     const email1 = `idor1-${Date.now()}@finbuddy.dev`;
     const password = '12345678';
 
-    const createResponse1 = await request(app.getHttpServer())
+    await request(app.getHttpServer())
       .post('/users')
       .send({ email: email1, password })
       .expect(201);
-    const user1Id = createResponse1.body.id;
 
     const email2 = `idor2-${Date.now()}@finbuddy.dev`;
     const createResponse2 = await request(app.getHttpServer())
@@ -371,18 +384,16 @@ describe('AppController (e2e)', () => {
         })
         .expect(201);
 
-      const oldRefreshToken =
-        loginResponse.body.refreshToken;
+      const oldRefreshToken = loginResponse.body.refreshToken;
 
       expect(oldRefreshToken).toEqual(expect.any(String));
 
-      const refreshResponse =
-        await request(app.getHttpServer())
-          .post('/auth/refresh')
-          .send({
-            refreshToken: oldRefreshToken,
-          })
-          .expect(200);
+      const refreshResponse = await request(app.getHttpServer())
+        .post('/auth/refresh')
+        .send({
+          refreshToken: oldRefreshToken,
+        })
+        .expect(200);
 
       expect(refreshResponse.body).toEqual({
         accessToken: expect.any(String),
@@ -392,13 +403,11 @@ describe('AppController (e2e)', () => {
         }),
       });
 
-      expect(
-        refreshResponse.body.refreshToken,
-      ).not.toBe(oldRefreshToken);
+      expect(refreshResponse.body.refreshToken).not.toBe(oldRefreshToken);
 
-      expect(
-        refreshResponse.body.accessToken,
-      ).not.toBe(loginResponse.body.accessToken);
+      expect(refreshResponse.body.accessToken).not.toBe(
+        loginResponse.body.accessToken,
+      );
     });
 
     it('should reject an invalid refresh token', async () => {
@@ -430,8 +439,7 @@ describe('AppController (e2e)', () => {
         })
         .expect(201);
 
-      const refreshToken =
-        loginResponse.body.refreshToken;
+      const refreshToken = loginResponse.body.refreshToken;
 
       await request(app.getHttpServer())
         .post('/auth/refresh')
@@ -496,9 +504,7 @@ describe('AppController (e2e)', () => {
     });
 
     it('should reject without a token', async () => {
-      await request(app.getHttpServer())
-        .get('/auth/me')
-        .expect(401);
+      await request(app.getHttpServer()).get('/auth/me').expect(401);
     });
 
     it('should reject with an invalid token', async () => {
