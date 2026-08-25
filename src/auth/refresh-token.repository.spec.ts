@@ -1,5 +1,5 @@
 import { RefreshTokenRepository } from './refresh-token.repository';
-import { PrismaService } from '../prisma/prisma.service';
+import { DatabaseService } from '../database/database.service';
 
 describe('RefreshTokenRepository', () => {
   let repository: RefreshTokenRepository;
@@ -21,7 +21,7 @@ describe('RefreshTokenRepository', () => {
       },
     };
 
-    repository = new RefreshTokenRepository(prisma as unknown as PrismaService);
+    repository = new RefreshTokenRepository(prisma as unknown as DatabaseService);
   });
 
   describe('create', () => {

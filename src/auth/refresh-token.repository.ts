@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
 
-import { PrismaService } from '../prisma/prisma.service';
+import { DatabaseService } from '../database/database.service';
 import { RefreshToken } from '../generated/prisma/client';
 
 @Injectable()
 export class RefreshTokenRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: DatabaseService) {}
 
   async create(data: {
     userId: string;

@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { PrismaService } from '../prisma/prisma.service';
+import { DatabaseService } from '../database/database.service';
 import { UserRepository } from './user.repository';
 
 describe('UserRepository', () => {
@@ -21,7 +21,7 @@ describe('UserRepository', () => {
       providers: [
         UserRepository,
         {
-          provide: PrismaService,
+          provide: DatabaseService,
           useValue: prismaMock,
         },
       ],
