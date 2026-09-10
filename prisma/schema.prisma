@@ -101,8 +101,10 @@ model Account {
   createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime    @updatedAt @map("updated_at") @db.Timestamptz
 
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  transactions Transaction[]
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions  Transaction[]
+  transfersFrom Transfer[]    @relation("TransfersFrom")
+  transfersTo   Transfer[]    @relation("TransfersTo")
 
   @@index([userId])
   @@map("accounts")
@@ -122,6 +124,7 @@ enum TransactionSource {
 model Transaction {
   id            String            @id @default(uuid()) @db.Uuid
   accountId     String            @map("account_id") @db.Uuid
+  transferId    String?           @map("transfer_id") @db.Uuid
   type          TransactionType
   amount        Decimal           @db.Decimal(19, 4)
   description   String?           @db.VarChar
@@ -130,9 +133,30 @@ model Transaction {
   createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz
   updatedAt     DateTime          @updatedAt @map("updated_at") @db.Timestamptz
 
-  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  account  Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  transfer Transfer? @relation(fields: [transferId], references: [id], onDelete: Cascade)
 
   @@index([accountId])
+  @@index([transferId])
   @@index([transactionAt])
   @@map("transactions")
+}
+
+model Transfer {
+  id            String   @id @default(uuid()) @db.Uuid
+  fromAccountId String   @map("from_account_id") @db.Uuid
+  toAccountId   String   @map("to_account_id") @db.Uuid
+  amount        Decimal  @db.Decimal(19, 4)
+  transactionAt DateTime @map("transaction_at") @db.Timestamptz
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  fromAccount  Account       @relation("TransfersFrom", fields: [fromAccountId], references: [id], onDelete: Cascade)
+  toAccount    Account       @relation("TransfersTo", fields: [toAccountId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@index([fromAccountId])
+  @@index([toAccountId])
+  @@index([transactionAt])
+  @@map("transfers")
 }
