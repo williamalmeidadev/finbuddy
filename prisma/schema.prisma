@@ -40,6 +40,7 @@ model User {
   identities    UserIdentity[]
   refreshTokens RefreshToken[]
   accounts      Account[]
+  categories    Category[]
 
   @@map("users")
 }
@@ -115,6 +116,11 @@ enum TransactionType {
   EXPENSE
 }
 
+enum CategoryType {
+  INCOME
+  EXPENSE
+}
+
 enum TransactionSource {
   MANUAL
   IMPORT
@@ -125,6 +131,7 @@ model Transaction {
   id            String            @id @default(uuid()) @db.Uuid
   accountId     String            @map("account_id") @db.Uuid
   transferId    String?           @map("transfer_id") @db.Uuid
+  categoryId    String?           @map("category_id") @db.Uuid
   type          TransactionType
   amount        Decimal           @db.Decimal(19, 4)
   description   String?           @db.VarChar
@@ -135,11 +142,31 @@ model Transaction {
 
   account  Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
   transfer Transfer? @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
   @@index([accountId])
   @@index([transferId])
+  @@index([categoryId])
   @@index([transactionAt])
   @@map("transactions")
+}
+
+model Category {
+  id        String       @id @default(uuid()) @db.Uuid
+  userId    String       @map("user_id") @db.Uuid
+  name      String       @db.VarChar(100)
+  type      CategoryType
+  icon      String?      @db.VarChar(50)
+  color     String?      @db.VarChar(7)
+  isActive  Boolean      @default(true) @map("is_active")
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@index([userId])
+  @@map("categories")
 }
 
 model Transfer {
