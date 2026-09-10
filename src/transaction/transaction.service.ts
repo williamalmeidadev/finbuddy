@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { AccountRepository } from '../account/account.repository';
+import { CategoryRepository } from '../category/category.repository';
 import { TransactionSource, TransactionType } from '../generated/prisma/enums';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { TransactionResponseDto } from './dto/transaction-response.dto';
@@ -21,6 +22,7 @@ export class TransactionService {
   constructor(
     private readonly transactionRepository: TransactionRepository,
     private readonly accountRepository: AccountRepository,
+    private readonly categoryRepository: CategoryRepository,
   ) {}
 
   async create(
@@ -42,6 +44,27 @@ export class TransactionService {
       );
     }
 
+    if (dto.categoryId) {
+      const category = await this.categoryRepository.findByIdAndUserId(
+        dto.categoryId,
+        userId,
+      );
+
+      if (!category) {
+        throw new NotFoundException('Category not found');
+      }
+
+      if (!category.isActive) {
+        throw new BadRequestException('Cannot assign an inactive category');
+      }
+
+      if ((category.type as string) !== (dto.type as string)) {
+        throw new BadRequestException(
+          'Category type does not match transaction type',
+        );
+      }
+    }
+
     const balanceDelta =
       dto.type === TransactionType.INCOME ? dto.amount : -dto.amount;
 
@@ -49,6 +72,7 @@ export class TransactionService {
       await this.transactionRepository.createWithBalanceUpdate(
         {
           accountId: dto.accountId,
+          categoryId: dto.categoryId,
           type: dto.type,
           amount: dto.amount,
           description: dto.description,
@@ -123,11 +147,46 @@ export class TransactionService {
       );
     }
 
+    const newType = dto.type ?? transaction.type;
+
+    if (dto.categoryId !== undefined) {
+      if (dto.categoryId !== null) {
+        const category = await this.categoryRepository.findByIdAndUserId(
+          dto.categoryId,
+          userId,
+        );
+
+        if (!category) {
+          throw new NotFoundException('Category not found');
+        }
+
+        if (!category.isActive) {
+          throw new BadRequestException('Cannot assign an inactive category');
+        }
+
+        if ((category.type as string) !== (newType as string)) {
+          throw new BadRequestException(
+            'Category type does not match transaction type',
+          );
+        }
+      }
+    } else if (dto.type !== undefined && transaction.categoryId) {
+      const category = await this.categoryRepository.findByIdAndUserId(
+        transaction.categoryId,
+        userId,
+      );
+
+      if (category && (category.type as string) !== (newType as string)) {
+        throw new BadRequestException(
+          'Category type does not match transaction type',
+        );
+      }
+    }
+
     const oldAmount = this.toNumber(transaction.amount);
     const oldImpact =
       transaction.type === TransactionType.INCOME ? oldAmount : -oldAmount;
 
-    const newType = dto.type ?? transaction.type;
     const newAmount = dto.amount ?? oldAmount;
     const newImpact =
       newType === TransactionType.INCOME ? newAmount : -newAmount;
@@ -138,6 +197,7 @@ export class TransactionService {
       id,
       userId,
       {
+        ...(dto.categoryId !== undefined ? { categoryId: dto.categoryId } : {}),
         ...(dto.type ? { type: dto.type } : {}),
         ...(dto.amount !== undefined ? { amount: dto.amount } : {}),
         ...(dto.description !== undefined
