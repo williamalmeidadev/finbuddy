@@ -6,6 +6,7 @@ import { DatabaseModule } from './database/database.module';
 import { UserModule } from './user/user.module';
 import { AccountModule } from './account/account.module';
 import { TransactionModule } from './transaction/transaction.module';
+import { TransferModule } from './transfer/transfer.module';
 import { validate } from './config/env.validation';
 
 @Module({
@@ -19,6 +20,7 @@ import { validate } from './config/env.validation';
     AuthModule,
     AccountModule,
     TransactionModule,
+    TransferModule,
   ],
 })
 export class AppModule {}
