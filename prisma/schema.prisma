@@ -131,25 +131,30 @@ enum TransactionSource {
 }
 
 model Transaction {
-  id            String            @id @default(uuid()) @db.Uuid
-  accountId     String            @map("account_id") @db.Uuid
-  transferId    String?           @map("transfer_id") @db.Uuid
-  categoryId    String?           @map("category_id") @db.Uuid
-  type          TransactionType
-  amount        Decimal           @db.Decimal(19, 4)
-  description   String?           @db.VarChar
-  source        TransactionSource @default(MANUAL)
-  transactionAt DateTime          @map("transaction_at") @db.Timestamptz
-  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt     DateTime          @updatedAt @map("updated_at") @db.Timestamptz
+  id                     String                @id @default(uuid()) @db.Uuid
+  accountId              String                @map("account_id") @db.Uuid
+  transferId             String?               @map("transfer_id") @db.Uuid
+  categoryId             String?               @map("category_id") @db.Uuid
+  recurringTransactionId String?               @map("recurring_transaction_id") @db.Uuid
+  recurringOccurrence    DateTime?             @map("recurring_occurrence") @db.Date
+  type                   TransactionType
+  amount                 Decimal               @db.Decimal(19, 4)
+  description            String?               @db.VarChar
+  source                 TransactionSource     @default(MANUAL)
+  transactionAt          DateTime              @map("transaction_at") @db.Timestamptz
+  createdAt              DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt              DateTime              @updatedAt @map("updated_at") @db.Timestamptz
 
-  account  Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  transfer Transfer? @relation(fields: [transferId], references: [id], onDelete: Cascade)
-  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  account              Account               @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  transfer             Transfer?             @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  category             Category?             @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  recurringTransaction RecurringTransaction? @relation(fields: [recurringTransactionId], references: [id], onDelete: SetNull)
 
+  @@unique([recurringTransactionId, recurringOccurrence])
   @@index([accountId])
   @@index([transferId])
   @@index([categoryId])
+  @@index([recurringTransactionId])
   @@index([transactionAt])
   @@map("transactions")
 }
@@ -235,9 +240,10 @@ model RecurringTransaction {
   createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime            @updatedAt @map("updated_at") @db.Timestamptz
 
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  account  Account   @relation(fields: [accountId], references: [id], onDelete: Restrict)
-  category Category? @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account      Account       @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  category     Category?     @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  transactions Transaction[]
 
   @@index([userId])
   @@index([accountId])
