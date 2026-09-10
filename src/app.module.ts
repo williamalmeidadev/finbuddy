@@ -12,6 +12,7 @@ import { BudgetModule } from './budget/budget.module';
 import { FinancialSummaryModule } from './financial-summary/financial-summary.module';
 import { RecurringTransactionModule } from './recurring-transaction/recurring-transaction.module';
 import { RecurringTransactionExecutionModule } from './recurring-transaction-execution/recurring-transaction-execution.module';
+import { RecurringTransactionAutomationModule } from './recurring-transaction-automation/recurring-transaction-automation.module';
 import { validate } from './config/env.validation';
 
 @Module({
@@ -31,6 +32,7 @@ import { validate } from './config/env.validation';
     FinancialSummaryModule,
     RecurringTransactionModule,
     RecurringTransactionExecutionModule,
+    RecurringTransactionAutomationModule,
   ],
 })
 export class AppModule {}
