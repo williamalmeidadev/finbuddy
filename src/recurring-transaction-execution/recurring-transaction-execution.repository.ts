@@ -33,6 +33,22 @@ export class RecurringTransactionExecutionRepository {
     });
   }
 
+  async findAllDueRecurringTransactions(
+    untilDate: Date,
+  ): Promise<RecurringTransaction[]> {
+    return this.prisma.recurringTransaction.findMany({
+      where: {
+        isActive: true,
+        nextOccurrence: {
+          lte: untilDate,
+        },
+      },
+      orderBy: {
+        nextOccurrence: 'asc',
+      },
+    });
+  }
+
   async processOccurrence(
     recurring: RecurringTransaction,
     categoryIdToUse: string | null,

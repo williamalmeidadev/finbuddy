@@ -1,5 +1,6 @@
 import { plainToInstance } from 'class-transformer';
 import {
+  IsBoolean,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -19,6 +20,14 @@ class EnvironmentVariables {
   @IsNumber()
   @IsOptional()
   PORT?: number;
+
+  @IsBoolean()
+  @IsOptional()
+  RECURRING_TRANSACTION_AUTOMATION_ENABLED?: boolean = true;
+
+  @IsString()
+  @IsOptional()
+  RECURRING_TRANSACTION_AUTOMATION_CRON?: string = '* * * * *';
 }
 
 export function validate(config: Record<string, any>) {
