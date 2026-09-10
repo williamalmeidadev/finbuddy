@@ -39,9 +39,10 @@ model User {
   profile       UserProfile?
   identities    UserIdentity[]
   refreshTokens RefreshToken[]
-  accounts      Account[]
-  categories    Category[]
-  budgets       Budget[]
+  accounts              Account[]
+  categories            Category[]
+  budgets               Budget[]
+  recurringTransactions RecurringTransaction[]
 
   @@map("users")
 }
@@ -103,10 +104,11 @@ model Account {
   createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime    @updatedAt @map("updated_at") @db.Timestamptz
 
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  transactions  Transaction[]
-  transfersFrom Transfer[]    @relation("TransfersFrom")
-  transfersTo   Transfer[]    @relation("TransfersTo")
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions          Transaction[]
+  transfersFrom         Transfer[]             @relation("TransfersFrom")
+  transfersTo           Transfer[]             @relation("TransfersTo")
+  recurringTransactions RecurringTransaction[]
 
   @@index([userId])
   @@map("accounts")
@@ -163,12 +165,20 @@ model Category {
   createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz
 
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  transactions Transaction[]
-  budgets      Budget[]
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions          Transaction[]
+  budgets               Budget[]
+  recurringTransactions RecurringTransaction[]
 
   @@index([userId])
   @@map("categories")
+}
+
+enum RecurrenceFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
 }
 
 model Transfer {
@@ -208,4 +218,33 @@ model Budget {
   @@index([month])
   @@map("budgets")
 }
+
+model RecurringTransaction {
+  id             String              @id @default(uuid()) @db.Uuid
+  userId         String              @map("user_id") @db.Uuid
+  accountId      String              @map("account_id") @db.Uuid
+  categoryId     String?             @map("category_id") @db.Uuid
+  type           TransactionType
+  amount         Decimal             @db.Decimal(19, 4)
+  description    String?             @db.VarChar
+  frequency      RecurrenceFrequency
+  startDate      DateTime            @map("start_date") @db.Date
+  nextOccurrence DateTime            @map("next_occurrence") @db.Date
+  endDate        DateTime?           @map("end_date") @db.Date
+  isActive       Boolean             @default(true) @map("is_active")
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime            @updatedAt @map("updated_at") @db.Timestamptz
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account  Account   @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@index([accountId])
+  @@index([categoryId])
+  @@index([nextOccurrence])
+  @@index([userId, isActive])
+  @@map("recurring_transactions")
+}
+
 
