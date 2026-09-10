@@ -269,7 +269,7 @@ describe('FinancialSummaryController (e2e)', () => {
 
       // Accounts
       expect(res.body.accounts.items).toHaveLength(2);
-      expect(res.body.accounts.totalBalance).toBe(7000); // 5000 + 2000 account initial balances stored
+      expect(res.body.accounts.totalBalance).toBe(11200); // 5000 + 2000 initial + 5000 income - 800 expenses
 
       // Expense Categories (Food: 500 => 62.5%, Transport: 200 => 25%)
       expect(res.body.categories.expenses).toHaveLength(2);
@@ -381,9 +381,9 @@ describe('FinancialSummaryController (e2e)', () => {
       const userB = await createTestUser('secB');
 
       const accA = await createAccount(userA.token, 'User A Acc', 10000);
-      const accB = await createAccount(userB.token, 'User B Acc', 500);
+      await createAccount(userB.token, 'User B Acc', 500);
 
-      const catA = await createCategory(userA.token, 'Cat A');
+      const catA = await createCategory(userA.token, 'Cat A', 'INCOME');
 
       await request(app.getHttpServer())
         .post('/transactions')

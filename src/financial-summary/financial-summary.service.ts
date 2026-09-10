@@ -30,8 +30,7 @@ export class FinancialSummaryService {
       id: a.id,
       name: a.name,
       type: a.type,
-      balance:
-        typeof a.balance === 'number' ? a.balance : a.balance.toNumber(),
+      balance: typeof a.balance === 'number' ? a.balance : a.balance.toNumber(),
       currency: a.currency,
     }));
 
@@ -55,27 +54,33 @@ export class FinancialSummaryService {
       TransactionType.EXPENSE,
     );
 
-    const incomeCategories: CategorySummaryItem[] = rawIncomeCats.map((item) => {
-      const percentage =
-        income > 0 ? Number(((item.amount / income) * 100).toFixed(2)) : 0;
-      return {
-        categoryId: item.categoryId,
-        categoryName: item.categoryName,
-        amount: Number(item.amount.toFixed(4)),
-        percentage,
-      };
-    });
+    const incomeCategories: CategorySummaryItem[] = rawIncomeCats.map(
+      (item) => {
+        const percentage =
+          income > 0 ? Number(((item.amount / income) * 100).toFixed(2)) : 0;
+        return {
+          categoryId: item.categoryId,
+          categoryName: item.categoryName,
+          amount: Number(item.amount.toFixed(4)),
+          percentage,
+        };
+      },
+    );
 
-    const expenseCategories: CategorySummaryItem[] = rawExpenseCats.map((item) => {
-      const percentage =
-        expenses > 0 ? Number(((item.amount / expenses) * 100).toFixed(2)) : 0;
-      return {
-        categoryId: item.categoryId,
-        categoryName: item.categoryName,
-        amount: Number(item.amount.toFixed(4)),
-        percentage,
-      };
-    });
+    const expenseCategories: CategorySummaryItem[] = rawExpenseCats.map(
+      (item) => {
+        const percentage =
+          expenses > 0
+            ? Number(((item.amount / expenses) * 100).toFixed(2))
+            : 0;
+        return {
+          categoryId: item.categoryId,
+          categoryName: item.categoryName,
+          amount: Number(item.amount.toFixed(4)),
+          percentage,
+        };
+      },
+    );
 
     const dbBudgets = await this.repository.getBudgetsForMonth(
       userId,
