@@ -293,8 +293,18 @@ describe('TransferController (e2e)', () => {
 
     it('should reject transfer between accounts with different currencies', async () => {
       const user = await createTestUser('currency-mismatch');
-      const accBRL = await createTestAccount(user.token, 'BRL Acc', 1000, 'BRL');
-      const accUSD = await createTestAccount(user.token, 'USD Acc', 1000, 'USD');
+      const accBRL = await createTestAccount(
+        user.token,
+        'BRL Acc',
+        1000,
+        'BRL',
+      );
+      const accUSD = await createTestAccount(
+        user.token,
+        'USD Acc',
+        1000,
+        'USD',
+      );
 
       await request(app.getHttpServer())
         .post('/transfers')

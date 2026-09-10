@@ -74,10 +74,7 @@ export class TransferRepository {
     return this.prisma.transfer.findFirst({
       where: {
         id,
-        OR: [
-          { fromAccount: { userId } },
-          { toAccount: { userId } },
-        ],
+        OR: [{ fromAccount: { userId } }, { toAccount: { userId } }],
       },
     });
   }
@@ -98,13 +95,14 @@ export class TransferRepository {
       where: {
         AND: [
           {
-            OR: [
-              { fromAccount: { userId } },
-              { toAccount: { userId } },
-            ],
+            OR: [{ fromAccount: { userId } }, { toAccount: { userId } }],
           },
-          ...(options?.fromAccountId ? [{ fromAccountId: options.fromAccountId }] : []),
-          ...(options?.toAccountId ? [{ toAccountId: options.toAccountId }] : []),
+          ...(options?.fromAccountId
+            ? [{ fromAccountId: options.fromAccountId }]
+            : []),
+          ...(options?.toAccountId
+            ? [{ toAccountId: options.toAccountId }]
+            : []),
         ],
       },
       orderBy: {
