@@ -2,22 +2,26 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AccountService } from './account.service';
 import { AccountRepository } from './account.repository';
 import { AccountType } from '../generated/prisma/enums';
-import { NotFoundException, ForbiddenException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import { AccountResponseDto } from './dto/account-response.dto';
 
 describe('AccountService', () => {
   let service: AccountService;
   let accountRepository: {
     create: jest.Mock;
-    findById: jest.Mock;
+    findByIdAndUserId: jest.Mock;
     findByUserId: jest.Mock;
+    update: jest.Mock;
+    deactivate: jest.Mock;
   };
 
   beforeEach(async () => {
     accountRepository = {
       create: jest.fn(),
-      findById: jest.fn(),
+      findByIdAndUserId: jest.fn(),
       findByUserId: jest.fn(),
+      update: jest.fn(),
+      deactivate: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -132,41 +136,23 @@ describe('AccountService', () => {
         updatedAt: new Date(),
       };
 
-      accountRepository.findById.mockResolvedValue(mockDbAccount);
+      accountRepository.findByIdAndUserId.mockResolvedValue(mockDbAccount);
 
       const result = await service.findById('account-id', userId);
 
-      expect(accountRepository.findById).toHaveBeenCalledWith('account-id');
+      expect(accountRepository.findByIdAndUserId).toHaveBeenCalledWith(
+        'account-id',
+        userId,
+      );
       expect(result.id).toBe('account-id');
       expect(result.userId).toBe(userId);
     });
 
-    it('should throw NotFoundException when account is not found', async () => {
-      accountRepository.findById.mockResolvedValue(null);
+    it('should throw NotFoundException when account is not found or unowned', async () => {
+      accountRepository.findByIdAndUserId.mockResolvedValue(null);
 
       await expect(service.findById('non-existent', 'user-id')).rejects.toThrow(
         NotFoundException,
-      );
-    });
-
-    it('should throw ForbiddenException when user is not the owner of the account', async () => {
-      const mockDbAccount = {
-        id: 'account-id',
-        userId: 'owner-id',
-        name: 'Savings',
-        type: AccountType.SAVINGS,
-        balance: { toNumber: () => 500 },
-        currency: 'BRL',
-        color: '#00FF00',
-        isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      accountRepository.findById.mockResolvedValue(mockDbAccount);
-
-      await expect(service.findById('account-id', 'attacker-id')).rejects.toThrow(
-        ForbiddenException,
       );
     });
   });
@@ -197,6 +183,84 @@ describe('AccountService', () => {
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe('account-1');
       expect(result[0].balance).toBe(150);
+    });
+  });
+
+  describe('update', () => {
+    it('should update account and return response DTO', async () => {
+      const userId = 'user-id';
+      const accountId = 'account-id';
+      const dto = { name: 'Updated Name' };
+
+      const updatedAccount = {
+        id: accountId,
+        userId,
+        name: 'Updated Name',
+        type: AccountType.CHECKING,
+        color: '#FF5733',
+        balance: { toNumber: () => 100 },
+        currency: 'BRL',
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      accountRepository.update.mockResolvedValue(updatedAccount);
+
+      const result = await service.update(accountId, userId, dto);
+
+      expect(accountRepository.update).toHaveBeenCalledWith(
+        accountId,
+        userId,
+        dto,
+      );
+      expect(result.name).toBe('Updated Name');
+    });
+
+    it('should throw NotFoundException when updating non-existent or unowned account', async () => {
+      accountRepository.update.mockResolvedValue(null);
+
+      await expect(
+        service.update('account-id', 'user-id', { name: 'New Name' }),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('deactivate', () => {
+    it('should deactivate account and return response DTO with isActive false', async () => {
+      const userId = 'user-id';
+      const accountId = 'account-id';
+
+      const deactivatedAccount = {
+        id: accountId,
+        userId,
+        name: 'Account',
+        type: AccountType.CHECKING,
+        color: '#FF5733',
+        balance: { toNumber: () => 100 },
+        currency: 'BRL',
+        isActive: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      accountRepository.deactivate.mockResolvedValue(deactivatedAccount);
+
+      const result = await service.deactivate(accountId, userId);
+
+      expect(accountRepository.deactivate).toHaveBeenCalledWith(
+        accountId,
+        userId,
+      );
+      expect(result.isActive).toBe(false);
+    });
+
+    it('should throw NotFoundException when deactivating non-existent or unowned account', async () => {
+      accountRepository.deactivate.mockResolvedValue(null);
+
+      await expect(service.deactivate('account-id', 'user-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

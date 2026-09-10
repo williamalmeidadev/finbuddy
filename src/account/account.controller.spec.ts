@@ -10,6 +10,8 @@ describe('AccountController', () => {
     create: jest.Mock;
     findById: jest.Mock;
     findByUserId: jest.Mock;
+    update: jest.Mock;
+    deactivate: jest.Mock;
   };
 
   const user = {
@@ -22,6 +24,8 @@ describe('AccountController', () => {
       create: jest.fn(),
       findById: jest.fn(),
       findByUserId: jest.fn(),
+      update: jest.fn(),
+      deactivate: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -116,6 +120,64 @@ describe('AccountController', () => {
       const result = await controller.findOne(user, accountId);
 
       expect(accountService.findById).toHaveBeenCalledWith(accountId, user.id);
+      expect(result).toBe(response);
+    });
+  });
+
+  describe('update', () => {
+    it('should update account for current user', async () => {
+      const accountId = 'account-id';
+      const dto = { name: 'New Name' };
+      const response = new AccountResponseDto({
+        id: accountId,
+        userId: user.id,
+        name: 'New Name',
+        type: AccountType.SAVINGS,
+        color: '#FF5733',
+        balance: 100,
+        currency: 'BRL',
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      accountService.update.mockResolvedValue(response);
+
+      const result = await controller.update(user, accountId, dto);
+
+      expect(accountService.update).toHaveBeenCalledWith(
+        accountId,
+        user.id,
+        dto,
+      );
+      expect(result).toBe(response);
+    });
+  });
+
+  describe('deactivate', () => {
+    it('should deactivate account for current user', async () => {
+      const accountId = 'account-id';
+      const response = new AccountResponseDto({
+        id: accountId,
+        userId: user.id,
+        name: 'Savings',
+        type: AccountType.SAVINGS,
+        color: '#FF5733',
+        balance: 100,
+        currency: 'BRL',
+        isActive: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      accountService.deactivate.mockResolvedValue(response);
+
+      const result = await controller.deactivate(user, accountId);
+
+      expect(accountService.deactivate).toHaveBeenCalledWith(
+        accountId,
+        user.id,
+      );
       expect(result).toBe(response);
     });
   });

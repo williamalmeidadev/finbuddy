@@ -10,6 +10,7 @@ describe('AccountRepository', () => {
   const prismaMock = {
     account: {
       create: jest.fn(),
+      findFirst: jest.fn(),
       findUnique: jest.fn(),
       findMany: jest.fn(),
       update: jest.fn(),
@@ -67,8 +68,8 @@ describe('AccountRepository', () => {
     });
   });
 
-  describe('findById', () => {
-    it('should return the account found by id', async () => {
+  describe('findByIdAndUserId', () => {
+    it('should return the account found by id and userId', async () => {
       const account = {
         id: 'account-id',
         userId: 'user-id',
@@ -82,23 +83,29 @@ describe('AccountRepository', () => {
         updatedAt: new Date(),
       };
 
-      prismaMock.account.findUnique.mockResolvedValue(account);
+      prismaMock.account.findFirst.mockResolvedValue(account);
 
-      const result = await repository.findById(account.id);
+      const result = await repository.findByIdAndUserId(
+        account.id,
+        account.userId,
+      );
 
-      expect(prismaMock.account.findUnique).toHaveBeenCalledWith({
-        where: { id: account.id },
+      expect(prismaMock.account.findFirst).toHaveBeenCalledWith({
+        where: { id: account.id, userId: account.userId },
       });
       expect(result).toEqual(account);
     });
 
-    it('should return null when account is not found', async () => {
-      prismaMock.account.findUnique.mockResolvedValue(null);
+    it('should return null when account is not found or belongs to another user', async () => {
+      prismaMock.account.findFirst.mockResolvedValue(null);
 
-      const result = await repository.findById('non-existent-id');
+      const result = await repository.findByIdAndUserId(
+        'non-existent-id',
+        'user-id',
+      );
 
-      expect(prismaMock.account.findUnique).toHaveBeenCalledWith({
-        where: { id: 'non-existent-id' },
+      expect(prismaMock.account.findFirst).toHaveBeenCalledWith({
+        where: { id: 'non-existent-id', userId: 'user-id' },
       });
       expect(result).toBeNull();
     });
@@ -134,16 +141,17 @@ describe('AccountRepository', () => {
   });
 
   describe('update', () => {
-    it('should update an account', async () => {
+    it('should update an account if owned by user', async () => {
       const id = 'account-id';
+      const userId = 'user-id';
       const data: Prisma.AccountUpdateInput = {
         name: 'Updated Checking Name',
       };
 
-      const updatedAccount = {
+      const existingAccount = {
         id,
-        userId: 'user-id',
-        name: 'Updated Checking Name',
+        userId,
+        name: 'Old Checking Name',
         type: AccountType.CHECKING,
         color: '#FF5733',
         balance: 1500,
@@ -153,25 +161,46 @@ describe('AccountRepository', () => {
         updatedAt: new Date(),
       };
 
+      const updatedAccount = {
+        ...existingAccount,
+        name: 'Updated Checking Name',
+      };
+
+      prismaMock.account.findFirst.mockResolvedValue(existingAccount);
       prismaMock.account.update.mockResolvedValue(updatedAccount);
 
-      const result = await repository.update(id, data);
+      const result = await repository.update(id, userId, data);
 
+      expect(prismaMock.account.findFirst).toHaveBeenCalledWith({
+        where: { id, userId },
+      });
       expect(prismaMock.account.update).toHaveBeenCalledWith({
         where: { id },
         data,
       });
       expect(result).toEqual(updatedAccount);
     });
+
+    it('should return null when updating an unowned or non-existent account', async () => {
+      prismaMock.account.findFirst.mockResolvedValue(null);
+
+      const result = await repository.update('other-id', 'user-id', {
+        name: 'New Name',
+      });
+
+      expect(result).toBeNull();
+      expect(prismaMock.account.update).not.toHaveBeenCalled();
+    });
   });
 
-  describe('delete', () => {
-    it('should delete an account', async () => {
+  describe('deactivate', () => {
+    it('should deactivate an account setting isActive to false', async () => {
       const id = 'account-id';
-      const deletedAccount = {
+      const userId = 'user-id';
+      const existingAccount = {
         id,
-        userId: 'user-id',
-        name: 'Deleted Account',
+        userId,
+        name: 'Active Account',
         type: AccountType.CHECKING,
         color: '#FF5733',
         balance: 1500,
@@ -181,14 +210,21 @@ describe('AccountRepository', () => {
         updatedAt: new Date(),
       };
 
-      prismaMock.account.delete.mockResolvedValue(deletedAccount);
+      const deactivatedAccount = {
+        ...existingAccount,
+        isActive: false,
+      };
 
-      const result = await repository.delete(id);
+      prismaMock.account.findFirst.mockResolvedValue(existingAccount);
+      prismaMock.account.update.mockResolvedValue(deactivatedAccount);
 
-      expect(prismaMock.account.delete).toHaveBeenCalledWith({
+      const result = await repository.deactivate(id, userId);
+
+      expect(prismaMock.account.update).toHaveBeenCalledWith({
         where: { id },
+        data: { isActive: false },
       });
-      expect(result).toEqual(deletedAccount);
+      expect(result).toEqual(deactivatedAccount);
     });
   });
 });
