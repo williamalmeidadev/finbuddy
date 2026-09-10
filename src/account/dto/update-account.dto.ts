@@ -3,13 +3,10 @@ import {
   IsBoolean,
   IsEnum,
   IsNotEmpty,
-  IsNumber,
   IsOptional,
   IsString,
   Length,
   Matches,
-  Max,
-  Min,
 } from 'class-validator';
 import { AccountType } from '../../generated/prisma/enums';
 
@@ -26,12 +23,6 @@ export class UpdateAccountDto {
   @IsEnum(AccountType)
   @IsOptional()
   type?: AccountType;
-
-  @IsNumber()
-  @IsOptional()
-  @Min(-999999999999.9999)
-  @Max(999999999999.9999)
-  balance?: number;
 
   @IsString()
   @IsOptional()

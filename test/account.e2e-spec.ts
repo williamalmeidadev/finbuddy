@@ -357,7 +357,7 @@ describe('AccountController (e2e)', () => {
   });
 
   describe('PATCH /accounts/:id', () => {
-    it('should update account details for owner', async () => {
+    it('should update account allowed metadata for owner', async () => {
       const user = await createTestUser('patch-owner');
 
       const createRes = await request(app.getHttpServer())
@@ -371,11 +371,43 @@ describe('AccountController (e2e)', () => {
       const updateRes = await request(app.getHttpServer())
         .patch(`/accounts/${accountId}`)
         .set('Authorization', `Bearer ${user.token}`)
-        .send({ name: 'Renamed Account', color: '#ABCDEF' })
+        .send({
+          name: 'Renamed Account',
+          type: 'SAVINGS',
+          currency: 'USD',
+          color: '#ABCDEF',
+          isActive: false,
+        })
         .expect(200);
 
       expect(updateRes.body.name).toBe('Renamed Account');
+      expect(updateRes.body.type).toBe('SAVINGS');
+      expect(updateRes.body.currency).toBe('USD');
       expect(updateRes.body.color).toBe('#ABCDEF');
+      expect(updateRes.body.isActive).toBe(false);
+    });
+
+    it('should reject direct balance update via PATCH', async () => {
+      const user = await createTestUser('patch-balance');
+
+      const createRes = await request(app.getHttpServer())
+        .post('/accounts')
+        .set('Authorization', `Bearer ${user.token}`)
+        .send({
+          name: 'Account Balance Test',
+          type: 'CHECKING',
+          color: '#111111',
+          balance: 500,
+        })
+        .expect(201);
+
+      const accountId = createRes.body.id;
+
+      await request(app.getHttpServer())
+        .patch(`/accounts/${accountId}`)
+        .set('Authorization', `Bearer ${user.token}`)
+        .send({ balance: 9999 })
+        .expect(400);
     });
 
     it('should return 404 when User A tries to update User B account', async () => {
