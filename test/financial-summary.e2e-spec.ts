@@ -383,8 +383,16 @@ describe('FinancialSummaryController (e2e)', () => {
       const accA = await createAccount(userA.token, 'User A Acc', 10000);
       await createAccount(userB.token, 'User B Acc', 500);
 
-      const catIncomeA = await createCategory(userA.token, 'Income Cat A', 'INCOME');
-      const catExpenseA = await createCategory(userA.token, 'Expense Cat A', 'EXPENSE');
+      const catIncomeA = await createCategory(
+        userA.token,
+        'Income Cat A',
+        'INCOME',
+      );
+      const catExpenseA = await createCategory(
+        userA.token,
+        'Expense Cat A',
+        'EXPENSE',
+      );
 
       await request(app.getHttpServer())
         .post('/transactions')
