@@ -10,6 +10,7 @@ import { TransferModule } from './transfer/transfer.module';
 import { CategoryModule } from './category/category.module';
 import { BudgetModule } from './budget/budget.module';
 import { FinancialSummaryModule } from './financial-summary/financial-summary.module';
+import { RecurringTransactionModule } from './recurring-transaction/recurring-transaction.module';
 import { validate } from './config/env.validation';
 
 @Module({
@@ -27,6 +28,7 @@ import { validate } from './config/env.validation';
     CategoryModule,
     BudgetModule,
     FinancialSummaryModule,
+    RecurringTransactionModule,
   ],
 })
 export class AppModule {}
