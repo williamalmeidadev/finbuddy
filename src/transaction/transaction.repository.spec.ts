@@ -98,11 +98,15 @@ describe('TransactionRepository', () => {
       const mockList = [{ id: 'tx-1' }];
       databaseService.transaction.findMany.mockResolvedValue(mockList);
 
-      const result = await repository.findByUserId('user-1', 'acc-1');
+      const result = await repository.findByUserId('user-1', {
+        accountId: 'acc-1',
+      });
 
       expect(databaseService.transaction.findMany).toHaveBeenCalledWith({
         where: { account: { userId: 'user-1' }, accountId: 'acc-1' },
         orderBy: { transactionAt: 'desc' },
+        take: 50,
+        skip: 0,
       });
       expect(result).toEqual(mockList);
     });

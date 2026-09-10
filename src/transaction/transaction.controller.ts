@@ -39,7 +39,7 @@ export class TransactionController {
     @CurrentUser() user: AuthenticatedUserDto,
     @Query() query: TransactionQueryDto,
   ): Promise<TransactionResponseDto[]> {
-    return this.transactionService.findByUserId(user.id, query.accountId);
+    return this.transactionService.findByUserId(user.id, query);
   }
 
   @Get(':id')

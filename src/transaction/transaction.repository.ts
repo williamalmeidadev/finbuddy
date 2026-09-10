@@ -45,18 +45,23 @@ export class TransactionRepository {
 
   async findByUserId(
     userId: string,
-    accountId?: string,
+    options?: { accountId?: string; limit?: number; offset?: number },
   ): Promise<Transaction[]> {
+    const take = Math.min(options?.limit ?? 50, 100);
+    const skip = options?.offset ?? 0;
+
     return this.prisma.transaction.findMany({
       where: {
         account: {
           userId,
         },
-        ...(accountId ? { accountId } : {}),
+        ...(options?.accountId ? { accountId: options.accountId } : {}),
       },
       orderBy: {
         transactionAt: 'desc',
       },
+      take,
+      skip,
     });
   }
 

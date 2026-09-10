@@ -92,10 +92,9 @@ describe('TransactionController', () => {
 
       const result = await controller.findAll(user, { accountId: 'acc-1' });
 
-      expect(transactionService.findByUserId).toHaveBeenCalledWith(
-        user.id,
-        'acc-1',
-      );
+      expect(transactionService.findByUserId).toHaveBeenCalledWith(user.id, {
+        accountId: 'acc-1',
+      });
       expect(result).toBe(response);
     });
   });

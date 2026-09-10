@@ -200,10 +200,11 @@ describe('TransactionService', () => {
 
       const result = await service.findByUserId(userId);
 
-      expect(transactionRepository.findByUserId).toHaveBeenCalledWith(
-        userId,
-        undefined,
-      );
+      expect(transactionRepository.findByUserId).toHaveBeenCalledWith(userId, {
+        accountId: undefined,
+        limit: undefined,
+        offset: undefined,
+      });
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe('tx-1');
     });
@@ -211,9 +212,9 @@ describe('TransactionService', () => {
     it('should throw NotFoundException if specific accountId filter is provided but unowned', async () => {
       accountRepository.findByIdAndUserId.mockResolvedValue(null);
 
-      await expect(service.findByUserId(userId, 'unowned-acc')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.findByUserId(userId, { accountId: 'unowned-acc' }),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 

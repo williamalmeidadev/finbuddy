@@ -14,6 +14,8 @@ interface PrismaDecimal {
   toNumber(): number;
 }
 
+import { TransactionQueryDto } from './dto/transaction-query.dto';
+
 @Injectable()
 export class TransactionService {
   constructor(
@@ -61,11 +63,11 @@ export class TransactionService {
 
   async findByUserId(
     userId: string,
-    accountId?: string,
+    query?: TransactionQueryDto,
   ): Promise<TransactionResponseDto[]> {
-    if (accountId) {
+    if (query?.accountId) {
       const account = await this.accountRepository.findByIdAndUserId(
-        accountId,
+        query.accountId,
         userId,
       );
 
@@ -74,10 +76,11 @@ export class TransactionService {
       }
     }
 
-    const transactions = await this.transactionRepository.findByUserId(
-      userId,
-      accountId,
-    );
+    const transactions = await this.transactionRepository.findByUserId(userId, {
+      accountId: query?.accountId,
+      limit: query?.limit,
+      offset: query?.offset,
+    });
 
     return transactions.map((t) => new TransactionResponseDto(t));
   }
