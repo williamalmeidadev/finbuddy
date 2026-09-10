@@ -41,9 +41,7 @@ export class BudgetResponseDto {
     this.spent = Number(spentNum.toFixed(4));
     this.remaining = Number((this.amount - spentNum).toFixed(4));
     this.percentageUsed =
-      this.amount > 0
-        ? Number(((spentNum / this.amount) * 100).toFixed(2))
-        : 0;
+      this.amount > 0 ? Number(((spentNum / this.amount) * 100).toFixed(2)) : 0;
 
     this.createdAt = budget.createdAt;
     this.updatedAt = budget.updatedAt;

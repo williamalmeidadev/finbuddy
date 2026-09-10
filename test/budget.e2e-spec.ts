@@ -214,7 +214,10 @@ describe('BudgetController (e2e)', () => {
 
     it('should reject creating budget for an inactive category', async () => {
       const user = await createTestUser('c3');
-      const category = await createTestCategory(user.token, 'Old Subscriptions');
+      const category = await createTestCategory(
+        user.token,
+        'Old Subscriptions',
+      );
 
       await request(app.getHttpServer())
         .delete(`/categories/${category.id}`)

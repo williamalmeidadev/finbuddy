@@ -84,7 +84,10 @@ describe('BudgetController', () => {
 
       const result = await controller.findOne(mockUser, 'budget-1');
 
-      expect(budgetService.findById).toHaveBeenCalledWith('budget-1', mockUser.id);
+      expect(budgetService.findById).toHaveBeenCalledWith(
+        'budget-1',
+        mockUser.id,
+      );
       expect(result).toEqual(mockResponse);
     });
   });
@@ -113,7 +116,10 @@ describe('BudgetController', () => {
 
       const result = await controller.remove(mockUser, 'budget-1');
 
-      expect(budgetService.delete).toHaveBeenCalledWith('budget-1', mockUser.id);
+      expect(budgetService.delete).toHaveBeenCalledWith(
+        'budget-1',
+        mockUser.id,
+      );
       expect(result).toEqual(mockResponse);
     });
   });

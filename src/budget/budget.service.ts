@@ -50,12 +50,11 @@ export class BudgetService {
 
     const monthDate = this.normalizeMonth(dto.month);
 
-    const existing =
-      await this.budgetRepository.findByCategoryMonthAndUserId(
-        dto.categoryId,
-        monthDate,
-        userId,
-      );
+    const existing = await this.budgetRepository.findByCategoryMonthAndUserId(
+      dto.categoryId,
+      monthDate,
+      userId,
+    );
 
     if (existing) {
       throw new ConflictException(
@@ -83,7 +82,9 @@ export class BudgetService {
     userId: string,
     query?: BudgetQueryDto,
   ): Promise<BudgetResponseDto[]> {
-    const monthDate = query?.month ? this.normalizeMonth(query.month) : undefined;
+    const monthDate = query?.month
+      ? this.normalizeMonth(query.month)
+      : undefined;
 
     const budgets = await this.budgetRepository.findByUserId(userId, {
       categoryId: query?.categoryId,
