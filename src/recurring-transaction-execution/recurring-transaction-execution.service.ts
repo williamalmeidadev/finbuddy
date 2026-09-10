@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { AccountRepository } from '../account/account.repository';
 import { CategoryRepository } from '../category/category.repository';
+import { RecurringTransactionModel as RecurringTransaction } from '../generated/prisma/models/RecurringTransaction';
 import { ExecuteRecurringTransactionDto } from './dto/execute-recurring-transaction.dto';
 import { RecurringTransactionExecutionResponseDto } from './dto/recurring-transaction-execution-response.dto';
 import { RecurringTransactionExecutionRepository } from './recurring-transaction-execution.repository';
@@ -25,6 +26,23 @@ export class RecurringTransactionExecutionService {
       untilDate,
     );
 
+    return this.processItems(dueList, untilDate);
+  }
+
+  async executeAllDue(
+    dto?: ExecuteRecurringTransactionDto,
+  ): Promise<RecurringTransactionExecutionResponseDto> {
+    const untilDate = this.parseUntilDate(dto?.until);
+    const dueList =
+      await this.repository.findAllDueRecurringTransactions(untilDate);
+
+    return this.processItems(dueList, untilDate);
+  }
+
+  private async processItems(
+    dueList: RecurringTransaction[],
+    untilDate: Date,
+  ): Promise<RecurringTransactionExecutionResponseDto> {
     let totalProcessed = 0;
     let totalCreated = 0;
     let totalSkipped = 0;
@@ -41,7 +59,7 @@ export class RecurringTransactionExecutionService {
       ) {
         const account = await this.accountRepository.findByIdAndUserId(
           currentItem.accountId,
-          userId,
+          currentItem.userId,
         );
 
         if (!account || !account.isActive) {
@@ -52,7 +70,7 @@ export class RecurringTransactionExecutionService {
         if (currentItem.categoryId) {
           const category = await this.categoryRepository.findByIdAndUserId(
             currentItem.categoryId,
-            userId,
+            currentItem.userId,
           );
 
           if (
