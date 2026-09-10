@@ -24,9 +24,7 @@ import { RecurringTransactionService } from './recurring-transaction.service';
 @UseGuards(JwtAuthGuard)
 @Controller('recurring-transactions')
 export class RecurringTransactionController {
-  constructor(
-    private readonly service: RecurringTransactionService,
-  ) {}
+  constructor(private readonly service: RecurringTransactionService) {}
 
   @Post()
   async create(

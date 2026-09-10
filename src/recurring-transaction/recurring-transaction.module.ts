@@ -9,10 +9,7 @@ import { RecurringTransactionService } from './recurring-transaction.service';
 @Module({
   imports: [DatabaseModule, AccountModule, CategoryModule],
   controllers: [RecurringTransactionController],
-  providers: [
-    RecurringTransactionRepository,
-    RecurringTransactionService,
-  ],
+  providers: [RecurringTransactionRepository, RecurringTransactionService],
   exports: [RecurringTransactionService, RecurringTransactionRepository],
 })
 export class RecurringTransactionModule {}
