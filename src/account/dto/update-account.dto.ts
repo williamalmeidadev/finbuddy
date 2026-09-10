@@ -13,17 +13,19 @@ import {
 } from 'class-validator';
 import { AccountType } from '../../generated/prisma/enums';
 
-export class CreateAccountDto {
+export class UpdateAccountDto {
   @IsString()
   @IsNotEmpty()
+  @IsOptional()
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim() : value,
   )
   @Length(1, 100)
-  name!: string;
+  name?: string;
 
   @IsEnum(AccountType)
-  type!: AccountType;
+  @IsOptional()
+  type?: AccountType;
 
   @IsNumber()
   @IsOptional()
@@ -43,11 +45,11 @@ export class CreateAccountDto {
   currency?: string;
 
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @Matches(/^#[0-9A-Fa-f]{6}$/, {
     message: 'color must be a valid hex color code (e.g. #820AD1)',
   })
-  color!: string;
+  color?: string;
 
   @IsBoolean()
   @IsOptional()

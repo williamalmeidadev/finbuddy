@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateAccountDto } from './dto/create-account.dto';
+import { UpdateAccountDto } from './dto/update-account.dto';
 import { AccountResponseDto } from './dto/account-response.dto';
 import { AccountRepository } from './account.repository';
 
@@ -7,7 +8,10 @@ import { AccountRepository } from './account.repository';
 export class AccountService {
   constructor(private readonly accountRepository: AccountRepository) {}
 
-  async create(userId: string, dto: CreateAccountDto): Promise<AccountResponseDto> {
+  async create(
+    userId: string,
+    dto: CreateAccountDto,
+  ): Promise<AccountResponseDto> {
     const account = await this.accountRepository.create({
       userId,
       name: dto.name,
@@ -22,14 +26,10 @@ export class AccountService {
   }
 
   async findById(id: string, userId: string): Promise<AccountResponseDto> {
-    const account = await this.accountRepository.findById(id);
+    const account = await this.accountRepository.findByIdAndUserId(id, userId);
 
     if (!account) {
       throw new NotFoundException('Account not found');
-    }
-
-    if (account.userId !== userId) {
-      throw new ForbiddenException('You can only access your own accounts');
     }
 
     return new AccountResponseDto(account);
@@ -38,5 +38,29 @@ export class AccountService {
   async findByUserId(userId: string): Promise<AccountResponseDto[]> {
     const accounts = await this.accountRepository.findByUserId(userId);
     return accounts.map((acc) => new AccountResponseDto(acc));
+  }
+
+  async update(
+    id: string,
+    userId: string,
+    dto: UpdateAccountDto,
+  ): Promise<AccountResponseDto> {
+    const account = await this.accountRepository.update(id, userId, dto);
+
+    if (!account) {
+      throw new NotFoundException('Account not found');
+    }
+
+    return new AccountResponseDto(account);
+  }
+
+  async deactivate(id: string, userId: string): Promise<AccountResponseDto> {
+    const account = await this.accountRepository.deactivate(id, userId);
+
+    if (!account) {
+      throw new NotFoundException('Account not found');
+    }
+
+    return new AccountResponseDto(account);
   }
 }

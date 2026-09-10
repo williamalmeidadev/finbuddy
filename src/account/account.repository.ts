@@ -13,9 +13,9 @@ export class AccountRepository {
     });
   }
 
-  async findById(id: string): Promise<Account | null> {
-    return this.prisma.account.findUnique({
-      where: { id },
+  async findByIdAndUserId(id: string, userId: string): Promise<Account | null> {
+    return this.prisma.account.findFirst({
+      where: { id, userId },
     });
   }
 
@@ -26,16 +26,22 @@ export class AccountRepository {
     });
   }
 
-  async update(id: string, data: Prisma.AccountUpdateInput): Promise<Account> {
+  async update(
+    id: string,
+    userId: string,
+    data: Prisma.AccountUpdateInput,
+  ): Promise<Account | null> {
+    const existing = await this.findByIdAndUserId(id, userId);
+    if (!existing) {
+      return null;
+    }
     return this.prisma.account.update({
       where: { id },
       data,
     });
   }
 
-  async delete(id: string): Promise<Account> {
-    return this.prisma.account.delete({
-      where: { id },
-    });
+  async deactivate(id: string, userId: string): Promise<Account | null> {
+    return this.update(id, userId, { isActive: false });
   }
 }

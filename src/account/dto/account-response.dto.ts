@@ -32,7 +32,10 @@ export class AccountResponseDto {
     this.userId = account.userId;
     this.name = account.name;
     this.type = account.type;
-    this.balance = typeof account.balance === 'number' ? account.balance : account.balance.toNumber();
+    this.balance =
+      typeof account.balance === 'number'
+        ? account.balance
+        : account.balance.toNumber();
     this.currency = account.currency;
     this.color = account.color;
     this.isActive = account.isActive;
