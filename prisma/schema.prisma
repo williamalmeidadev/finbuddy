@@ -101,8 +101,38 @@ model Account {
   createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime    @updatedAt @map("updated_at") @db.Timestamptz
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
 
   @@index([userId])
   @@map("accounts")
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum TransactionSource {
+  MANUAL
+  IMPORT
+  SYSTEM
+}
+
+model Transaction {
+  id            String            @id @default(uuid()) @db.Uuid
+  accountId     String            @map("account_id") @db.Uuid
+  type          TransactionType
+  amount        Decimal           @db.Decimal(19, 4)
+  description   String?           @db.VarChar
+  source        TransactionSource @default(MANUAL)
+  transactionAt DateTime          @map("transaction_at") @db.Timestamptz
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime          @updatedAt @map("updated_at") @db.Timestamptz
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@index([transactionAt])
+  @@map("transactions")
 }
