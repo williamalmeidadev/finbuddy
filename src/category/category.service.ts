@@ -73,10 +73,7 @@ export class CategoryService {
     userId: string,
     dto: UpdateCategoryDto,
   ): Promise<CategoryResponseDto> {
-    const current = await this.categoryRepository.findByIdAndUserId(
-      id,
-      userId,
-    );
+    const current = await this.categoryRepository.findByIdAndUserId(id, userId);
 
     if (!current) {
       throw new NotFoundException('Category not found');
