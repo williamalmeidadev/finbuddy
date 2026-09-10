@@ -13,7 +13,7 @@ process.env.JWT_SECRET =
 
 const originalUrl =
   process.env.DATABASE_URL ||
-  'postgresql://finbuddy:senhaDB232%40@localhost:5432/finbuddy';
+  'postgresql://postgres:postgres@localhost:5432/finbuddy';
 let testDbUrl: string;
 try {
   let formattedUrl = originalUrl;
