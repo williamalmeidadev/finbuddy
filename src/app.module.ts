@@ -9,6 +9,7 @@ import { TransactionModule } from './transaction/transaction.module';
 import { TransferModule } from './transfer/transfer.module';
 import { CategoryModule } from './category/category.module';
 import { BudgetModule } from './budget/budget.module';
+import { FinancialSummaryModule } from './financial-summary/financial-summary.module';
 import { validate } from './config/env.validation';
 
 @Module({
@@ -25,6 +26,7 @@ import { validate } from './config/env.validation';
     TransferModule,
     CategoryModule,
     BudgetModule,
+    FinancialSummaryModule,
   ],
 })
 export class AppModule {}
