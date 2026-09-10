@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { DatabaseModule } from './database/database.module';
 import { UserModule } from './user/user.module';
+import { AccountModule } from './account/account.module';
 import { validate } from './config/env.validation';
 
 @Module({
@@ -15,6 +16,7 @@ import { validate } from './config/env.validation';
     DatabaseModule,
     UserModule,
     AuthModule,
+    AccountModule,
   ],
 })
 export class AppModule {}

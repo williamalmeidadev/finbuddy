@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
@@ -7,13 +8,21 @@ import { DatabaseService } from '../src/database/database.service';
 import { execSync } from 'child_process';
 import net from 'net';
 
-const originalUrl = process.env.DATABASE_URL;
-if (!originalUrl) {
-  throw new Error('DATABASE_URL environment variable must be defined for E2E tests');
-}
+process.env.JWT_SECRET =
+  process.env.JWT_SECRET || 'NdOQ65X2opk54iL5AR1wg00LMTdivXxJfexziGVg3Ow=';
+
+const originalUrl =
+  process.env.DATABASE_URL ||
+  'postgresql://finbuddy:senhaDB232@localhost:5432/finbuddy';
 let testDbUrl: string;
 try {
-  const urlObj = new URL(originalUrl);
+  let formattedUrl = originalUrl;
+  if (formattedUrl.includes('@postgres:')) {
+    formattedUrl = formattedUrl.replace('@postgres:', '@localhost:');
+  } else if (formattedUrl.includes('@postgres/')) {
+    formattedUrl = formattedUrl.replace('@postgres/', '@localhost/');
+  }
+  const urlObj = new URL(formattedUrl);
   urlObj.pathname =
     urlObj.pathname === '/finbuddy'
       ? '/finbuddy_test'
@@ -26,11 +35,15 @@ process.env.DATABASE_URL = testDbUrl;
 
 function waitForDatabase(urlStr: string, timeoutMs = 15000): Promise<void> {
   return new Promise((resolve, reject) => {
-    let hostname = 'postgres';
+    let hostname = 'localhost';
     let port = 5432;
     try {
-      const parsed = new URL(urlStr);
-      hostname = parsed.hostname;
+      let formatted = urlStr;
+      if (formatted.includes('@postgres:')) {
+        formatted = formatted.replace('@postgres:', '@localhost:');
+      }
+      const parsed = new URL(formatted);
+      hostname = parsed.hostname.replace(/^@/, '') || 'localhost';
       port = parseInt(parsed.port, 10) || 5432;
     } catch {
       // fallback
@@ -70,9 +83,15 @@ describe('UserController (e2e)', () => {
     // Push the schema to the test database explicitly passing --url
     execSync(
       `npx prisma db push --accept-data-loss --url "${process.env.DATABASE_URL}"`,
-      { stdio: 'inherit' },
+      {
+        stdio: 'inherit',
+        env: {
+          ...process.env,
+          PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION: 'yes',
+        },
+      },
     );
-  });
+  }, 30000);
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({

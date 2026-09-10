@@ -21,7 +21,9 @@ describe('RefreshTokenRepository', () => {
       },
     };
 
-    repository = new RefreshTokenRepository(prisma as unknown as DatabaseService);
+    repository = new RefreshTokenRepository(
+      prisma as unknown as DatabaseService,
+    );
   });
 
   describe('create', () => {
