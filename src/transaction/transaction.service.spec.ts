@@ -1,7 +1,8 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AccountRepository } from '../account/account.repository';
-import { TransactionSource, TransactionType } from '../generated/prisma/enums';
+import { CategoryRepository } from '../category/category.repository';
+import { CategoryType, TransactionSource, TransactionType } from '../generated/prisma/enums';
 import { TransactionResponseDto } from './dto/transaction-response.dto';
 import { TransactionRepository } from './transaction.repository';
 import { TransactionService } from './transaction.service';
@@ -16,6 +17,9 @@ describe('TransactionService', () => {
     deleteWithBalanceUpdate: jest.Mock;
   };
   let accountRepository: {
+    findByIdAndUserId: jest.Mock;
+  };
+  let categoryRepository: {
     findByIdAndUserId: jest.Mock;
   };
 
@@ -34,6 +38,10 @@ describe('TransactionService', () => {
       findByIdAndUserId: jest.fn(),
     };
 
+    categoryRepository = {
+      findByIdAndUserId: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TransactionService,
@@ -44,6 +52,10 @@ describe('TransactionService', () => {
         {
           provide: AccountRepository,
           useValue: accountRepository,
+        },
+        {
+          provide: CategoryRepository,
+          useValue: categoryRepository,
         },
       ],
     }).compile();
@@ -172,6 +184,73 @@ describe('TransactionService', () => {
       await expect(
         service.create(userId, {
           accountId: 'acc-1',
+          type: TransactionType.INCOME,
+          amount: 100,
+          transactionAt: new Date(),
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw NotFoundException if categoryId does not exist for user', async () => {
+      accountRepository.findByIdAndUserId.mockResolvedValue({
+        id: 'acc-1',
+        userId,
+        isActive: true,
+      });
+      categoryRepository.findByIdAndUserId.mockResolvedValue(null);
+
+      await expect(
+        service.create(userId, {
+          accountId: 'acc-1',
+          categoryId: 'cat-404',
+          type: TransactionType.INCOME,
+          amount: 100,
+          transactionAt: new Date(),
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw BadRequestException if category is inactive', async () => {
+      accountRepository.findByIdAndUserId.mockResolvedValue({
+        id: 'acc-1',
+        userId,
+        isActive: true,
+      });
+      categoryRepository.findByIdAndUserId.mockResolvedValue({
+        id: 'cat-1',
+        userId,
+        isActive: false,
+        type: CategoryType.INCOME,
+      });
+
+      await expect(
+        service.create(userId, {
+          accountId: 'acc-1',
+          categoryId: 'cat-1',
+          type: TransactionType.INCOME,
+          amount: 100,
+          transactionAt: new Date(),
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException if category type does not match transaction type', async () => {
+      accountRepository.findByIdAndUserId.mockResolvedValue({
+        id: 'acc-1',
+        userId,
+        isActive: true,
+      });
+      categoryRepository.findByIdAndUserId.mockResolvedValue({
+        id: 'cat-1',
+        userId,
+        isActive: true,
+        type: CategoryType.EXPENSE,
+      });
+
+      await expect(
+        service.create(userId, {
+          accountId: 'acc-1',
+          categoryId: 'cat-1',
           type: TransactionType.INCOME,
           amount: 100,
           transactionAt: new Date(),

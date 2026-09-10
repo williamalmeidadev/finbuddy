@@ -22,6 +22,10 @@ export class CreateTransactionDto {
   @IsNotEmpty()
   accountId!: string;
 
+  @IsUUID()
+  @IsOptional()
+  categoryId?: string;
+
   @IsEnum(TransactionType)
   type!: TransactionType;
 

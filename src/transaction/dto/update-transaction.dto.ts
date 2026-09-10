@@ -6,6 +6,7 @@ import {
   IsOptional,
   IsPositive,
   IsString,
+  IsUUID,
   Length,
   Max,
   Min,
@@ -16,6 +17,10 @@ import {
 } from '../../generated/prisma/enums';
 
 export class UpdateTransactionDto {
+  @IsUUID()
+  @IsOptional()
+  categoryId?: string | null;
+
   @IsEnum(TransactionType)
   @IsOptional()
   type?: TransactionType;

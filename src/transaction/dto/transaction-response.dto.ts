@@ -10,6 +10,7 @@ interface PrismaDecimal {
 export class TransactionResponseDto {
   id: string;
   accountId: string;
+  categoryId: string | null;
   type: TransactionType;
   amount: number;
   description: string | null;
@@ -21,6 +22,7 @@ export class TransactionResponseDto {
   constructor(transaction: {
     id: string;
     accountId: string;
+    categoryId?: string | null;
     type: TransactionType;
     amount: PrismaDecimal | number;
     description: string | null;
@@ -31,6 +33,7 @@ export class TransactionResponseDto {
   }) {
     this.id = transaction.id;
     this.accountId = transaction.accountId;
+    this.categoryId = transaction.categoryId ?? null;
     this.type = transaction.type;
     this.amount =
       typeof transaction.amount === 'number'
