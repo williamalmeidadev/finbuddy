@@ -383,14 +383,15 @@ describe('FinancialSummaryController (e2e)', () => {
       const accA = await createAccount(userA.token, 'User A Acc', 10000);
       await createAccount(userB.token, 'User B Acc', 500);
 
-      const catA = await createCategory(userA.token, 'Cat A', 'INCOME');
+      const catIncomeA = await createCategory(userA.token, 'Income Cat A', 'INCOME');
+      const catExpenseA = await createCategory(userA.token, 'Expense Cat A', 'EXPENSE');
 
       await request(app.getHttpServer())
         .post('/transactions')
         .set('Authorization', `Bearer ${userA.token}`)
         .send({
           accountId: accA,
-          categoryId: catA.id,
+          categoryId: catIncomeA.id,
           type: 'INCOME',
           amount: 10000,
           transactionAt: '2026-09-10T10:00:00.000Z',
@@ -400,7 +401,7 @@ describe('FinancialSummaryController (e2e)', () => {
       await request(app.getHttpServer())
         .post('/budgets')
         .set('Authorization', `Bearer ${userA.token}`)
-        .send({ categoryId: catA.id, amount: 2000, month: '2026-09' })
+        .send({ categoryId: catExpenseA.id, amount: 2000, month: '2026-09' })
         .expect(201);
 
       const resB = await request(app.getHttpServer())
