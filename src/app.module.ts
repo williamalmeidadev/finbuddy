@@ -11,6 +11,7 @@ import { CategoryModule } from './category/category.module';
 import { BudgetModule } from './budget/budget.module';
 import { FinancialSummaryModule } from './financial-summary/financial-summary.module';
 import { RecurringTransactionModule } from './recurring-transaction/recurring-transaction.module';
+import { RecurringTransactionExecutionModule } from './recurring-transaction-execution/recurring-transaction-execution.module';
 import { validate } from './config/env.validation';
 
 @Module({
@@ -29,6 +30,7 @@ import { validate } from './config/env.validation';
     BudgetModule,
     FinancialSummaryModule,
     RecurringTransactionModule,
+    RecurringTransactionExecutionModule,
   ],
 })
 export class AppModule {}
