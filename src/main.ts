@@ -8,10 +8,18 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  const nodeEnv = process.env.NODE_ENV ?? 'development';
+  const swaggerEnabled = process.env.SWAGGER_ENABLED !== 'false';
+  const corsOrigin = process.env.CORS_ORIGIN;
+
   app.use(helmet());
   app.enableShutdownHooks();
   app.enableCors({
-    origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : true,
+    origin: corsOrigin
+      ? corsOrigin.split(',')
+      : nodeEnv === 'production'
+        ? false
+        : true,
     credentials: true,
   });
 
@@ -55,8 +63,10 @@ async function bootstrap() {
     )
     .build();
 
-  const documentFactory = () => SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('docs', app, documentFactory);
+  if (swaggerEnabled) {
+    const documentFactory = () => SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('docs', app, documentFactory);
+  }
 
   await app.listen(process.env.PORT!);
 }

@@ -1,6 +1,7 @@
 import { plainToInstance } from 'class-transformer';
 import {
   IsBoolean,
+  IsEnum,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -9,6 +10,14 @@ import {
 } from 'class-validator';
 
 class EnvironmentVariables {
+  @IsEnum(['development', 'production', 'test'])
+  @IsOptional()
+  NODE_ENV?: 'development' | 'production' | 'test' = 'development';
+
+  @IsBoolean()
+  @IsOptional()
+  SWAGGER_ENABLED?: boolean = true;
+
   @IsString()
   @IsNotEmpty()
   DATABASE_URL: string;
