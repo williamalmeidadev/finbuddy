@@ -94,12 +94,14 @@ async function createTestApp(
   const app = moduleFixture.createNestApplication<App>();
 
   const nodeEnv = options.nodeEnv ?? process.env.NODE_ENV ?? 'development';
-  const swaggerEnabled =
+  const rawSwagger =
     options.swaggerEnabled !== undefined
-      ? typeof options.swaggerEnabled === 'boolean'
-        ? options.swaggerEnabled
-        : options.swaggerEnabled !== 'false'
-      : process.env.SWAGGER_ENABLED !== 'false';
+      ? String(options.swaggerEnabled).trim().toLowerCase()
+      : process.env.SWAGGER_ENABLED?.trim().toLowerCase();
+  const swaggerEnabled =
+    rawSwagger !== undefined
+      ? !['false', '0', 'off', 'no'].includes(rawSwagger)
+      : true;
   const corsOrigin =
     options.corsOrigin !== undefined
       ? options.corsOrigin
@@ -356,6 +358,12 @@ describe('Production Readiness & Operational Regression (e2e)', () => {
       await request(appWithoutSwagger.getHttpServer())
         .get('/docs-json')
         .expect(404);
+    });
+
+    it('when SWAGGER_ENABLED="0" string value, /docs returns 404 Not Found', async () => {
+      const appZero = await createTestApp({ swaggerEnabled: '0' });
+      await request(appZero.getHttpServer()).get('/docs').expect(404);
+      await appZero.close();
     });
   });
 

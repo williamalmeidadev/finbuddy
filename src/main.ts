@@ -9,7 +9,11 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   const nodeEnv = process.env.NODE_ENV ?? 'development';
-  const swaggerEnabled = process.env.SWAGGER_ENABLED !== 'false';
+  const rawSwagger = process.env.SWAGGER_ENABLED?.trim().toLowerCase();
+  const swaggerEnabled =
+    rawSwagger !== undefined
+      ? !['false', '0', 'off', 'no'].includes(rawSwagger)
+      : true;
   const corsOrigin = process.env.CORS_ORIGIN;
 
   app.use(helmet());
