@@ -36,6 +36,18 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   RECURRING_TRANSACTION_AUTOMATION_CRON?: string = '* * * * *';
+
+  @IsNumber()
+  @IsOptional()
+  THROTTLE_TTL?: number = 60000;
+
+  @IsNumber()
+  @IsOptional()
+  THROTTLE_LIMIT?: number = 100;
+
+  @IsNumber()
+  @IsOptional()
+  THROTTLE_AUTH_LIMIT?: number = 10;
 }
 
 export function validate(config: Record<string, any>) {
