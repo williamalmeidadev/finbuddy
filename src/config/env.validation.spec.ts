@@ -26,6 +26,31 @@ describe('Environment Validation', () => {
     expect(config.THROTTLE_AUTH_LIMIT).toBe(10);
   });
 
+  it('should apply OpenAI environment variable defaults when omitted', () => {
+    const config = validate({
+      DATABASE_URL:
+        'postgresql://postgres:postgres@localhost:5432/finbuddy_test',
+      JWT_SECRET: 'testsecret123',
+      PORT: 3000,
+    });
+
+    expect(config.OPENAI_MODEL).toBe('gpt-5.5');
+    expect(config.OPENAI_TIMEOUT_MS).toBe(30000);
+  });
+
+  it('should accept custom values for OpenAI configuration', () => {
+    const config = validate({
+      ...validMinimalConfig,
+      OPENAI_API_KEY: 'sk-test-key-12345',
+      OPENAI_MODEL: 'gpt-4o',
+      OPENAI_TIMEOUT_MS: '15000',
+    });
+
+    expect(config.OPENAI_API_KEY).toBe('sk-test-key-12345');
+    expect(config.OPENAI_MODEL).toBe('gpt-4o');
+    expect(config.OPENAI_TIMEOUT_MS).toBe(15000);
+  });
+
   it('should accept custom values for optional fields', () => {
     const customConfig = {
       ...validMinimalConfig,

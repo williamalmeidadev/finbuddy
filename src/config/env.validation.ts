@@ -84,6 +84,18 @@ class EnvironmentVariables {
   @IsNumber()
   @IsOptional()
   THROTTLE_AUTH_LIMIT?: number = 10;
+
+  @IsString()
+  @IsOptional()
+  OPENAI_API_KEY?: string;
+
+  @IsString()
+  @IsOptional()
+  OPENAI_MODEL?: string = 'gpt-5.5';
+
+  @IsNumber()
+  @IsOptional()
+  OPENAI_TIMEOUT_MS?: number = 30000;
 }
 
 export function validate(config: Record<string, any>) {
