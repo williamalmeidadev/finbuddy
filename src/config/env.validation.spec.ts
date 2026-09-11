@@ -62,6 +62,17 @@ describe('Environment Validation', () => {
     expect(config.NODE_ENV).toBe('test');
   });
 
+  it('should coerce string values "false" and "0" to boolean false for SWAGGER_ENABLED and automation', () => {
+    const config = validate({
+      ...validMinimalConfig,
+      SWAGGER_ENABLED: 'false',
+      RECURRING_TRANSACTION_AUTOMATION_ENABLED: '0',
+    });
+
+    expect(config.SWAGGER_ENABLED).toBe(false);
+    expect(config.RECURRING_TRANSACTION_AUTOMATION_ENABLED).toBe(false);
+  });
+
   it('should throw an error if DATABASE_URL is missing', () => {
     const invalidConfig = {
       JWT_SECRET: validMinimalConfig.JWT_SECRET,

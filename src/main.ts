@@ -16,7 +16,7 @@ async function bootstrap() {
   app.enableShutdownHooks();
   app.enableCors({
     origin: corsOrigin
-      ? corsOrigin.split(',')
+      ? corsOrigin.split(',').map((o) => o.trim())
       : nodeEnv === 'production'
         ? false
         : true,

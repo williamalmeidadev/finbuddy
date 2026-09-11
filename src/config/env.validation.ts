@@ -1,4 +1,4 @@
-import { plainToInstance } from 'class-transformer';
+import { Transform, plainToInstance } from 'class-transformer';
 import {
   IsBoolean,
   IsEnum,
@@ -9,11 +9,37 @@ import {
   validateSync,
 } from 'class-validator';
 
+const toBoolean = ({
+  obj,
+  key,
+  value,
+}: {
+  obj: Record<string, unknown>;
+  key: string;
+  value: unknown;
+}) => {
+  const raw = obj && key in obj ? obj[key] : value;
+  if (typeof raw === 'boolean') {
+    return raw;
+  }
+  if (typeof raw === 'string') {
+    const val = raw.trim().toLowerCase();
+    if (val === 'false' || val === '0' || val === 'off' || val === 'no') {
+      return false;
+    }
+    if (val === 'true' || val === '1' || val === 'on' || val === 'yes') {
+      return true;
+    }
+  }
+  return value;
+};
+
 class EnvironmentVariables {
   @IsEnum(['development', 'production', 'test'])
   @IsOptional()
   NODE_ENV?: 'development' | 'production' | 'test' = 'development';
 
+  @Transform(toBoolean)
   @IsBoolean()
   @IsOptional()
   SWAGGER_ENABLED?: boolean = true;
@@ -38,6 +64,7 @@ class EnvironmentVariables {
   @IsOptional()
   LOG_LEVEL?: string = 'info';
 
+  @Transform(toBoolean)
   @IsBoolean()
   @IsOptional()
   RECURRING_TRANSACTION_AUTOMATION_ENABLED?: boolean = true;
