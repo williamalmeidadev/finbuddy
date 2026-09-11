@@ -1,0 +1,99 @@
+export type EvaluationCategory =
+  | 'tool-selection'
+  | 'argument-validation'
+  | 'authorization'
+  | 'idor'
+  | 'prompt-injection'
+  | 'indirect-injection'
+  | 'hallucination'
+  | 'tool-failure'
+  | 'iteration-limit'
+  | 'data-grounding'
+  | 'write-tool-safety'
+  | 'privacy';
+
+export interface ExpectedToolCall {
+  toolName: string;
+  arguments?: Record<string, unknown>;
+}
+
+export interface ExpectedBehavior {
+  expectedToolCalls?: ExpectedToolCall[];
+  forbiddenToolCalls?: string[];
+  orderedToolSequence?: boolean;
+  expectAuthorized?: boolean;
+  expectSuccess?: boolean;
+  expectMaxIterationsReached?: boolean;
+  expectServiceError?: boolean;
+  responseMustContain?: string[];
+  responseMustNotContain?: string[];
+}
+
+export interface MockModelCall {
+  functionCalls?: Array<{
+    callId: string;
+    name: string;
+    arguments: Record<string, unknown>;
+  }>;
+  outputText?: string;
+}
+
+export interface AgentEvaluationScenario {
+  id: string;
+  category: EvaluationCategory;
+  description: string;
+  userMessage: string;
+  authenticatedUserId: string;
+  mockModelResponses?: MockModelCall[];
+  serviceOverrides?: {
+    accountsFailure?: boolean;
+    transactionsFailure?: boolean;
+    summaryFailure?: boolean;
+    budgetsFailure?: boolean;
+    emptyAccounts?: boolean;
+    emptyTransactions?: boolean;
+    emptyBudgets?: boolean;
+  };
+  expectedBehavior: ExpectedBehavior;
+  tags: string[];
+}
+
+export interface EvaluationViolation {
+  type: string;
+  message: string;
+}
+
+export interface ObservedToolCall {
+  toolName: string;
+  arguments: Record<string, unknown>;
+  callId?: string;
+  success?: boolean;
+  error?: string;
+}
+
+export interface EvaluationResult {
+  scenarioId: string;
+  category: EvaluationCategory;
+  description: string;
+  passed: boolean;
+  violations: EvaluationViolation[];
+  observedToolCalls: ObservedToolCall[];
+  finalResponse?: string;
+  iterationCount: number;
+  durationMs: number;
+}
+
+export interface CategorySummary {
+  total: number;
+  passed: number;
+  failed: number;
+}
+
+export interface EvaluationReport {
+  totalScenarios: number;
+  passed: number;
+  failed: number;
+  passRate: number;
+  results: EvaluationResult[];
+  categorySummary: Record<string, CategorySummary>;
+}
