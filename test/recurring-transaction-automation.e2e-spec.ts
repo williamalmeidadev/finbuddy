@@ -6,6 +6,7 @@ import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { DatabaseService } from '../src/database/database.service';
 import { RecurringTransactionAutomationService } from '../src/recurring-transaction-automation/recurring-transaction-automation.service';
+import { ConfigService } from '@nestjs/config';
 import { execSync } from 'child_process';
 import net from 'net';
 
@@ -110,6 +111,17 @@ describe('RecurringTransactionAutomation (e2e)', () => {
 
     prisma = app.get(DatabaseService);
     automationService = app.get(RecurringTransactionAutomationService);
+
+    const configService = app.get(ConfigService);
+    const originalGet = configService.get.bind(configService);
+    jest
+      .spyOn(configService, 'get')
+      .mockImplementation((key: string, defaultValue?: any) => {
+        if (key === 'RECURRING_TRANSACTION_AUTOMATION_ENABLED') {
+          return true;
+        }
+        return originalGet(key, defaultValue);
+      });
   });
 
   beforeEach(async () => {
