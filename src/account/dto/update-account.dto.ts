@@ -1,3 +1,4 @@
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
   IsBoolean,
@@ -11,6 +12,12 @@ import {
 import { AccountType } from '../../generated/prisma/enums';
 
 export class UpdateAccountDto {
+  @ApiPropertyOptional({
+    description: 'Updated account display name',
+    example: 'New Savings Account',
+    minLength: 1,
+    maxLength: 100,
+  })
   @IsString()
   @IsNotEmpty()
   @IsOptional()
@@ -20,10 +27,19 @@ export class UpdateAccountDto {
   @Length(1, 100)
   name?: string;
 
+  @ApiPropertyOptional({
+    description: 'Updated account type',
+    enum: AccountType,
+    example: 'SAVINGS',
+  })
   @IsEnum(AccountType)
   @IsOptional()
   type?: AccountType;
 
+  @ApiPropertyOptional({
+    description: 'Updated 3-letter uppercase ISO currency code',
+    example: 'USD',
+  })
   @IsString()
   @IsOptional()
   @Transform(({ value }: { value: unknown }) =>
@@ -35,6 +51,10 @@ export class UpdateAccountDto {
   })
   currency?: string;
 
+  @ApiPropertyOptional({
+    description: 'Updated hex color code',
+    example: '#10B981',
+  })
   @IsString()
   @IsOptional()
   @Matches(/^#[0-9A-Fa-f]{6}$/, {
@@ -42,6 +62,10 @@ export class UpdateAccountDto {
   })
   color?: string;
 
+  @ApiPropertyOptional({
+    description: 'Updated account active status',
+    example: true,
+  })
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
