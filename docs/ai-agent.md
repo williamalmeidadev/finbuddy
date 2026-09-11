@@ -68,7 +68,7 @@ The FinBuddy AI Agent module (`src/ai-agent/`) provides a secure, modular, and r
                             ↓
                  ┌─────────────────────┐
                  │      PostgreSQL     │
-                 └─────────────────────┘
+                 └──────────┬──────────┘
 ```
 
 ### Component Responsibilities
@@ -124,16 +124,19 @@ Model tool arguments are parsed, validated, and normalized before reaching any a
 - `get_financial_summary`: Validates `month` format strictly against `YYYY-MM`.
 - `get_budgets`: Validates `categoryId` UUID format and `month` format `YYYY-MM`.
 
-### 3.4 Tenant Isolation & IDOR Protection
-Cross-tenant access attempts (e.g. model supplying another user's `accountId` or `categoryId`) are denied at the domain service layer (`where: { id, userId }`), returning a safe error without leaking cross-user existence.
+---
 
-### 3.5 Prompt Injection & Tool Output Trust Boundary
-- System prompt explicitly declares user text and database content as untrusted data.
-- Tool outputs are passed back to OpenAI strictly as function result data (`type: 'function_call_output'`). Financial text (e.g. transaction descriptions) cannot alter system instructions, grant permissions, or trigger arbitrary execution.
+## 4. Evaluation Harness & Security Regression Framework
+
+The evaluation harness (`test/ai-agent/evaluation/`) provides a deterministic, repeatable offline test suite covering 25 scenarios:
+- **Offline Executions**: Uses `MockOpenAIClientEvaluation` to run scenarios without live OpenAI API network dependencies.
+- **Regression Suite**: Executes via `npm run ai:evaluate` or standard `npm test`.
+- **Security Matrix Coverage**: Validates IDOR prevention, prompt injection resistance, indirect injection safety, hallucination grounding, tool failure handling, and iteration bounds.
+- Full details documented in [`docs/ai-agent-evaluation.md`](file:///home/williamalmeida/github/finbuddy/docs/ai-agent-evaluation.md).
 
 ---
 
-## 4. Current Limitations & Roadmap
+## 5. Current Limitations & Roadmap
 
 ### Current Limitations
 - **No Write Tools**: Financial mutations (create/update/delete) are not exposed to the agent.
@@ -148,5 +151,6 @@ Cross-tenant access attempts (e.g. model supplying another user's `accountId` or
 | **Phase 1** | **AI Agent Foundation** | **Completed** |
 | **Phase 2** | **Financial Read Tools & Tool-Calling Loop** | **Completed** |
 | **Phase 3** | **Agent Guardrails & Tool Authorization** | **Completed** |
-| **Phase 4** | **Confirmed Financial Mutations** | Planned |
-| **Phase 5** | **Conversational Memory & State** | Planned |
+| **Phase 4** | **Agent Evaluation Harness** | **Completed** |
+| **Phase 5** | **Confirmed Financial Mutations** | Planned |
+| **Phase 6** | **Conversational Memory & State** | Planned |
