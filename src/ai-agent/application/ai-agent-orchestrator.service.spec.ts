@@ -5,22 +5,31 @@ import { AgentToolRegistryService } from './tools/agent-tool-registry.service';
 import { FINBUDDY_AGENT_INSTRUCTIONS } from './prompts/finbuddy-agent.instructions';
 import { AgentResponse } from '../domain/agent-response';
 import { ServiceUnavailableException } from '@nestjs/common';
+import { MetricsService } from '../../common/metrics/metrics.service';
 
 describe('AiAgentOrchestratorService', () => {
   let service: AiAgentOrchestratorService;
   let mockOpenAiClient: {
-    createResponse: jest.Mock;
+    createRawResponse: jest.Mock;
   };
   let mockToolRegistry: {
     getToolDefinitions: jest.Mock;
+    getTool: jest.Mock;
+  };
+  let mockMetricsService: {
+    increment: jest.Mock;
   };
 
   beforeEach(async () => {
     mockOpenAiClient = {
-      createResponse: jest.fn(),
+      createRawResponse: jest.fn(),
     };
     mockToolRegistry = {
       getToolDefinitions: jest.fn(),
+      getTool: jest.fn(),
+    };
+    mockMetricsService = {
+      increment: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -33,6 +42,10 @@ describe('AiAgentOrchestratorService', () => {
         {
           provide: AgentToolRegistryService,
           useValue: mockToolRegistry,
+        },
+        {
+          provide: MetricsService,
+          useValue: mockMetricsService,
         },
       ],
     }).compile();
@@ -47,11 +60,13 @@ describe('AiAgentOrchestratorService', () => {
   });
 
   describe('processUserMessage', () => {
-    it('should call openAiClient.createResponse with instructions, input, and undefined tools when registry is empty', async () => {
+    it('should return AgentResponse directly when model returns no tool calls', async () => {
       mockToolRegistry.getToolDefinitions.mockReturnValue([]);
-      mockOpenAiClient.createResponse.mockResolvedValue(
-        'FinBuddy response text',
-      );
+      mockOpenAiClient.createRawResponse.mockResolvedValue({
+        id: 'resp-1',
+        outputText: 'FinBuddy response text',
+        functionCalls: [],
+      });
 
       const response = await service.processUserMessage(
         'user-123',
@@ -59,43 +74,237 @@ describe('AiAgentOrchestratorService', () => {
       );
 
       expect(mockToolRegistry.getToolDefinitions).toHaveBeenCalled();
-      expect(mockOpenAiClient.createResponse).toHaveBeenCalledWith({
+      expect(mockOpenAiClient.createRawResponse).toHaveBeenCalledWith({
         instructions: FINBUDDY_AGENT_INSTRUCTIONS,
         input: 'Hello FinBuddy',
         tools: undefined,
+        previousResponseId: undefined,
       });
       expect(response).toBeInstanceOf(AgentResponse);
       expect(response.message).toBe('FinBuddy response text');
     });
 
-    it('should include tools in options when registry has tools', async () => {
+    it('should execute a tool call and pass output back to model', async () => {
       const toolDefs = [
         {
           type: 'function',
-          name: 'get_balance',
-          description: 'Get user balance',
+          name: 'get_accounts',
+          description: 'Get accounts',
           parameters: {},
         },
       ];
       mockToolRegistry.getToolDefinitions.mockReturnValue(toolDefs);
-      mockOpenAiClient.createResponse.mockResolvedValue('Your balance is $100');
+
+      const mockTool = {
+        name: 'get_accounts',
+        execute: jest
+          .fn()
+          .mockResolvedValue({ success: true, data: [{ id: 'acc-1' }] }),
+      };
+      mockToolRegistry.getTool.mockReturnValue(mockTool);
+
+      mockOpenAiClient.createRawResponse
+        .mockResolvedValueOnce({
+          id: 'resp-1',
+          outputText: '',
+          functionCalls: [
+            { callId: 'call-1', name: 'get_accounts', arguments: {} },
+          ],
+        })
+        .mockResolvedValueOnce({
+          id: 'resp-2',
+          outputText: 'Your account balance is R$ 1.000,00',
+          functionCalls: [],
+        });
 
       const response = await service.processUserMessage(
         'user-123',
-        'What is my balance?',
+        'What are my accounts?',
       );
 
-      expect(mockOpenAiClient.createResponse).toHaveBeenCalledWith({
-        instructions: FINBUDDY_AGENT_INSTRUCTIONS,
-        input: 'What is my balance?',
-        tools: toolDefs,
-      });
-      expect(response).toEqual(new AgentResponse('Your balance is $100'));
+      expect(mockTool.execute).toHaveBeenCalledWith({ userId: 'user-123' }, {});
+      expect(mockOpenAiClient.createRawResponse).toHaveBeenCalledTimes(2);
+      expect(mockOpenAiClient.createRawResponse).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          previousResponseId: 'resp-1',
+          input: [
+            {
+              type: 'function_call_output',
+              call_id: 'call-1',
+              output: JSON.stringify({
+                success: true,
+                data: [{ id: 'acc-1' }],
+              }),
+            },
+          ],
+        }),
+      );
+      expect(response.message).toBe('Your account balance is R$ 1.000,00');
     });
 
-    it('should propagate exceptions thrown by OpenAIClient', async () => {
+    it('should handle multiple tool calls in a single turn', async () => {
+      mockToolRegistry.getToolDefinitions.mockReturnValue([
+        { type: 'function', name: 'get_accounts' },
+        { type: 'function', name: 'get_budgets' },
+      ]);
+
+      const mockAccountsTool = {
+        name: 'get_accounts',
+        execute: jest.fn().mockResolvedValue({ success: true, data: [] }),
+      };
+      const mockBudgetsTool = {
+        name: 'get_budgets',
+        execute: jest.fn().mockResolvedValue({ success: true, data: [] }),
+      };
+
+      mockToolRegistry.getTool.mockImplementation((name: string) => {
+        if (name === 'get_accounts') return mockAccountsTool;
+        if (name === 'get_budgets') return mockBudgetsTool;
+        return undefined;
+      });
+
+      mockOpenAiClient.createRawResponse
+        .mockResolvedValueOnce({
+          id: 'resp-1',
+          outputText: '',
+          functionCalls: [
+            { callId: 'call-1', name: 'get_accounts', arguments: {} },
+            { callId: 'call-2', name: 'get_budgets', arguments: {} },
+          ],
+        })
+        .mockResolvedValueOnce({
+          id: 'resp-2',
+          outputText: 'Accounts and budgets checked.',
+          functionCalls: [],
+        });
+
+      const response = await service.processUserMessage(
+        'user-123',
+        'Check accounts and budgets',
+      );
+
+      expect(mockAccountsTool.execute).toHaveBeenCalled();
+      expect(mockBudgetsTool.execute).toHaveBeenCalled();
+      expect(response.message).toBe('Accounts and budgets checked.');
+    });
+
+    it('should return safe tool error if requested tool is unknown', async () => {
       mockToolRegistry.getToolDefinitions.mockReturnValue([]);
-      mockOpenAiClient.createResponse.mockRejectedValue(
+      mockToolRegistry.getTool.mockReturnValue(undefined);
+
+      mockOpenAiClient.createRawResponse
+        .mockResolvedValueOnce({
+          id: 'resp-1',
+          outputText: '',
+          functionCalls: [
+            { callId: 'call-1', name: 'unknown_tool', arguments: {} },
+          ],
+        })
+        .mockResolvedValueOnce({
+          id: 'resp-2',
+          outputText: 'Could not access tool',
+          functionCalls: [],
+        });
+
+      const response = await service.processUserMessage(
+        'user-123',
+        'Run secret tool',
+      );
+
+      expect(mockOpenAiClient.createRawResponse).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          input: [
+            {
+              type: 'function_call_output',
+              call_id: 'call-1',
+              output: JSON.stringify({
+                success: false,
+                error: 'Unknown tool: unknown_tool',
+              }),
+            },
+          ],
+        }),
+      );
+      expect(response.message).toBe('Could not access tool');
+    });
+
+    it('should catch tool execution errors and send error result to model', async () => {
+      mockToolRegistry.getToolDefinitions.mockReturnValue([]);
+      const failingTool = {
+        name: 'get_accounts',
+        execute: jest.fn().mockRejectedValue(new Error('Internal exception')),
+      };
+      mockToolRegistry.getTool.mockReturnValue(failingTool);
+
+      mockOpenAiClient.createRawResponse
+        .mockResolvedValueOnce({
+          id: 'resp-1',
+          outputText: '',
+          functionCalls: [
+            { callId: 'call-1', name: 'get_accounts', arguments: {} },
+          ],
+        })
+        .mockResolvedValueOnce({
+          id: 'resp-2',
+          outputText: 'Service unavailable for accounts',
+          functionCalls: [],
+        });
+
+      const response = await service.processUserMessage(
+        'user-123',
+        'Get my accounts',
+      );
+
+      expect(mockOpenAiClient.createRawResponse).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          input: [
+            {
+              type: 'function_call_output',
+              call_id: 'call-1',
+              output: JSON.stringify({
+                success: false,
+                error: 'Failed to execute financial tool',
+              }),
+            },
+          ],
+        }),
+      );
+      expect(response.message).toBe('Service unavailable for accounts');
+    });
+
+    it('should throw ServiceUnavailableException if max tool iterations limit is reached', async () => {
+      mockToolRegistry.getToolDefinitions.mockReturnValue([]);
+      const mockTool = {
+        name: 'get_accounts',
+        execute: jest.fn().mockResolvedValue({ success: true }),
+      };
+      mockToolRegistry.getTool.mockReturnValue(mockTool);
+
+      mockOpenAiClient.createRawResponse.mockResolvedValue({
+        id: 'resp-infinite',
+        outputText: '',
+        functionCalls: [
+          { callId: 'call-loop', name: 'get_accounts', arguments: {} },
+        ],
+      });
+
+      await expect(
+        service.processUserMessage('user-123', 'Loop forever'),
+      ).rejects.toThrow(
+        new ServiceUnavailableException(
+          'AI agent exceeded maximum allowed tool steps',
+        ),
+      );
+
+      expect(mockOpenAiClient.createRawResponse).toHaveBeenCalledTimes(5);
+    });
+
+    it('should propagate OpenAIClient exceptions', async () => {
+      mockToolRegistry.getToolDefinitions.mockReturnValue([]);
+      mockOpenAiClient.createRawResponse.mockRejectedValue(
         new ServiceUnavailableException('AI service temporarily unavailable'),
       );
 
