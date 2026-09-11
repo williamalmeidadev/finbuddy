@@ -2,9 +2,17 @@ export interface AgentToolContext {
   userId: string;
 }
 
+export interface AgentToolResult<T = any> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
 export interface AgentTool {
-  name: string;
-  description: string;
-  parameters: Record<string, any>;
-  execute(context: AgentToolContext, args: Record<string, any>): Promise<any>;
+  readonly name: string;
+  readonly description: string;
+  readonly inputSchema: Record<string, any>;
+  readonly parameters?: Record<string, any>;
+
+  execute(context: AgentToolContext, input: unknown): Promise<AgentToolResult>;
 }

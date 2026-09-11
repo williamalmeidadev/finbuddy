@@ -1,9 +1,27 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { AgentTool } from './agent-tool.interface';
+import { GetAccountsTool } from './impl/get-accounts.tool';
+import { GetTransactionsTool } from './impl/get-transactions.tool';
+import { GetFinancialSummaryTool } from './impl/get-financial-summary.tool';
+import { GetBudgetsTool } from './impl/get-budgets.tool';
 
 @Injectable()
-export class AgentToolRegistryService {
+export class AgentToolRegistryService implements OnModuleInit {
   private readonly tools = new Map<string, AgentTool>();
+
+  constructor(
+    private readonly getAccountsTool: GetAccountsTool,
+    private readonly getTransactionsTool: GetTransactionsTool,
+    private readonly getFinancialSummaryTool: GetFinancialSummaryTool,
+    private readonly getBudgetsTool: GetBudgetsTool,
+  ) {}
+
+  onModuleInit() {
+    this.registerTool(this.getAccountsTool);
+    this.registerTool(this.getTransactionsTool);
+    this.registerTool(this.getFinancialSummaryTool);
+    this.registerTool(this.getBudgetsTool);
+  }
 
   registerTool(tool: AgentTool): void {
     this.tools.set(tool.name, tool);
@@ -22,7 +40,7 @@ export class AgentToolRegistryService {
       type: 'function',
       name: t.name,
       description: t.description,
-      parameters: t.parameters,
+      parameters: t.inputSchema || t.parameters,
     }));
   }
 }

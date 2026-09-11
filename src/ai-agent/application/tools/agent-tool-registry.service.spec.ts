@@ -1,13 +1,53 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AgentToolRegistryService } from './agent-tool-registry.service';
-import { AgentTool } from './agent-tool.interface';
+import { GetAccountsTool } from './impl/get-accounts.tool';
+import { GetTransactionsTool } from './impl/get-transactions.tool';
+import { GetFinancialSummaryTool } from './impl/get-financial-summary.tool';
+import { GetBudgetsTool } from './impl/get-budgets.tool';
 
 describe('AgentToolRegistryService', () => {
   let service: AgentToolRegistryService;
 
+  const mockGetAccountsTool = {
+    name: 'get_accounts',
+    description: 'Get accounts',
+    inputSchema: { type: 'object', properties: {} },
+    execute: jest.fn(),
+  } as unknown as GetAccountsTool;
+
+  const mockGetTransactionsTool = {
+    name: 'get_transactions',
+    description: 'Get transactions',
+    inputSchema: { type: 'object', properties: {} },
+    execute: jest.fn(),
+  } as unknown as GetTransactionsTool;
+
+  const mockGetFinancialSummaryTool = {
+    name: 'get_financial_summary',
+    description: 'Get summary',
+    inputSchema: { type: 'object', properties: {} },
+    execute: jest.fn(),
+  } as unknown as GetFinancialSummaryTool;
+
+  const mockGetBudgetsTool = {
+    name: 'get_budgets',
+    description: 'Get budgets',
+    inputSchema: { type: 'object', properties: {} },
+    execute: jest.fn(),
+  } as unknown as GetBudgetsTool;
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [AgentToolRegistryService],
+      providers: [
+        AgentToolRegistryService,
+        { provide: GetAccountsTool, useValue: mockGetAccountsTool },
+        { provide: GetTransactionsTool, useValue: mockGetTransactionsTool },
+        {
+          provide: GetFinancialSummaryTool,
+          useValue: mockGetFinancialSummaryTool,
+        },
+        { provide: GetBudgetsTool, useValue: mockGetBudgetsTool },
+      ],
     }).compile();
 
     service = module.get<AgentToolRegistryService>(AgentToolRegistryService);
@@ -17,35 +57,17 @@ describe('AgentToolRegistryService', () => {
     expect(service).toBeDefined();
   });
 
-  describe('getTools', () => {
-    it('should return empty array by default', () => {
-      expect(service.getTools()).toEqual([]);
-    });
-
-    it('should return all registered tools', () => {
-      const mockTool1: AgentTool = {
-        name: 'test_tool_1',
-        description: 'First test tool',
-        parameters: { type: 'object', properties: {} },
-        execute: jest.fn().mockResolvedValue({ success: true }),
-      };
-      const mockTool2: AgentTool = {
-        name: 'test_tool_2',
-        description: 'Second test tool',
-        parameters: {
-          type: 'object',
-          properties: { param: { type: 'string' } },
-        },
-        execute: jest.fn().mockResolvedValue({ success: true }),
-      };
-
-      service.registerTool(mockTool1);
-      service.registerTool(mockTool2);
-
+  describe('onModuleInit', () => {
+    it('should register all four tools on initialization', () => {
+      service.onModuleInit();
       const tools = service.getTools();
-      expect(tools).toHaveLength(2);
-      expect(tools).toContain(mockTool1);
-      expect(tools).toContain(mockTool2);
+      expect(tools).toHaveLength(4);
+      expect(service.getTool('get_accounts')).toBe(mockGetAccountsTool);
+      expect(service.getTool('get_transactions')).toBe(mockGetTransactionsTool);
+      expect(service.getTool('get_financial_summary')).toBe(
+        mockGetFinancialSummaryTool,
+      );
+      expect(service.getTool('get_budgets')).toBe(mockGetBudgetsTool);
     });
   });
 
@@ -55,15 +77,8 @@ describe('AgentToolRegistryService', () => {
     });
 
     it('should return registered tool by name', () => {
-      const mockTool: AgentTool = {
-        name: 'get_balance',
-        description: 'Get user balance',
-        parameters: { type: 'object', properties: {} },
-        execute: jest.fn().mockResolvedValue({ userId: 'user-1' }),
-      };
-
-      service.registerTool(mockTool);
-      expect(service.getTool('get_balance')).toBe(mockTool);
+      service.onModuleInit();
+      expect(service.getTool('get_accounts')).toBe(mockGetAccountsTool);
     });
   });
 
@@ -73,36 +88,16 @@ describe('AgentToolRegistryService', () => {
     });
 
     it('should return mapped tool definitions in OpenAI function format', () => {
-      const mockTool: AgentTool = {
-        name: 'get_financial_summary',
-        description: 'Returns the user financial summary',
-        parameters: {
-          type: 'object',
-          properties: {
-            period: { type: 'string', description: 'Monthly or yearly' },
-          },
-          required: ['period'],
-        },
-        execute: jest.fn(),
-      };
-
-      service.registerTool(mockTool);
+      service.onModuleInit();
 
       const definitions = service.getToolDefinitions();
-      expect(definitions).toEqual([
-        {
-          type: 'function',
-          name: 'get_financial_summary',
-          description: 'Returns the user financial summary',
-          parameters: {
-            type: 'object',
-            properties: {
-              period: { type: 'string', description: 'Monthly or yearly' },
-            },
-            required: ['period'],
-          },
-        },
-      ]);
+      expect(definitions).toHaveLength(4);
+      expect(definitions[0]).toEqual({
+        type: 'function',
+        name: 'get_accounts',
+        description: 'Get accounts',
+        parameters: { type: 'object', properties: {} },
+      });
     });
   });
 });
