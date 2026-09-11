@@ -100,7 +100,6 @@ export class AiAgentOrchestratorService {
             const authDecision = this.authorizationService.authorize(
               context.userId,
               tool,
-              validationResult.value,
             );
 
             if (!authDecision.authorized) {
