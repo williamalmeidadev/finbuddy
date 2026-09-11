@@ -28,6 +28,10 @@ import { AccountResponseDto } from './dto/account-response.dto';
 
 @ApiTags('Accounts')
 @ApiBearerAuth('JWT-auth')
+@ApiResponse({
+  status: 429,
+  description: 'Too Many Requests - Rate limit exceeded',
+})
 @UseGuards(JwtAuthGuard)
 @Controller('accounts')
 export class AccountController {

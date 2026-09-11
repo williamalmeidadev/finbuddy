@@ -30,6 +30,10 @@ import { UpdateBudgetDto } from './dto/update-budget.dto';
 
 @ApiTags('Budgets')
 @ApiBearerAuth('JWT-auth')
+@ApiResponse({
+  status: 429,
+  description: 'Too Many Requests - Rate limit exceeded',
+})
 @UseGuards(JwtAuthGuard)
 @Controller('budgets')
 export class BudgetController {

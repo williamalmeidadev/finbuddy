@@ -30,6 +30,10 @@ import { UpdateCategoryDto } from './dto/update-category.dto';
 
 @ApiTags('Categories')
 @ApiBearerAuth('JWT-auth')
+@ApiResponse({
+  status: 429,
+  description: 'Too Many Requests - Rate limit exceeded',
+})
 @UseGuards(JwtAuthGuard)
 @Controller('categories')
 export class CategoryController {

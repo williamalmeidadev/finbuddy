@@ -24,6 +24,10 @@ import { AuthenticatedUserDto } from './dto/authenticated-user.dto';
 import { UserResponseDto } from '../user/dto/user-response.dto';
 
 @ApiTags('Auth')
+@ApiResponse({
+  status: 429,
+  description: 'Too Many Requests - Rate limit exceeded',
+})
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
