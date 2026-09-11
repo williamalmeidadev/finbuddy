@@ -156,6 +156,8 @@ model Transaction {
   @@index([categoryId])
   @@index([recurringTransactionId])
   @@index([transactionAt])
+  @@index([accountId, transactionAt(sort: Desc)])
+  @@index([categoryId, transactionAt])
   @@map("transactions")
 }
 
@@ -202,6 +204,8 @@ model Transfer {
   @@index([fromAccountId])
   @@index([toAccountId])
   @@index([transactionAt])
+  @@index([fromAccountId, transactionAt])
+  @@index([toAccountId, transactionAt])
   @@map("transfers")
 }
 
@@ -221,6 +225,7 @@ model Budget {
   @@index([userId])
   @@index([categoryId])
   @@index([month])
+  @@index([userId, month])
   @@map("budgets")
 }
 
@@ -250,6 +255,7 @@ model RecurringTransaction {
   @@index([categoryId])
   @@index([nextOccurrence])
   @@index([userId, isActive])
+  @@index([isActive, nextOccurrence])
   @@map("recurring_transactions")
 }
 

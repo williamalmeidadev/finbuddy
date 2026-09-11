@@ -20,6 +20,7 @@ describe('BudgetService', () => {
     update: jest.Mock;
     delete: jest.Mock;
     calculateSpending: jest.Mock;
+    calculateSpendingBatch: jest.Mock;
   };
   let categoryRepository: {
     findByIdAndUserId: jest.Mock;
@@ -36,6 +37,7 @@ describe('BudgetService', () => {
       update: jest.fn(),
       delete: jest.fn(),
       calculateSpending: jest.fn(),
+      calculateSpendingBatch: jest.fn(),
     };
 
     categoryRepository = {
@@ -178,7 +180,7 @@ describe('BudgetService', () => {
   });
 
   describe('findByUserId', () => {
-    it('should return list of budget response DTOs with calculated spending', async () => {
+    it('should return list of budget response DTOs with calculated spending using batch query', async () => {
       const mockBudgets = [
         {
           id: 'budget-1',
@@ -189,17 +191,48 @@ describe('BudgetService', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
         },
+        {
+          id: 'budget-2',
+          userId,
+          categoryId: 'cat-2',
+          amount: 300,
+          month: new Date('2026-09-01T00:00:00.000Z'),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
       ];
 
+      const spendingMap = new Map<string, number>([
+        ['cat-1:2026-09-01T00:00:00.000Z', 650],
+        ['cat-2:2026-09-01T00:00:00.000Z', 150],
+      ]);
+
       budgetRepository.findByUserId.mockResolvedValue(mockBudgets);
-      budgetRepository.calculateSpending.mockResolvedValue(650);
+      budgetRepository.calculateSpendingBatch.mockResolvedValue(spendingMap);
 
       const result = await service.findByUserId(userId);
 
-      expect(result).toHaveLength(1);
+      expect(budgetRepository.calculateSpendingBatch).toHaveBeenCalledWith(
+        userId,
+        mockBudgets,
+      );
+      expect(budgetRepository.calculateSpending).not.toHaveBeenCalled();
+      expect(result).toHaveLength(2);
       expect(result[0].spent).toBe(650);
       expect(result[0].remaining).toBe(-150);
       expect(result[0].percentageUsed).toBe(130);
+      expect(result[1].spent).toBe(150);
+      expect(result[1].remaining).toBe(150);
+      expect(result[1].percentageUsed).toBe(50);
+    });
+
+    it('should return empty array without batch query if no budgets found', async () => {
+      budgetRepository.findByUserId.mockResolvedValue([]);
+
+      const result = await service.findByUserId(userId);
+
+      expect(result).toEqual([]);
+      expect(budgetRepository.calculateSpendingBatch).not.toHaveBeenCalled();
     });
   });
 

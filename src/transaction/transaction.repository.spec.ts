@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { DatabaseService } from '../database/database.service';
 import { TransactionSource, TransactionType } from '../generated/prisma/enums';
@@ -22,10 +23,13 @@ describe('TransactionRepository', () => {
     },
     account: {
       update: jest.fn(),
+      updateMany: jest.fn(),
     },
   };
 
   beforeEach(async () => {
+    jest.clearAllMocks();
+
     databaseService = {
       $transaction: jest.fn((cb: (tx: typeof mockTx) => Promise<unknown>) =>
         cb(mockTx),
@@ -54,7 +58,7 @@ describe('TransactionRepository', () => {
   });
 
   describe('createWithBalanceUpdate', () => {
-    it('should create transaction and update account balance atomically', async () => {
+    it('should create transaction and update account balance atomically when delta is positive', async () => {
       const data = {
         accountId: 'acc-1',
         type: TransactionType.INCOME,
@@ -76,6 +80,62 @@ describe('TransactionRepository', () => {
         data: { balance: { increment: 100 } },
       });
       expect(result).toEqual(createdTx);
+    });
+
+    it('should atomically check balance with updateMany when delta is negative', async () => {
+      const data = {
+        accountId: 'acc-1',
+        type: TransactionType.EXPENSE,
+        amount: 50,
+        description: 'Groceries',
+        source: TransactionSource.MANUAL,
+        transactionAt: new Date(),
+      };
+
+      const createdTx = { id: 'tx-2', ...data };
+      mockTx.transaction.create.mockResolvedValue(createdTx);
+      mockTx.account.updateMany.mockResolvedValue({ count: 1 });
+
+      const result = await repository.createWithBalanceUpdate(data, -50);
+
+      expect(mockTx.transaction.create).toHaveBeenCalledWith({ data });
+      expect(mockTx.account.updateMany).toHaveBeenCalledWith({
+        where: {
+          id: 'acc-1',
+          balance: {
+            gte: 50,
+          },
+        },
+        data: {
+          balance: {
+            increment: -50,
+          },
+        },
+      });
+      expect(result).toEqual(createdTx);
+    });
+
+    it('should throw BadRequestException when delta is negative and balance is insufficient', async () => {
+      const data = {
+        accountId: 'acc-1',
+        type: TransactionType.EXPENSE,
+        amount: 50,
+        description: 'Groceries',
+        source: TransactionSource.MANUAL,
+        transactionAt: new Date(),
+      };
+
+      const createdTx = { id: 'tx-2', ...data };
+      mockTx.transaction.create.mockResolvedValue(createdTx);
+      mockTx.account.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(
+        repository.createWithBalanceUpdate(data, -50),
+      ).rejects.toThrow(BadRequestException);
+
+      await expect(
+        repository.createWithBalanceUpdate(data, -50),
+      ).rejects.toThrow('Insufficient balance');
     });
   });
 
@@ -113,12 +173,13 @@ describe('TransactionRepository', () => {
   });
 
   describe('updateWithBalanceUpdate', () => {
-    it('should update transaction and update balance delta when found', async () => {
+    it('should update transaction and update balance delta when delta is positive', async () => {
       const existing = { id: 'tx-1', accountId: 'acc-1' };
       const updated = { id: 'tx-1', accountId: 'acc-1', amount: 200 };
 
       mockTx.transaction.findFirst.mockResolvedValue(existing);
       mockTx.transaction.update.mockResolvedValue(updated);
+      mockTx.account.update.mockResolvedValue({});
 
       const result = await repository.updateWithBalanceUpdate(
         'tx-1',
@@ -141,6 +202,64 @@ describe('TransactionRepository', () => {
       expect(result).toEqual(updated);
     });
 
+    it('should atomically check balance with updateMany when delta is negative', async () => {
+      const existing = { id: 'tx-1', accountId: 'acc-1' };
+      const updated = { id: 'tx-1', accountId: 'acc-1', amount: 250 };
+
+      mockTx.transaction.findFirst.mockResolvedValue(existing);
+      mockTx.transaction.update.mockResolvedValue(updated);
+      mockTx.account.updateMany.mockResolvedValue({ count: 1 });
+
+      const result = await repository.updateWithBalanceUpdate(
+        'tx-1',
+        'user-1',
+        { amount: 250 },
+        -150,
+      );
+
+      expect(mockTx.account.updateMany).toHaveBeenCalledWith({
+        where: {
+          id: 'acc-1',
+          balance: {
+            gte: 150,
+          },
+        },
+        data: {
+          balance: {
+            increment: -150,
+          },
+        },
+      });
+      expect(result).toEqual(updated);
+    });
+
+    it('should throw BadRequestException when delta is negative and balance is insufficient', async () => {
+      const existing = { id: 'tx-1', accountId: 'acc-1' };
+      const updated = { id: 'tx-1', accountId: 'acc-1', amount: 250 };
+
+      mockTx.transaction.findFirst.mockResolvedValue(existing);
+      mockTx.transaction.update.mockResolvedValue(updated);
+      mockTx.account.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(
+        repository.updateWithBalanceUpdate(
+          'tx-1',
+          'user-1',
+          { amount: 250 },
+          -150,
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      await expect(
+        repository.updateWithBalanceUpdate(
+          'tx-1',
+          'user-1',
+          { amount: 250 },
+          -150,
+        ),
+      ).rejects.toThrow('Insufficient balance');
+    });
+
     it('should return null when transaction to update is not found', async () => {
       mockTx.transaction.findFirst.mockResolvedValue(null);
 
@@ -156,12 +275,13 @@ describe('TransactionRepository', () => {
   });
 
   describe('deleteWithBalanceUpdate', () => {
-    it('should delete transaction and reverse balance delta when found', async () => {
+    it('should atomically check balance with updateMany when reversal delta is negative', async () => {
       const existing = { id: 'tx-1', accountId: 'acc-1' };
       const deleted = { id: 'tx-1', accountId: 'acc-1' };
 
       mockTx.transaction.findFirst.mockResolvedValue(existing);
       mockTx.transaction.delete.mockResolvedValue(deleted);
+      mockTx.account.updateMany.mockResolvedValue({ count: 1 });
 
       const result = await repository.deleteWithBalanceUpdate(
         'tx-1',
@@ -175,9 +295,56 @@ describe('TransactionRepository', () => {
       expect(mockTx.transaction.delete).toHaveBeenCalledWith({
         where: { id: 'tx-1' },
       });
+      expect(mockTx.account.updateMany).toHaveBeenCalledWith({
+        where: {
+          id: 'acc-1',
+          balance: {
+            gte: 100,
+          },
+        },
+        data: {
+          balance: {
+            increment: -100,
+          },
+        },
+      });
+      expect(result).toEqual(deleted);
+    });
+
+    it('should throw BadRequestException when reversal delta is negative and balance is insufficient', async () => {
+      const existing = { id: 'tx-1', accountId: 'acc-1' };
+      const deleted = { id: 'tx-1', accountId: 'acc-1' };
+
+      mockTx.transaction.findFirst.mockResolvedValue(existing);
+      mockTx.transaction.delete.mockResolvedValue(deleted);
+      mockTx.account.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(
+        repository.deleteWithBalanceUpdate('tx-1', 'user-1', -100),
+      ).rejects.toThrow(BadRequestException);
+
+      await expect(
+        repository.deleteWithBalanceUpdate('tx-1', 'user-1', -100),
+      ).rejects.toThrow('Insufficient balance');
+    });
+
+    it('should use account.update when reversal delta is positive', async () => {
+      const existing = { id: 'tx-1', accountId: 'acc-1' };
+      const deleted = { id: 'tx-1', accountId: 'acc-1' };
+
+      mockTx.transaction.findFirst.mockResolvedValue(existing);
+      mockTx.transaction.delete.mockResolvedValue(deleted);
+      mockTx.account.update.mockResolvedValue({});
+
+      const result = await repository.deleteWithBalanceUpdate(
+        'tx-1',
+        'user-1',
+        100,
+      );
+
       expect(mockTx.account.update).toHaveBeenCalledWith({
         where: { id: 'acc-1' },
-        data: { balance: { increment: -100 } },
+        data: { balance: { increment: 100 } },
       });
       expect(result).toEqual(deleted);
     });

@@ -112,4 +112,106 @@ export class BudgetRepository {
       ? result._sum.amount
       : result._sum.amount.toNumber();
   }
+
+  async calculateSpendingBatch(
+    userId: string,
+    budgets: { categoryId: string; month: Date }[],
+  ): Promise<Map<string, number>> {
+    const spendingMap = new Map<string, number>();
+
+    if (budgets.length === 0) {
+      return spendingMap;
+    }
+
+    const monthGroups = new Map<
+      string,
+      {
+        startOfMonth: Date;
+        nextMonthStart: Date;
+        categoryIds: Set<string>;
+      }
+    >();
+
+    for (const budget of budgets) {
+      const year = budget.month.getUTCFullYear();
+      const monthIdx = budget.month.getUTCMonth();
+      const startOfMonth = new Date(Date.UTC(year, monthIdx, 1, 0, 0, 0, 0));
+      const nextMonthStart = new Date(
+        Date.UTC(year, monthIdx + 1, 1, 0, 0, 0, 0),
+      );
+      const monthKey = startOfMonth.toISOString();
+
+      let group = monthGroups.get(monthKey);
+      if (!group) {
+        group = {
+          startOfMonth,
+          nextMonthStart,
+          categoryIds: new Set<string>(),
+        };
+        monthGroups.set(monthKey, group);
+      }
+      group.categoryIds.add(budget.categoryId);
+
+      spendingMap.set(`${budget.categoryId}:${startOfMonth.toISOString()}`, 0);
+      spendingMap.set(`${budget.categoryId}:${startOfMonth.getTime()}`, 0);
+      spendingMap.set(`${budget.categoryId}:${budget.month.toISOString()}`, 0);
+    }
+
+    await Promise.all(
+      Array.from(monthGroups.values()).map(async (group) => {
+        const results = await this.prisma.transaction.groupBy({
+          by: ['categoryId'],
+          _sum: { amount: true },
+          where: {
+            account: {
+              userId,
+            },
+            categoryId: {
+              in: Array.from(group.categoryIds),
+            },
+            type: TransactionType.EXPENSE,
+            source: {
+              not: TransactionSource.SYSTEM,
+            },
+            transactionAt: {
+              gte: group.startOfMonth,
+              lt: group.nextMonthStart,
+            },
+          },
+        });
+
+        for (const item of results) {
+          if (!item.categoryId) continue;
+
+          const amount = item._sum.amount
+            ? typeof item._sum.amount === 'number'
+              ? item._sum.amount
+              : item._sum.amount.toNumber()
+            : 0;
+
+          const isoKey = `${item.categoryId}:${group.startOfMonth.toISOString()}`;
+          const timeKey = `${item.categoryId}:${group.startOfMonth.getTime()}`;
+
+          spendingMap.set(isoKey, amount);
+          spendingMap.set(timeKey, amount);
+
+          for (const b of budgets) {
+            if (
+              b.categoryId === item.categoryId &&
+              b.month.getUTCFullYear() ===
+                group.startOfMonth.getUTCFullYear() &&
+              b.month.getUTCMonth() === group.startOfMonth.getUTCMonth()
+            ) {
+              spendingMap.set(
+                `${b.categoryId}:${b.month.toISOString()}`,
+                amount,
+              );
+            }
+          }
+        }
+      }),
+    );
+
+    return spendingMap;
+  }
 }

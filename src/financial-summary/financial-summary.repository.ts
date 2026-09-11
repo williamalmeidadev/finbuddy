@@ -26,11 +26,11 @@ export class FinancialSummaryRepository {
     monthStart: Date,
     nextMonthStart: Date,
   ): Promise<{ income: number; expenses: number }> {
-    const incomeAggregate = await this.prisma.transaction.aggregate({
+    const grouped = await this.prisma.transaction.groupBy({
+      by: ['type'],
       _sum: { amount: true },
       where: {
         account: { userId },
-        type: TransactionType.INCOME,
         transferId: null,
         transactionAt: {
           gte: monthStart,
@@ -39,30 +39,22 @@ export class FinancialSummaryRepository {
       },
     });
 
-    const expenseAggregate = await this.prisma.transaction.aggregate({
-      _sum: { amount: true },
-      where: {
-        account: { userId },
-        type: TransactionType.EXPENSE,
-        transferId: null,
-        transactionAt: {
-          gte: monthStart,
-          lt: nextMonthStart,
-        },
-      },
-    });
+    let income = 0;
+    let expenses = 0;
 
-    const income = incomeAggregate._sum.amount
-      ? typeof incomeAggregate._sum.amount === 'number'
-        ? incomeAggregate._sum.amount
-        : incomeAggregate._sum.amount.toNumber()
-      : 0;
+    for (const group of grouped) {
+      const amount = group._sum.amount
+        ? typeof group._sum.amount === 'number'
+          ? group._sum.amount
+          : group._sum.amount.toNumber()
+        : 0;
 
-    const expenses = expenseAggregate._sum.amount
-      ? typeof expenseAggregate._sum.amount === 'number'
-        ? expenseAggregate._sum.amount
-        : expenseAggregate._sum.amount.toNumber()
-      : 0;
+      if (group.type === TransactionType.INCOME) {
+        income = amount;
+      } else if (group.type === TransactionType.EXPENSE) {
+        expenses = amount;
+      }
+    }
 
     return { income, expenses };
   }

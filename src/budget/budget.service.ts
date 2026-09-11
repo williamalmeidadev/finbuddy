@@ -91,18 +91,22 @@ export class BudgetService {
       month: monthDate,
     });
 
-    const results = await Promise.all(
-      budgets.map(async (budget) => {
-        const spent = await this.budgetRepository.calculateSpending(
-          userId,
-          budget.categoryId,
-          budget.month,
-        );
-        return new BudgetResponseDto(budget, spent);
-      }),
+    if (budgets.length === 0) {
+      return [];
+    }
+
+    const spendingMap = await this.budgetRepository.calculateSpendingBatch(
+      userId,
+      budgets,
     );
 
-    return results;
+    return budgets.map((budget) => {
+      const spent =
+        spendingMap.get(`${budget.categoryId}:${budget.month.toISOString()}`) ??
+        spendingMap.get(`${budget.categoryId}:${budget.month.getTime()}`) ??
+        0;
+      return new BudgetResponseDto(budget, spent);
+    });
   }
 
   async findById(id: string, userId: string): Promise<BudgetResponseDto> {

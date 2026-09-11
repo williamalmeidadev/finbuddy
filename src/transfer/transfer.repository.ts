@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import { Prisma } from '../generated/prisma/client';
 import { TransactionSource, TransactionType } from '../generated/prisma/enums';
@@ -20,14 +20,23 @@ export class TransferRepository {
       });
 
       // 2. Atomically decrease source account balance
-      await tx.account.update({
-        where: { id: data.fromAccountId },
+      const updatedSource = await tx.account.updateMany({
+        where: {
+          id: data.fromAccountId,
+          balance: {
+            gte: data.amount,
+          },
+        },
         data: {
           balance: {
             decrement: data.amount,
           },
         },
       });
+
+      if (updatedSource.count === 0) {
+        throw new BadRequestException('Insufficient balance for transfer');
+      }
 
       // 3. Atomically increase destination account balance
       await tx.account.update({

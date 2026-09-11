@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import { Prisma } from '../generated/prisma/client';
 import { TransactionModel as Transaction } from '../generated/prisma/models/Transaction';
@@ -16,14 +16,34 @@ export class TransactionRepository {
         data,
       });
 
-      await tx.account.update({
-        where: { id: data.accountId },
-        data: {
-          balance: {
-            increment: balanceDelta,
+      if (balanceDelta < 0) {
+        const updated = await tx.account.updateMany({
+          where: {
+            id: data.accountId,
+            balance: {
+              gte: Math.abs(balanceDelta),
+            },
           },
-        },
-      });
+          data: {
+            balance: {
+              increment: balanceDelta,
+            },
+          },
+        });
+
+        if (updated.count === 0) {
+          throw new BadRequestException('Insufficient balance');
+        }
+      } else {
+        await tx.account.update({
+          where: { id: data.accountId },
+          data: {
+            balance: {
+              increment: balanceDelta,
+            },
+          },
+        });
+      }
 
       return transaction;
     });
@@ -91,14 +111,34 @@ export class TransactionRepository {
       });
 
       if (balanceDelta !== 0) {
-        await tx.account.update({
-          where: { id: existing.accountId },
-          data: {
-            balance: {
-              increment: balanceDelta,
+        if (balanceDelta < 0) {
+          const updatedAccount = await tx.account.updateMany({
+            where: {
+              id: existing.accountId,
+              balance: {
+                gte: Math.abs(balanceDelta),
+              },
             },
-          },
-        });
+            data: {
+              balance: {
+                increment: balanceDelta,
+              },
+            },
+          });
+
+          if (updatedAccount.count === 0) {
+            throw new BadRequestException('Insufficient balance');
+          }
+        } else {
+          await tx.account.update({
+            where: { id: existing.accountId },
+            data: {
+              balance: {
+                increment: balanceDelta,
+              },
+            },
+          });
+        }
       }
 
       return updated;
@@ -128,14 +168,34 @@ export class TransactionRepository {
         where: { id },
       });
 
-      await tx.account.update({
-        where: { id: existing.accountId },
-        data: {
-          balance: {
-            increment: reversalDelta,
+      if (reversalDelta < 0) {
+        const updatedAccount = await tx.account.updateMany({
+          where: {
+            id: existing.accountId,
+            balance: {
+              gte: Math.abs(reversalDelta),
+            },
           },
-        },
-      });
+          data: {
+            balance: {
+              increment: reversalDelta,
+            },
+          },
+        });
+
+        if (updatedAccount.count === 0) {
+          throw new BadRequestException('Insufficient balance');
+        }
+      } else {
+        await tx.account.update({
+          where: { id: existing.accountId },
+          data: {
+            balance: {
+              increment: reversalDelta,
+            },
+          },
+        });
+      }
 
       return deleted;
     });
