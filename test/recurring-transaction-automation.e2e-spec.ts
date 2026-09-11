@@ -9,12 +9,15 @@ import { RecurringTransactionAutomationService } from '../src/recurring-transact
 import { execSync } from 'child_process';
 import net from 'net';
 
-process.env.JWT_SECRET =
-  process.env.JWT_SECRET || 'NdOQ65X2opk54iL5AR1wg00LMTdivXxJfexziGVg3Ow=';
+if (!process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
 
-const originalUrl =
-  process.env.DATABASE_URL ||
-  'postgresql://finbuddy:senhaDB232%40@localhost:5432/finbuddy';
+if (!process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL environment variable is required');
+}
+
+const originalUrl = process.env.DATABASE_URL;
 let testDbUrl: string;
 try {
   let formattedUrl = originalUrl;

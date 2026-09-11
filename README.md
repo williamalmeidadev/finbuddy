@@ -23,39 +23,52 @@
 
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+FinBuddy backend API built with NestJS 11, TypeScript, Prisma 7, and PostgreSQL 17.
 
-## Project setup
-
-```bash
-$ npm install
-```
-
-## Compile and run the project
+## Local Setup & Development
 
 ```bash
-# development
-$ npm run start
+# 1. Install dependencies
+$ npm ci
 
-# watch mode
+# 2. Database migrations
+$ npx prisma generate
+$ npx prisma migrate deploy
+
+# 3. Development server
 $ npm run start:dev
-
-# production mode
-$ npm run start:prod
 ```
 
-## Run tests
+## Quality Gates & Testing
+
+Before creating a pull request, ensure all local verification checks pass:
 
 ```bash
-# unit tests
+# Code formatting & linting
+$ npm run lint
+
+# Unit tests
 $ npm run test
 
-# e2e tests
+# End-to-end (E2E) tests
 $ npm run test:e2e
 
-# test coverage
-$ npm run test:cov
+# Production build
+$ npm run build
 ```
+
+## CI/CD Quality Gates
+
+Every push and pull request targeting `main` or `develop` triggers the GitHub Actions CI pipeline (`.github/workflows/ci.yml`).
+
+The automated quality gates validate:
+1. Dependency installation (`npm ci`)
+2. Prisma Client generation (`npx prisma generate`)
+3. Database migrations against a PostgreSQL 17 container (`npx prisma migrate deploy`)
+4. Code linting (`npm run lint`)
+5. Unit tests (`npm test`)
+6. E2E integration tests (`npm run test:e2e`)
+7. Production build compilation (`npm run build`)
 
 ## Deployment
 

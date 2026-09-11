@@ -18,8 +18,8 @@ class EnvironmentVariables {
   JWT_SECRET: string;
 
   @IsNumber()
-  @IsOptional()
-  PORT?: number;
+  @IsNotEmpty()
+  PORT: number;
 
   @IsBoolean()
   @IsOptional()
