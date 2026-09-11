@@ -2,10 +2,14 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AiAgentOrchestratorService } from './ai-agent-orchestrator.service';
 import { OpenAIClient } from '../infrastructure/openai/openai.client';
 import { AgentToolRegistryService } from './tools/agent-tool-registry.service';
+import { AgentToolAuthorizationService } from './authorization/agent-tool-authorization.service';
+import { AgentToolArgumentValidatorService } from './validation/agent-tool-argument-validator.service';
 import { FINBUDDY_AGENT_INSTRUCTIONS } from './prompts/finbuddy-agent.instructions';
 import { AgentResponse } from '../domain/agent-response';
 import { ServiceUnavailableException } from '@nestjs/common';
 import { MetricsService } from '../../common/metrics/metrics.service';
+import { AgentCapability } from './authorization/agent-capability.enum';
+import { AgentToolRiskLevel } from './tools/agent-tool.interface';
 
 describe('AiAgentOrchestratorService', () => {
   let service: AiAgentOrchestratorService;
@@ -35,6 +39,8 @@ describe('AiAgentOrchestratorService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AiAgentOrchestratorService,
+        AgentToolAuthorizationService,
+        AgentToolArgumentValidatorService,
         {
           provide: OpenAIClient,
           useValue: mockOpenAiClient,
@@ -97,6 +103,9 @@ describe('AiAgentOrchestratorService', () => {
 
       const mockTool = {
         name: 'get_accounts',
+        capability: AgentCapability.READ_ACCOUNTS,
+        riskLevel: AgentToolRiskLevel.LOW,
+        readOnly: true,
         execute: jest
           .fn()
           .mockResolvedValue({ success: true, data: [{ id: 'acc-1' }] }),
@@ -122,7 +131,10 @@ describe('AiAgentOrchestratorService', () => {
         'What are my accounts?',
       );
 
-      expect(mockTool.execute).toHaveBeenCalledWith({ userId: 'user-123' }, {});
+      expect(mockTool.execute).toHaveBeenCalledWith(
+        { userId: 'user-123' },
+        expect.anything(),
+      );
       expect(mockOpenAiClient.createRawResponse).toHaveBeenCalledTimes(2);
       expect(mockOpenAiClient.createRawResponse).toHaveBeenNthCalledWith(
         2,
@@ -151,10 +163,16 @@ describe('AiAgentOrchestratorService', () => {
 
       const mockAccountsTool = {
         name: 'get_accounts',
+        capability: AgentCapability.READ_ACCOUNTS,
+        riskLevel: AgentToolRiskLevel.LOW,
+        readOnly: true,
         execute: jest.fn().mockResolvedValue({ success: true, data: [] }),
       };
       const mockBudgetsTool = {
         name: 'get_budgets',
+        capability: AgentCapability.READ_BUDGETS,
+        riskLevel: AgentToolRiskLevel.LOW,
+        readOnly: true,
         execute: jest.fn().mockResolvedValue({ success: true, data: [] }),
       };
 
@@ -230,10 +248,63 @@ describe('AiAgentOrchestratorService', () => {
       expect(response.message).toBe('Could not access tool');
     });
 
+    it('should return safe error if argument validation fails', async () => {
+      mockToolRegistry.getToolDefinitions.mockReturnValue([]);
+      const mockTool = {
+        name: 'get_transactions',
+        capability: AgentCapability.READ_TRANSACTIONS,
+        riskLevel: AgentToolRiskLevel.LOW,
+        readOnly: true,
+        execute: jest.fn(),
+      };
+      mockToolRegistry.getTool.mockReturnValue(mockTool);
+
+      mockOpenAiClient.createRawResponse
+        .mockResolvedValueOnce({
+          id: 'resp-1',
+          outputText: '',
+          functionCalls: [
+            {
+              callId: 'call-1',
+              name: 'get_transactions',
+              arguments: { accountId: 'not-a-uuid' },
+            },
+          ],
+        })
+        .mockResolvedValueOnce({
+          id: 'resp-2',
+          outputText: 'Invalid parameter provided',
+          functionCalls: [],
+        });
+
+      const response = await service.processUserMessage(
+        'user-123',
+        'Get transactions for account bad-uuid',
+      );
+
+      expect(mockTool.execute).not.toHaveBeenCalled();
+      expect(mockOpenAiClient.createRawResponse).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          input: [
+            {
+              type: 'function_call_output',
+              call_id: 'call-1',
+              output: expect.stringContaining('Invalid tool arguments'),
+            },
+          ],
+        }),
+      );
+      expect(response.message).toBe('Invalid parameter provided');
+    });
+
     it('should catch tool execution errors and send error result to model', async () => {
       mockToolRegistry.getToolDefinitions.mockReturnValue([]);
       const failingTool = {
         name: 'get_accounts',
+        capability: AgentCapability.READ_ACCOUNTS,
+        riskLevel: AgentToolRiskLevel.LOW,
+        readOnly: true,
         execute: jest.fn().mockRejectedValue(new Error('Internal exception')),
       };
       mockToolRegistry.getTool.mockReturnValue(failingTool);
@@ -279,6 +350,9 @@ describe('AiAgentOrchestratorService', () => {
       mockToolRegistry.getToolDefinitions.mockReturnValue([]);
       const mockTool = {
         name: 'get_accounts',
+        capability: AgentCapability.READ_ACCOUNTS,
+        riskLevel: AgentToolRiskLevel.LOW,
+        readOnly: true,
         execute: jest.fn().mockResolvedValue({ success: true }),
       };
       mockToolRegistry.getTool.mockReturnValue(mockTool);

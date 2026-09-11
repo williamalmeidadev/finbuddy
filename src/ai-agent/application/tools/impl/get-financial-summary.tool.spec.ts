@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { GetFinancialSummaryTool } from './get-financial-summary.tool';
 import { FinancialSummaryService } from '../../../../financial-summary/financial-summary.service';
 import { BadRequestException } from '@nestjs/common';
+import { AgentCapability } from '../../authorization/agent-capability.enum';
+import { AgentToolRiskLevel } from '../agent-tool.interface';
 
 describe('GetFinancialSummaryTool', () => {
   let tool: GetFinancialSummaryTool;
@@ -25,8 +27,11 @@ describe('GetFinancialSummaryTool', () => {
     tool = module.get<GetFinancialSummaryTool>(GetFinancialSummaryTool);
   });
 
-  it('should be defined with name and schema', () => {
+  it('should be defined with name, metadata, and schema', () => {
     expect(tool.name).toBe('get_financial_summary');
+    expect(tool.capability).toBe(AgentCapability.READ_FINANCIAL_SUMMARY);
+    expect(tool.riskLevel).toBe(AgentToolRiskLevel.LOW);
+    expect(tool.readOnly).toBe(true);
     expect(tool.inputSchema.additionalProperties).toBe(false);
   });
 

@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { GetAccountsTool } from './get-accounts.tool';
 import { AccountService } from '../../../../account/account.service';
 import { AccountType } from '../../../../generated/prisma/enums';
+import { AgentCapability } from '../../authorization/agent-capability.enum';
+import { AgentToolRiskLevel } from '../agent-tool.interface';
 
 describe('GetAccountsTool', () => {
   let tool: GetAccountsTool;
@@ -26,8 +28,11 @@ describe('GetAccountsTool', () => {
     tool = module.get<GetAccountsTool>(GetAccountsTool);
   });
 
-  it('should be defined with correct name and schema', () => {
+  it('should be defined with correct name, metadata, and schema', () => {
     expect(tool.name).toBe('get_accounts');
+    expect(tool.capability).toBe(AgentCapability.READ_ACCOUNTS);
+    expect(tool.riskLevel).toBe(AgentToolRiskLevel.LOW);
+    expect(tool.readOnly).toBe(true);
     expect(tool.inputSchema).toBeDefined();
     expect(tool.inputSchema.additionalProperties).toBe(false);
   });
@@ -49,7 +54,7 @@ describe('GetAccountsTool', () => {
     ];
     mockAccountService.findByUserId.mockResolvedValue(mockAccounts);
 
-    const result = await tool.execute({ userId: 'user-123' }, {});
+    const result = await tool.execute({ userId: 'user-123' });
 
     expect(mockAccountService.findByUserId).toHaveBeenCalledWith('user-123');
     expect(result).toEqual({
@@ -73,7 +78,7 @@ describe('GetAccountsTool', () => {
       new Error('Database error'),
     );
 
-    const result = await tool.execute({ userId: 'user-123' }, {});
+    const result = await tool.execute({ userId: 'user-123' });
 
     expect(result).toEqual({
       success: false,
