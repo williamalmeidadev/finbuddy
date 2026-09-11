@@ -1,4 +1,5 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { APP_FILTER } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 
 import { AuthModule } from './auth/auth.module';
@@ -13,6 +14,11 @@ import { FinancialSummaryModule } from './financial-summary/financial-summary.mo
 import { RecurringTransactionModule } from './recurring-transaction/recurring-transaction.module';
 import { RecurringTransactionExecutionModule } from './recurring-transaction-execution/recurring-transaction-execution.module';
 import { RecurringTransactionAutomationModule } from './recurring-transaction-automation/recurring-transaction-automation.module';
+import { HealthModule } from './health/health.module';
+import { MetricsModule } from './common/metrics/metrics.module';
+import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
+import { RequestLoggingMiddleware } from './common/middleware/request-logging.middleware';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { validate } from './config/env.validation';
 
 @Module({
@@ -33,6 +39,20 @@ import { validate } from './config/env.validation';
     RecurringTransactionModule,
     RecurringTransactionExecutionModule,
     RecurringTransactionAutomationModule,
+    HealthModule,
+    MetricsModule,
+  ],
+  providers: [
+    {
+      provide: APP_FILTER,
+      useClass: AllExceptionsFilter,
+    },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(RequestIdMiddleware, RequestLoggingMiddleware)
+      .forRoutes('*');
+  }
+}

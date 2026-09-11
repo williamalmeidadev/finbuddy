@@ -194,7 +194,7 @@ describe('UserController (e2e)', () => {
       })
       .expect(409);
 
-    expect(response.body).toEqual({
+    expect(response.body).toMatchObject({
       statusCode: 409,
       message: 'Email already exists',
       error: 'Conflict',
@@ -314,7 +314,7 @@ describe('UserController (e2e)', () => {
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(404);
 
-    expect(response.body).toEqual({
+    expect(response.body).toMatchObject({
       statusCode: 404,
       message: 'User not found',
       error: 'Not Found',

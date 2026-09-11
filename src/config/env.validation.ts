@@ -25,6 +25,10 @@ class EnvironmentVariables {
   @IsOptional()
   CORS_ORIGIN?: string;
 
+  @IsString()
+  @IsOptional()
+  LOG_LEVEL?: string = 'info';
+
   @IsBoolean()
   @IsOptional()
   RECURRING_TRANSACTION_AUTOMATION_ENABLED?: boolean = true;
