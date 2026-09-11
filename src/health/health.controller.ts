@@ -4,7 +4,7 @@ import { SkipThrottle } from '@nestjs/throttler';
 import { HealthCheckResult, HealthService } from './health.service';
 
 @ApiTags('Health')
-@SkipThrottle()
+@SkipThrottle({ default: true, auth: true })
 @Controller('health')
 export class HealthController {
   constructor(private readonly healthService: HealthService) {}
