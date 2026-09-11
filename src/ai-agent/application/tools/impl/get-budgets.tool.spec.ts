@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { GetBudgetsTool } from './get-budgets.tool';
 import { BudgetService } from '../../../../budget/budget.service';
+import { AgentCapability } from '../../authorization/agent-capability.enum';
+import { AgentToolRiskLevel } from '../agent-tool.interface';
 
 describe('GetBudgetsTool', () => {
   let tool: GetBudgetsTool;
@@ -21,8 +23,11 @@ describe('GetBudgetsTool', () => {
     tool = module.get<GetBudgetsTool>(GetBudgetsTool);
   });
 
-  it('should be defined with name and schema', () => {
+  it('should be defined with name, metadata, and schema', () => {
     expect(tool.name).toBe('get_budgets');
+    expect(tool.capability).toBe(AgentCapability.READ_BUDGETS);
+    expect(tool.riskLevel).toBe(AgentToolRiskLevel.LOW);
+    expect(tool.readOnly).toBe(true);
     expect(tool.inputSchema.additionalProperties).toBe(false);
   });
 

@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { FinancialSummaryService } from '../../../../financial-summary/financial-summary.service';
+import { AgentCapability } from '../../authorization/agent-capability.enum';
 import {
   AgentTool,
   AgentToolContext,
   AgentToolResult,
+  AgentToolRiskLevel,
 } from '../agent-tool.interface';
 
 @Injectable()
@@ -11,6 +13,9 @@ export class GetFinancialSummaryTool implements AgentTool {
   readonly name = 'get_financial_summary';
   readonly description =
     "Retrieve the authenticated user's financial summary for a calendar month.";
+  readonly capability = AgentCapability.READ_FINANCIAL_SUMMARY;
+  readonly riskLevel = AgentToolRiskLevel.LOW;
+  readonly readOnly = true;
   readonly inputSchema = {
     type: 'object',
     properties: {

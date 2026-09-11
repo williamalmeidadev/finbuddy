@@ -5,6 +5,8 @@ import {
 } from '@nestjs/common';
 import { OpenAIClient } from '../infrastructure/openai/openai.client';
 import { AgentToolRegistryService } from './tools/agent-tool-registry.service';
+import { AgentToolAuthorizationService } from './authorization/agent-tool-authorization.service';
+import { AgentToolArgumentValidatorService } from './validation/agent-tool-argument-validator.service';
 import { FINBUDDY_AGENT_INSTRUCTIONS } from './prompts/finbuddy-agent.instructions';
 import { AgentResponse } from '../domain/agent-response';
 import {
@@ -21,6 +23,8 @@ export class AiAgentOrchestratorService {
   constructor(
     private readonly openAiClient: OpenAIClient,
     private readonly toolRegistry: AgentToolRegistryService,
+    private readonly authorizationService: AgentToolAuthorizationService,
+    private readonly argumentValidator: AgentToolArgumentValidatorService,
     private readonly metricsService: MetricsService,
   ) {}
 
@@ -67,6 +71,7 @@ export class AiAgentOrchestratorService {
         const tool = this.toolRegistry.getTool(call.name);
 
         let result: AgentToolResult;
+
         if (!tool) {
           this.logger.warn(`Unknown tool requested by model: ${call.name}`);
           this.metricsService.increment('ai_tool_failures_total');
@@ -75,21 +80,57 @@ export class AiAgentOrchestratorService {
             error: `Unknown tool: ${call.name}`,
           };
         } else {
-          try {
-            result = await tool.execute(context, call.arguments);
-            if (!result.success) {
-              this.metricsService.increment('ai_tool_failures_total');
-            }
-          } catch (err) {
-            this.logger.error(
-              `Tool execution failed: tool=${call.name}`,
-              err instanceof Error ? err.stack : String(err),
+          // 1. Tool Argument Validation
+          const validationResult = await this.argumentValidator.validate(
+            call.name,
+            call.arguments,
+          );
+
+          if (!validationResult.valid) {
+            this.logger.warn(
+              `Tool argument validation failed: tool=${call.name}, errors=${validationResult.errors.join('; ')}`,
             );
             this.metricsService.increment('ai_tool_failures_total');
             result = {
               success: false,
-              error: 'Failed to execute financial tool',
+              error: `Invalid tool arguments: ${validationResult.errors.join('; ')}`,
             };
+          } else {
+            // 2. Formal Tool Authorization Check
+            const authDecision = this.authorizationService.authorize(
+              context.userId,
+              tool,
+              validationResult.value,
+            );
+
+            if (!authDecision.authorized) {
+              this.logger.warn(
+                `Tool execution denied by policy: tool=${call.name}, userId=${context.userId}, reason=${authDecision.reason}`,
+              );
+              this.metricsService.increment('ai_tool_failures_total');
+              result = {
+                success: false,
+                error: `Unauthorized tool execution: ${authDecision.reason}`,
+              };
+            } else {
+              // 3. Execution via Application Service
+              try {
+                result = await tool.execute(context, validationResult.value);
+                if (!result.success) {
+                  this.metricsService.increment('ai_tool_failures_total');
+                }
+              } catch (err) {
+                this.logger.error(
+                  `Tool execution failed: tool=${call.name}`,
+                  err instanceof Error ? err.stack : String(err),
+                );
+                this.metricsService.increment('ai_tool_failures_total');
+                result = {
+                  success: false,
+                  error: 'Failed to execute financial tool',
+                };
+              }
+            }
           }
         }
 

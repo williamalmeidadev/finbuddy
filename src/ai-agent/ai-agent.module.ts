@@ -3,6 +3,8 @@ import { AiAgentController } from './ai-agent.controller';
 import { AiAgentService } from './ai-agent.service';
 import { AiAgentOrchestratorService } from './application/ai-agent-orchestrator.service';
 import { AgentToolRegistryService } from './application/tools/agent-tool-registry.service';
+import { AgentToolAuthorizationService } from './application/authorization/agent-tool-authorization.service';
+import { AgentToolArgumentValidatorService } from './application/validation/agent-tool-argument-validator.service';
 import { OpenAIClient } from './infrastructure/openai/openai.client';
 import { MetricsModule } from '../common/metrics/metrics.module';
 import { AccountModule } from '../account/account.module';
@@ -27,6 +29,8 @@ import { GetBudgetsTool } from './application/tools/impl/get-budgets.tool';
     AiAgentService,
     AiAgentOrchestratorService,
     AgentToolRegistryService,
+    AgentToolAuthorizationService,
+    AgentToolArgumentValidatorService,
     OpenAIClient,
     GetAccountsTool,
     GetTransactionsTool,

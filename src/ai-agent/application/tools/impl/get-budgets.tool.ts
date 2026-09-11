@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { BudgetService } from '../../../../budget/budget.service';
+import { AgentCapability } from '../../authorization/agent-capability.enum';
 import {
   AgentTool,
   AgentToolContext,
   AgentToolResult,
+  AgentToolRiskLevel,
 } from '../agent-tool.interface';
 
 @Injectable()
@@ -11,6 +13,9 @@ export class GetBudgetsTool implements AgentTool {
   readonly name = 'get_budgets';
   readonly description =
     "Retrieve the authenticated user's budgets and current spending information.";
+  readonly capability = AgentCapability.READ_BUDGETS;
+  readonly riskLevel = AgentToolRiskLevel.LOW;
+  readonly readOnly = true;
   readonly inputSchema = {
     type: 'object',
     properties: {

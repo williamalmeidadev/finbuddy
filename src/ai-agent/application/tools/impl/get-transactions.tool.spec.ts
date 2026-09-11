@@ -6,6 +6,8 @@ import {
   TransactionType,
 } from '../../../../generated/prisma/enums';
 import { NotFoundException } from '@nestjs/common';
+import { AgentCapability } from '../../authorization/agent-capability.enum';
+import { AgentToolRiskLevel } from '../agent-tool.interface';
 
 describe('GetTransactionsTool', () => {
   let tool: GetTransactionsTool;
@@ -26,8 +28,11 @@ describe('GetTransactionsTool', () => {
     tool = module.get<GetTransactionsTool>(GetTransactionsTool);
   });
 
-  it('should be defined with name and schema', () => {
+  it('should be defined with name, metadata, and schema', () => {
     expect(tool.name).toBe('get_transactions');
+    expect(tool.capability).toBe(AgentCapability.READ_TRANSACTIONS);
+    expect(tool.riskLevel).toBe(AgentToolRiskLevel.LOW);
+    expect(tool.readOnly).toBe(true);
     expect(tool.inputSchema.additionalProperties).toBe(false);
   });
 
