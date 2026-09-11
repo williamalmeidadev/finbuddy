@@ -5,15 +5,33 @@ import { AiAgentOrchestratorService } from './application/ai-agent-orchestrator.
 import { AgentToolRegistryService } from './application/tools/agent-tool-registry.service';
 import { OpenAIClient } from './infrastructure/openai/openai.client';
 import { MetricsModule } from '../common/metrics/metrics.module';
+import { AccountModule } from '../account/account.module';
+import { TransactionModule } from '../transaction/transaction.module';
+import { FinancialSummaryModule } from '../financial-summary/financial-summary.module';
+import { BudgetModule } from '../budget/budget.module';
+import { GetAccountsTool } from './application/tools/impl/get-accounts.tool';
+import { GetTransactionsTool } from './application/tools/impl/get-transactions.tool';
+import { GetFinancialSummaryTool } from './application/tools/impl/get-financial-summary.tool';
+import { GetBudgetsTool } from './application/tools/impl/get-budgets.tool';
 
 @Module({
-  imports: [MetricsModule],
+  imports: [
+    MetricsModule,
+    AccountModule,
+    TransactionModule,
+    FinancialSummaryModule,
+    BudgetModule,
+  ],
   controllers: [AiAgentController],
   providers: [
     AiAgentService,
     AiAgentOrchestratorService,
     AgentToolRegistryService,
     OpenAIClient,
+    GetAccountsTool,
+    GetTransactionsTool,
+    GetFinancialSummaryTool,
+    GetBudgetsTool,
   ],
   exports: [AiAgentService],
 })
