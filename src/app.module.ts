@@ -1,6 +1,7 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
-import { APP_FILTER } from '@nestjs/core';
-import { ConfigModule } from '@nestjs/config';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 import { AuthModule } from './auth/auth.module';
 import { DatabaseModule } from './database/database.module';
@@ -19,6 +20,7 @@ import { MetricsModule } from './common/metrics/metrics.module';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { RequestLoggingMiddleware } from './common/middleware/request-logging.middleware';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { RateLimitGuard } from './common/guards/rate-limit.guard';
 import { validate } from './config/env.validation';
 
 @Module({
@@ -26,6 +28,22 @@ import { validate } from './config/env.validation';
     ConfigModule.forRoot({
       isGlobal: true,
       validate,
+    }),
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => [
+        {
+          name: 'default',
+          ttl: configService.get<number>('THROTTLE_TTL') ?? 60000,
+          limit: configService.get<number>('THROTTLE_LIMIT') ?? 100,
+        },
+        {
+          name: 'auth',
+          ttl: configService.get<number>('THROTTLE_TTL') ?? 60000,
+          limit: configService.get<number>('THROTTLE_AUTH_LIMIT') ?? 10,
+        },
+      ],
     }),
     DatabaseModule,
     UserModule,
@@ -46,6 +64,10 @@ import { validate } from './config/env.validation';
     {
       provide: APP_FILTER,
       useClass: AllExceptionsFilter,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RateLimitGuard,
     },
   ],
 })
