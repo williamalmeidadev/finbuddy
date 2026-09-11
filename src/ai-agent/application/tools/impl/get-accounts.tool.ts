@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { AccountService } from '../../../../account/account.service';
+import { AgentCapability } from '../../authorization/agent-capability.enum';
 import {
   AgentTool,
   AgentToolContext,
   AgentToolResult,
+  AgentToolRiskLevel,
 } from '../agent-tool.interface';
 
 @Injectable()
@@ -11,6 +13,9 @@ export class GetAccountsTool implements AgentTool {
   readonly name = 'get_accounts';
   readonly description =
     "Retrieve the authenticated user's financial accounts and current balances.";
+  readonly capability = AgentCapability.READ_ACCOUNTS;
+  readonly riskLevel = AgentToolRiskLevel.LOW;
+  readonly readOnly = true;
   readonly inputSchema = {
     type: 'object',
     properties: {},

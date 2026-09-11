@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { TransactionService } from '../../../../transaction/transaction.service';
+import { AgentCapability } from '../../authorization/agent-capability.enum';
 import {
   AgentTool,
   AgentToolContext,
   AgentToolResult,
+  AgentToolRiskLevel,
 } from '../agent-tool.interface';
 
 @Injectable()
@@ -11,6 +13,9 @@ export class GetTransactionsTool implements AgentTool {
   readonly name = 'get_transactions';
   readonly description =
     "Retrieve the authenticated user's transaction history using optional filters.";
+  readonly capability = AgentCapability.READ_TRANSACTIONS;
+  readonly riskLevel = AgentToolRiskLevel.LOW;
+  readonly readOnly = true;
   readonly inputSchema = {
     type: 'object',
     properties: {
