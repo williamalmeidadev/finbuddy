@@ -21,6 +21,10 @@ class EnvironmentVariables {
   @IsNotEmpty()
   PORT: number;
 
+  @IsString()
+  @IsOptional()
+  CORS_ORIGIN?: string;
+
   @IsBoolean()
   @IsOptional()
   RECURRING_TRANSACTION_AUTOMATION_ENABLED?: boolean = true;
