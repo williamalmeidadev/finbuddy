@@ -17,6 +17,7 @@ import { RecurringTransactionExecutionModule } from './recurring-transaction-exe
 import { RecurringTransactionAutomationModule } from './recurring-transaction-automation/recurring-transaction-automation.module';
 import { HealthModule } from './health/health.module';
 import { MetricsModule } from './common/metrics/metrics.module';
+import { AiAgentModule } from './ai-agent/ai-agent.module';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { RequestLoggingMiddleware } from './common/middleware/request-logging.middleware';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
@@ -59,6 +60,7 @@ import { validate } from './config/env.validation';
     RecurringTransactionAutomationModule,
     HealthModule,
     MetricsModule,
+    AiAgentModule,
   ],
   providers: [
     {
