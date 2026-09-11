@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { DatabaseService } from '../database/database.service';
 import { TransactionSource, TransactionType } from '../generated/prisma/enums';
@@ -20,6 +21,7 @@ describe('TransferRepository', () => {
     },
     account: {
       update: jest.fn(),
+      updateMany: jest.fn(),
     },
     transaction: {
       createMany: jest.fn(),
@@ -27,6 +29,8 @@ describe('TransferRepository', () => {
   };
 
   beforeEach(async () => {
+    jest.clearAllMocks();
+
     databaseService = {
       $transaction: jest.fn((cb: (tx: typeof mockTx) => Promise<unknown>) =>
         cb(mockTx),
@@ -55,7 +59,7 @@ describe('TransferRepository', () => {
   });
 
   describe('createWithAtomicBalanceUpdate', () => {
-    it('should create transfer, update account balances, and create transaction history entries', async () => {
+    it('should create transfer, atomically decrement source balance, increment dest balance, and create transaction history entries', async () => {
       const data = {
         fromAccountId: 'acc-1',
         toAccountId: 'acc-2',
@@ -65,6 +69,7 @@ describe('TransferRepository', () => {
 
       const createdTransfer = { id: 'transfer-1', ...data };
       mockTx.transfer.create.mockResolvedValue(createdTransfer);
+      mockTx.account.updateMany.mockResolvedValue({ count: 1 });
       mockTx.account.update.mockResolvedValue({});
       mockTx.transaction.createMany.mockResolvedValue({ count: 2 });
 
@@ -75,9 +80,18 @@ describe('TransferRepository', () => {
       );
 
       expect(mockTx.transfer.create).toHaveBeenCalledWith({ data });
-      expect(mockTx.account.update).toHaveBeenCalledWith({
-        where: { id: 'acc-1' },
-        data: { balance: { decrement: 200 } },
+      expect(mockTx.account.updateMany).toHaveBeenCalledWith({
+        where: {
+          id: 'acc-1',
+          balance: {
+            gte: 200,
+          },
+        },
+        data: {
+          balance: {
+            decrement: 200,
+          },
+        },
       });
       expect(mockTx.account.update).toHaveBeenCalledWith({
         where: { id: 'acc-2' },
@@ -106,6 +120,38 @@ describe('TransferRepository', () => {
         ],
       });
       expect(result).toEqual(createdTransfer);
+    });
+
+    it('should throw BadRequestException when source account has insufficient balance (updateMany count === 0)', async () => {
+      const data = {
+        fromAccountId: 'acc-1',
+        toAccountId: 'acc-2',
+        amount: 200,
+        transactionAt: new Date(),
+      };
+
+      const createdTransfer = { id: 'transfer-1', ...data };
+      mockTx.transfer.create.mockResolvedValue(createdTransfer);
+      mockTx.account.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(
+        repository.createWithAtomicBalanceUpdate(
+          data,
+          'Source Checking',
+          'Dest Savings',
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      await expect(
+        repository.createWithAtomicBalanceUpdate(
+          data,
+          'Source Checking',
+          'Dest Savings',
+        ),
+      ).rejects.toThrow('Insufficient balance for transfer');
+
+      expect(mockTx.account.update).not.toHaveBeenCalled();
+      expect(mockTx.transaction.createMany).not.toHaveBeenCalled();
     });
   });
 

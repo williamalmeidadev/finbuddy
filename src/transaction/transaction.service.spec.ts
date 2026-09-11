@@ -165,6 +165,29 @@ describe('TransactionService', () => {
       expect(result.amount).toBe(50);
     });
 
+    it('should propagate BadRequestException when repository throws insufficient balance', async () => {
+      const dto = {
+        accountId: 'acc-1',
+        type: TransactionType.EXPENSE,
+        amount: 50,
+        transactionAt: new Date(),
+      };
+
+      accountRepository.findByIdAndUserId.mockResolvedValue({
+        id: 'acc-1',
+        userId,
+        isActive: true,
+      });
+
+      transactionRepository.createWithBalanceUpdate.mockRejectedValue(
+        new BadRequestException('Insufficient balance'),
+      );
+
+      await expect(service.create(userId, dto)).rejects.toThrow(
+        new BadRequestException('Insufficient balance'),
+      );
+    });
+
     it('should throw NotFoundException if account is not found or not owned by user', async () => {
       accountRepository.findByIdAndUserId.mockResolvedValue(null);
 
@@ -398,6 +421,34 @@ describe('TransactionService', () => {
         service.update('tx-1', userId, { amount: 200 }),
       ).rejects.toThrow(BadRequestException);
     });
+
+    it('should propagate BadRequestException when repository throws insufficient balance during update', async () => {
+      const existing = {
+        id: 'tx-1',
+        accountId: 'acc-1',
+        type: TransactionType.INCOME,
+        amount: { toNumber: () => 100 },
+        transactionAt: new Date(),
+      };
+
+      transactionRepository.findByIdAndUserId.mockResolvedValue(existing);
+      accountRepository.findByIdAndUserId.mockResolvedValue({
+        id: 'acc-1',
+        userId,
+        isActive: true,
+      });
+
+      transactionRepository.updateWithBalanceUpdate.mockRejectedValue(
+        new BadRequestException('Insufficient balance'),
+      );
+
+      await expect(
+        service.update('tx-1', userId, {
+          type: TransactionType.EXPENSE,
+          amount: 50,
+        }),
+      ).rejects.toThrow(new BadRequestException('Insufficient balance'));
+    });
   });
 
   describe('delete', () => {
@@ -430,6 +481,35 @@ describe('TransactionService', () => {
         transactionRepository.deleteWithBalanceUpdate,
       ).toHaveBeenCalledWith('tx-1', userId, -100);
       expect(result.id).toBe('tx-1');
+    });
+
+    it('should propagate BadRequestException when repository throws insufficient balance during delete reversal', async () => {
+      const existing = {
+        id: 'tx-1',
+        accountId: 'acc-1',
+        type: TransactionType.INCOME,
+        amount: { toNumber: () => 100 },
+        description: null,
+        source: TransactionSource.MANUAL,
+        transactionAt: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      transactionRepository.findByIdAndUserId.mockResolvedValue(existing);
+      accountRepository.findByIdAndUserId.mockResolvedValue({
+        id: 'acc-1',
+        userId,
+        isActive: true,
+      });
+
+      transactionRepository.deleteWithBalanceUpdate.mockRejectedValue(
+        new BadRequestException('Insufficient balance'),
+      );
+
+      await expect(service.delete('tx-1', userId)).rejects.toThrow(
+        new BadRequestException('Insufficient balance'),
+      );
     });
 
     it('should throw BadRequestException if deleting transaction for an inactive account', async () => {

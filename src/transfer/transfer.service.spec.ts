@@ -219,6 +219,39 @@ describe('TransferService', () => {
         }),
       ).rejects.toThrow(BadRequestException);
     });
+
+    it('should propagate BadRequestException when repository atomic balance guard fails due to concurrent transfer', async () => {
+      const dto = {
+        fromAccountId: 'acc-1',
+        toAccountId: 'acc-2',
+        amount: 100,
+        transactionAt: new Date(),
+      };
+
+      accountRepository.findByIdAndUserId
+        .mockResolvedValueOnce({
+          id: 'acc-1',
+          userId,
+          balance: { toNumber: () => 1000 },
+          currency: 'BRL',
+          isActive: true,
+        })
+        .mockResolvedValueOnce({
+          id: 'acc-2',
+          userId,
+          balance: { toNumber: () => 500 },
+          currency: 'BRL',
+          isActive: true,
+        });
+
+      transferRepository.createWithAtomicBalanceUpdate.mockRejectedValue(
+        new BadRequestException('Insufficient balance for transfer'),
+      );
+
+      await expect(service.create(userId, dto)).rejects.toThrow(
+        new BadRequestException('Insufficient balance for transfer'),
+      );
+    });
   });
 
   describe('findByUserId', () => {
