@@ -30,6 +30,10 @@ import { TransactionService } from './transaction.service';
 
 @ApiTags('Transactions')
 @ApiBearerAuth('JWT-auth')
+@ApiResponse({
+  status: 429,
+  description: 'Too Many Requests - Rate limit exceeded',
+})
 @UseGuards(JwtAuthGuard)
 @Controller('transactions')
 export class TransactionController {

@@ -24,6 +24,10 @@ import { UserResponseDto } from './dto/user-response.dto';
 import { UserService } from './user.service';
 
 @ApiTags('Users')
+@ApiResponse({
+  status: 429,
+  description: 'Too Many Requests - Rate limit exceeded',
+})
 @Controller('users')
 export class UserController {
   constructor(private readonly userService: UserService) {}
