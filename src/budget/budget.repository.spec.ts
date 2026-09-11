@@ -17,6 +17,7 @@ describe('BudgetRepository', () => {
     },
     transaction: {
       aggregate: jest.fn(),
+      groupBy: jest.fn(),
     },
   };
 
@@ -238,6 +239,102 @@ describe('BudgetRepository', () => {
       );
 
       expect(spent).toBe(0);
+    });
+  });
+
+  describe('calculateSpendingBatch', () => {
+    it('should aggregate EXPENSE non-SYSTEM transactions in batch grouped by categoryId', async () => {
+      const budgets = [
+        {
+          categoryId: 'cat-1',
+          month: new Date('2026-09-01T00:00:00.000Z'),
+        },
+        {
+          categoryId: 'cat-2',
+          month: new Date('2026-09-01T00:00:00.000Z'),
+        },
+      ];
+
+      prismaMock.transaction.groupBy.mockResolvedValue([
+        { categoryId: 'cat-1', _sum: { amount: { toNumber: () => 450 } } },
+        { categoryId: 'cat-2', _sum: { amount: 150 } },
+      ]);
+
+      const spending = await repository.calculateSpendingBatch(
+        'user-1',
+        budgets,
+      );
+
+      expect(prismaMock.transaction.groupBy).toHaveBeenCalledTimes(1);
+      expect(prismaMock.transaction.groupBy).toHaveBeenCalledWith({
+        by: ['categoryId'],
+        _sum: { amount: true },
+        where: {
+          account: { userId: 'user-1' },
+          categoryId: { in: ['cat-1', 'cat-2'] },
+          type: TransactionType.EXPENSE,
+          source: { not: TransactionSource.SYSTEM },
+          transactionAt: {
+            gte: new Date('2026-09-01T00:00:00.000Z'),
+            lt: new Date('2026-10-01T00:00:00.000Z'),
+          },
+        },
+      });
+
+      expect(spending.get('cat-1:2026-09-01T00:00:00.000Z')).toBe(450);
+      expect(spending.get('cat-2:2026-09-01T00:00:00.000Z')).toBe(150);
+    });
+
+    it('should return empty map without querying if budgets is empty', async () => {
+      const spending = await repository.calculateSpendingBatch('user-1', []);
+      expect(spending.size).toBe(0);
+      expect(prismaMock.transaction.groupBy).not.toHaveBeenCalled();
+    });
+
+    it('should group budgets across multiple months into separate groupBy queries', async () => {
+      const budgets = [
+        {
+          categoryId: 'cat-1',
+          month: new Date('2026-09-01T00:00:00.000Z'),
+        },
+        {
+          categoryId: 'cat-2',
+          month: new Date('2026-10-01T00:00:00.000Z'),
+        },
+      ];
+
+      prismaMock.transaction.groupBy
+        .mockResolvedValueOnce([{ categoryId: 'cat-1', _sum: { amount: 200 } }])
+        .mockResolvedValueOnce([
+          { categoryId: 'cat-2', _sum: { amount: 300 } },
+        ]);
+
+      const spending = await repository.calculateSpendingBatch(
+        'user-1',
+        budgets,
+      );
+
+      expect(prismaMock.transaction.groupBy).toHaveBeenCalledTimes(2);
+      expect(spending.get('cat-1:2026-09-01T00:00:00.000Z')).toBe(200);
+      expect(spending.get('cat-2:2026-10-01T00:00:00.000Z')).toBe(300);
+    });
+
+    it('should default to 0 for categories with no transactions in groupBy result', async () => {
+      const budgets = [
+        {
+          categoryId: 'cat-1',
+          month: new Date('2026-09-01T00:00:00.000Z'),
+        },
+      ];
+
+      prismaMock.transaction.groupBy.mockResolvedValue([]);
+
+      const spending = await repository.calculateSpendingBatch(
+        'user-1',
+        budgets,
+      );
+
+      expect(spending.get('cat-1:2026-09-01T00:00:00.000Z')).toBe(0);
     });
   });
 });

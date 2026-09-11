@@ -70,13 +70,20 @@ describe('FinancialSummaryRepository', () => {
   });
 
   describe('getMonthlyTotals', () => {
-    it('should calculate income and expenses excluding transfers', async () => {
+    it('should calculate income and expenses with single groupBy excluding transfers', async () => {
       const monthStart = new Date('2026-09-01T00:00:00.000Z');
       const nextMonthStart = new Date('2026-10-01T00:00:00.000Z');
 
-      prismaMock.transaction.aggregate
-        .mockResolvedValueOnce({ _sum: { amount: { toNumber: () => 5000 } } })
-        .mockResolvedValueOnce({ _sum: { amount: { toNumber: () => 3200 } } });
+      prismaMock.transaction.groupBy.mockResolvedValue([
+        {
+          type: TransactionType.INCOME,
+          _sum: { amount: { toNumber: () => 5000 } },
+        },
+        {
+          type: TransactionType.EXPENSE,
+          _sum: { amount: { toNumber: () => 3200 } },
+        },
+      ]);
 
       const result = await repository.getMonthlyTotals(
         'user-1',
@@ -84,12 +91,12 @@ describe('FinancialSummaryRepository', () => {
         nextMonthStart,
       );
 
-      expect(prismaMock.transaction.aggregate).toHaveBeenCalledTimes(2);
-      expect(prismaMock.transaction.aggregate).toHaveBeenNthCalledWith(1, {
+      expect(prismaMock.transaction.groupBy).toHaveBeenCalledTimes(1);
+      expect(prismaMock.transaction.groupBy).toHaveBeenCalledWith({
+        by: ['type'],
         _sum: { amount: true },
         where: {
           account: { userId: 'user-1' },
-          type: TransactionType.INCOME,
           transferId: null,
           transactionAt: {
             gte: monthStart,
@@ -105,9 +112,25 @@ describe('FinancialSummaryRepository', () => {
       const monthStart = new Date('2026-09-01T00:00:00.000Z');
       const nextMonthStart = new Date('2026-10-01T00:00:00.000Z');
 
-      prismaMock.transaction.aggregate
-        .mockResolvedValueOnce({ _sum: { amount: null } })
-        .mockResolvedValueOnce({ _sum: { amount: null } });
+      prismaMock.transaction.groupBy.mockResolvedValue([
+        { type: TransactionType.INCOME, _sum: { amount: null } },
+        { type: TransactionType.EXPENSE, _sum: { amount: null } },
+      ]);
+
+      const result = await repository.getMonthlyTotals(
+        'user-1',
+        monthStart,
+        nextMonthStart,
+      );
+
+      expect(result).toEqual({ income: 0, expenses: 0 });
+    });
+
+    it('should return 0 when grouped result is empty', async () => {
+      const monthStart = new Date('2026-09-01T00:00:00.000Z');
+      const nextMonthStart = new Date('2026-10-01T00:00:00.000Z');
+
+      prismaMock.transaction.groupBy.mockResolvedValue([]);
 
       const result = await repository.getMonthlyTotals(
         'user-1',
