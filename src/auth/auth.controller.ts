@@ -13,6 +13,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
@@ -33,6 +34,7 @@ export class AuthController {
     description: 'User successfully authenticated and JWT tokens issued',
   })
   @ApiResponse({ status: 401, description: 'Invalid email or password' })
+  @Throttle({ auth: { ttl: 60000, limit: 10 } })
   @Post('login')
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto.email, dto.password);
@@ -44,6 +46,7 @@ export class AuthController {
     description: 'New access token and rotated refresh token issued',
   })
   @ApiResponse({ status: 401, description: 'Invalid or revoked refresh token' })
+  @Throttle({ auth: { ttl: 60000, limit: 10 } })
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   refresh(@Body() dto: RefreshDto) {
