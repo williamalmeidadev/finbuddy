@@ -1,9 +1,9 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "ignoreDeprecations": "6.0",
     "outDir": "./dist",
     "rootDir": "./",
-    "ignoreDeprecations": "6.0",
     "types": ["jest", "node"]
   },
   "include": ["src/**/*", "test/**/*"]
