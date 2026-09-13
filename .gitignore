@@ -5,7 +5,9 @@ dist
 /apps/*/dist
 /apps/*/.next
 /apps/*/src/generated
+node_modules
 /node_modules
+apps/*/node_modules
 /build
 
 # Logs
