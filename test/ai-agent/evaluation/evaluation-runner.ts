@@ -20,6 +20,9 @@ import { GetFinancialSummaryTool } from '../../../src/ai-agent/application/tools
 import { GetBudgetsTool } from '../../../src/ai-agent/application/tools/impl/get-budgets.tool';
 import { CreateTransactionTool } from '../../../src/ai-agent/application/tools/impl/create-transaction.tool';
 import { AgentResponse } from '../../../src/ai-agent/domain/agent-response';
+import { AiAgentService } from '../../../src/ai-agent/ai-agent.service';
+import { AiConversationService } from '../../../src/ai-agent/application/ai-conversation.service';
+import { AiConversationRepository } from '../../../src/ai-agent/infrastructure/repositories/ai-conversation.repository';
 
 import {
   AgentEvaluationScenario,
@@ -170,6 +173,9 @@ export class AgentEvaluationRunner {
         ),
     };
 
+    const conversationsMap = new Map<string, any>();
+    const messagesMap = new Map<string, any[]>();
+
     const mockDatabaseService = {
       aiConfirmation: {
         create: jest.fn().mockImplementation(({ data }: any) => {
@@ -221,6 +227,89 @@ export class AgentEvaluationRunner {
           return Promise.resolve(rec);
         }),
       },
+      aiConversation: {
+        create: jest.fn().mockImplementation(({ data }: any) => {
+          const id = `conv-eval-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+          const record = {
+            id,
+            userId: data.userId,
+            title: data.title,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
+          conversationsMap.set(id, record);
+          messagesMap.set(id, []);
+          return Promise.resolve(record);
+        }),
+        findFirst: jest.fn().mockImplementation(({ where }: any) => {
+          for (const conv of conversationsMap.values()) {
+            if (
+              conv.id === where.id &&
+              (!where.userId || conv.userId === where.userId)
+            ) {
+              return Promise.resolve(conv);
+            }
+          }
+          return Promise.resolve(null);
+        }),
+        findMany: jest.fn().mockImplementation(({ where }: any) => {
+          const list = Array.from(conversationsMap.values()).filter(
+            (c) => !where?.userId || c.userId === where.userId,
+          );
+          return Promise.resolve(list);
+        }),
+        count: jest.fn().mockImplementation(({ where }: any) => {
+          const list = Array.from(conversationsMap.values()).filter(
+            (c) => !where?.userId || c.userId === where.userId,
+          );
+          return Promise.resolve(list.length);
+        }),
+        update: jest.fn().mockImplementation(({ where, data }: any) => {
+          const conv = conversationsMap.get(where.id);
+          if (conv) {
+            if (data.updatedAt) conv.updatedAt = data.updatedAt;
+          }
+          return Promise.resolve(conv);
+        }),
+        delete: jest.fn().mockImplementation(({ where }: any) => {
+          conversationsMap.delete(where.id);
+          messagesMap.delete(where.id);
+          return Promise.resolve({ id: where.id });
+        }),
+      },
+      aiConversationMessage: {
+        create: jest.fn().mockImplementation(({ data }: any) => {
+          const id = `msg-eval-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+          const record = {
+            id,
+            conversationId: data.conversationId,
+            role: data.role,
+            content: data.content,
+            sequenceNumber: data.sequenceNumber,
+            createdAt: new Date(),
+          };
+          const msgs = messagesMap.get(data.conversationId) || [];
+          msgs.push(record);
+          messagesMap.set(data.conversationId, msgs);
+          return Promise.resolve(record);
+        }),
+        findMany: jest.fn().mockImplementation(({ where }: any) => {
+          const msgs = messagesMap.get(where.conversationId) || [];
+          return Promise.resolve([...msgs]);
+        }),
+        findFirst: jest.fn().mockImplementation(({ where }: any) => {
+          const msgs = messagesMap.get(where.conversationId) || [];
+          if (msgs.length === 0) return Promise.resolve(null);
+          return Promise.resolve(msgs[msgs.length - 1]);
+        }),
+        count: jest.fn().mockImplementation(({ where }: any) => {
+          const msgs = messagesMap.get(where.conversationId) || [];
+          return Promise.resolve(msgs.length);
+        }),
+      },
+      $transaction: jest
+        .fn()
+        .mockImplementation((promises: any[]) => Promise.all(promises)),
     };
 
     const mockMetricsService = {
@@ -251,12 +340,15 @@ export class AgentEvaluationRunner {
 
     const moduleRef: TestingModule = await Test.createTestingModule({
       providers: [
+        AiAgentService,
         AiAgentOrchestratorService,
         AiAgentObservabilityService,
         AgentToolRegistryService,
         AgentToolAuthorizationService,
         AgentToolArgumentValidatorService,
         AiConfirmationService,
+        AiConversationRepository,
+        AiConversationService,
         GetAccountsTool,
         GetTransactionsTool,
         GetFinancialSummaryTool,
@@ -304,16 +396,14 @@ export class AgentEvaluationRunner {
       return await originalRecordEvent(event);
     };
 
-    const orchestrator = moduleRef.get<AiAgentOrchestratorService>(
-      AiAgentOrchestratorService,
-    );
+    const agentService = moduleRef.get<AiAgentService>(AiAgentService);
 
     let finalResponse: string | undefined = undefined;
     let agentResponseObj: AgentResponse | undefined = undefined;
     let caughtError: unknown = undefined;
 
     try {
-      agentResponseObj = await orchestrator.processUserMessage(
+      agentResponseObj = await agentService.sendMessage(
         scenario.authenticatedUserId,
         scenario.userMessage,
       );

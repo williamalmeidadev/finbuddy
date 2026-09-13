@@ -45,6 +45,7 @@ model User {
   recurringTransactions RecurringTransaction[]
   aiConfirmations       AiConfirmation[]
   aiAuditEvents         AiAuditEvent[]
+  aiConversations       AiConversation[]
 
   @@map("users")
 }
@@ -308,5 +309,41 @@ model AiAuditEvent {
   @@index([confirmationId])
   @@index([createdAt])
   @@map("ai_audit_events")
+}
+
+enum ConversationMessageRole {
+  USER
+  ASSISTANT
+}
+
+model AiConversation {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  title     String?  @db.VarChar(200)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  user     User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages AiConversationMessage[]
+
+  @@index([userId])
+  @@index([userId, updatedAt(sort: Desc)])
+  @@map("ai_conversations")
+}
+
+model AiConversationMessage {
+  id             String                  @id @default(uuid()) @db.Uuid
+  conversationId String                  @map("conversation_id") @db.Uuid
+  role           ConversationMessageRole
+  content        String                  @db.VarChar(4000)
+  sequenceNumber Int                     @map("sequence_number")
+  createdAt      DateTime                @default(now()) @map("created_at") @db.Timestamptz
+
+  conversation AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([conversationId, sequenceNumber])
+  @@index([conversationId, createdAt])
+  @@map("ai_conversation_messages")
 }
 

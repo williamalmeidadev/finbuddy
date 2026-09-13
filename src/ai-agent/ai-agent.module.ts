@@ -18,6 +18,8 @@ import { GetFinancialSummaryTool } from './application/tools/impl/get-financial-
 import { GetBudgetsTool } from './application/tools/impl/get-budgets.tool';
 import { CreateTransactionTool } from './application/tools/impl/create-transaction.tool';
 import { AiAgentObservabilityService } from './application/observability/ai-agent-observability.service';
+import { AiConversationRepository } from './infrastructure/repositories/ai-conversation.repository';
+import { AiConversationService } from './application/ai-conversation.service';
 
 @Module({
   imports: [
@@ -36,6 +38,8 @@ import { AiAgentObservabilityService } from './application/observability/ai-agen
     AgentToolArgumentValidatorService,
     AiConfirmationService,
     AiAgentObservabilityService,
+    AiConversationRepository,
+    AiConversationService,
     OpenAIClient,
     GetAccountsTool,
     GetTransactionsTool,
@@ -43,6 +47,11 @@ import { AiAgentObservabilityService } from './application/observability/ai-agen
     GetBudgetsTool,
     CreateTransactionTool,
   ],
-  exports: [AiAgentService, AiConfirmationService, AiAgentObservabilityService],
+  exports: [
+    AiAgentService,
+    AiConfirmationService,
+    AiAgentObservabilityService,
+    AiConversationService,
+  ],
 })
 export class AiAgentModule {}

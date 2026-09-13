@@ -8,6 +8,8 @@ import { MetricsService } from '../common/metrics/metrics.service';
 import { AiAgentObservabilityService } from './application/observability/ai-agent-observability.service';
 import { AgentResponse } from './domain/agent-response';
 
+import { AiConversationService } from './application/ai-conversation.service';
+
 describe('AiAgentService', () => {
   let service: AiAgentService;
   let mockOrchestrator: {
@@ -29,6 +31,15 @@ describe('AiAgentService', () => {
   let mockObservability: {
     recordEvent: jest.Mock;
   };
+  let mockConversationService: {
+    createConversation: jest.Mock;
+    getConversation: jest.Mock;
+    getUserConversations: jest.Mock;
+    getConversationMessages: jest.Mock;
+    getRecentHistory: jest.Mock;
+    appendMessage: jest.Mock;
+    deleteConversation: jest.Mock;
+  };
 
   beforeEach(async () => {
     mockOrchestrator = {
@@ -49,6 +60,19 @@ describe('AiAgentService', () => {
     };
     mockObservability = {
       recordEvent: jest.fn().mockResolvedValue(undefined),
+    };
+    mockConversationService = {
+      createConversation: jest
+        .fn()
+        .mockResolvedValue({ id: 'c-1', userId: 'user-1' }),
+      getConversation: jest
+        .fn()
+        .mockResolvedValue({ id: 'c-1', userId: 'user-1' }),
+      getUserConversations: jest.fn(),
+      getConversationMessages: jest.fn(),
+      getRecentHistory: jest.fn().mockResolvedValue([]),
+      appendMessage: jest.fn().mockResolvedValue({ id: 'm-1' }),
+      deleteConversation: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -78,6 +102,10 @@ describe('AiAgentService', () => {
           provide: AiAgentObservabilityService,
           useValue: mockObservability,
         },
+        {
+          provide: AiConversationService,
+          useValue: mockConversationService,
+        },
       ],
     }).compile();
 
@@ -106,9 +134,10 @@ describe('AiAgentService', () => {
       expect(mockOrchestrator.processUserMessage).toHaveBeenCalledWith(
         'user-1',
         'How much did I spend?',
-        { requestId: 'req-1', aiRequestId: 'ai-req-1' },
+        { requestId: 'req-1', aiRequestId: 'ai-req-1', history: [] },
       );
-      expect(result).toBe(mockResponse);
+      expect(result.message).toBe('Financial advice response');
+      expect(result.conversationId).toBe('c-1');
     });
 
     it('should rethrow error when orchestrator fails', async () => {

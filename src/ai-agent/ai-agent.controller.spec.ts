@@ -12,6 +12,11 @@ describe('AiAgentController', () => {
     sendMessage: jest.Mock;
     confirmAction: jest.Mock;
     cancelAction: jest.Mock;
+    createConversation: jest.Mock;
+    getConversation: jest.Mock;
+    getUserConversations: jest.Mock;
+    getConversationMessages: jest.Mock;
+    deleteConversation: jest.Mock;
   };
 
   const mockUser: AuthenticatedUserDto = {
@@ -24,6 +29,11 @@ describe('AiAgentController', () => {
       sendMessage: jest.fn(),
       confirmAction: jest.fn(),
       cancelAction: jest.fn(),
+      createConversation: jest.fn(),
+      getConversation: jest.fn(),
+      getUserConversations: jest.fn(),
+      getConversationMessages: jest.fn(),
+      deleteConversation: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -129,6 +139,101 @@ describe('AiAgentController', () => {
         { requestId: undefined, aiRequestId: undefined },
       );
       expect(result).toBe(mockCancelResult);
+    });
+  });
+
+  describe('conversation endpoints', () => {
+    it('should create conversation', async () => {
+      const mockConv = { id: 'c-1', userId: mockUser.id, title: 'Budget Plan' };
+      aiAgentService.createConversation.mockResolvedValue(mockConv);
+
+      const res = await controller.createConversation(
+        mockUser,
+        { title: 'Budget Plan' },
+        undefined,
+      );
+      expect(res).toBe(mockConv);
+      expect(aiAgentService.createConversation).toHaveBeenCalledWith(
+        mockUser.id,
+        'Budget Plan',
+        { requestId: undefined, aiRequestId: undefined },
+      );
+    });
+
+    it('should list user conversations', async () => {
+      const mockResult = {
+        items: [],
+        total: 0,
+        page: 1,
+        limit: 10,
+        totalPages: 1,
+      };
+      aiAgentService.getUserConversations.mockResolvedValue(mockResult);
+
+      const res = await controller.listConversations(mockUser, {
+        page: 1,
+        limit: 10,
+      });
+      expect(res).toBe(mockResult);
+      expect(aiAgentService.getUserConversations).toHaveBeenCalledWith(
+        mockUser.id,
+        1,
+        10,
+      );
+    });
+
+    it('should get conversation metadata', async () => {
+      const mockConv = { id: 'c-1', userId: mockUser.id };
+      aiAgentService.getConversation.mockResolvedValue(mockConv);
+
+      const res = await controller.getConversation(mockUser, 'c-1');
+      expect(res).toBe(mockConv);
+      expect(aiAgentService.getConversation).toHaveBeenCalledWith(
+        'c-1',
+        mockUser.id,
+      );
+    });
+
+    it('should list conversation messages', async () => {
+      const mockResult = {
+        items: [],
+        total: 0,
+        page: 1,
+        limit: 20,
+        totalPages: 1,
+      };
+      aiAgentService.getConversationMessages.mockResolvedValue(mockResult);
+
+      const res = await controller.listMessages(mockUser, 'c-1', {
+        page: 1,
+        limit: 20,
+      });
+      expect(res).toBe(mockResult);
+      expect(aiAgentService.getConversationMessages).toHaveBeenCalledWith(
+        'c-1',
+        mockUser.id,
+        1,
+        20,
+      );
+    });
+
+    it('should delete conversation', async () => {
+      aiAgentService.deleteConversation.mockResolvedValue(true);
+
+      const res = await controller.deleteConversation(
+        mockUser,
+        'c-1',
+        undefined,
+      );
+      expect(res).toEqual({
+        success: true,
+        message: 'Conversation deleted successfully',
+      });
+      expect(aiAgentService.deleteConversation).toHaveBeenCalledWith(
+        'c-1',
+        mockUser.id,
+        { requestId: undefined, aiRequestId: undefined },
+      );
     });
   });
 });

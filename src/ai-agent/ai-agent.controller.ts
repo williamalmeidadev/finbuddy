@@ -1,11 +1,14 @@
 import {
   Body,
   Controller,
+  Delete,
+  Get,
   HttpCode,
   HttpStatus,
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -22,6 +25,14 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthenticatedUserDto } from '../auth/dto/authenticated-user.dto';
 import { SendAgentMessageDto } from './dto/send-agent-message.dto';
 import { AgentResponseDto } from './dto/agent-response.dto';
+import {
+  CreateConversationDto,
+  ListConversationsQueryDto,
+  ListMessagesQueryDto,
+  ConversationResponseDto,
+  PaginatedConversationsResponseDto,
+  PaginatedMessagesResponseDto,
+} from './dto/conversation.dtos';
 import {
   AiAgentService,
   ConfirmationExecutionResult,
@@ -75,16 +86,127 @@ export class AiAgentController {
     @Req() req: Request,
   ): Promise<AgentResponseDto> {
     const options = this.getCorrelationOptions(req);
-    const result = await this.aiAgentService.sendMessage(
-      user.id,
-      dto.message,
-      options,
-    );
+    const result = await this.aiAgentService.sendMessage(user.id, dto.message, {
+      ...options,
+      conversationId: dto.conversationId,
+    });
     return new AgentResponseDto(
       result.message,
       result.type,
       result.confirmation,
+      result.conversationId,
     );
+  }
+
+  @ApiOperation({ summary: 'Create a new AI conversation session' })
+  @ApiResponse({
+    status: 201,
+    description: 'Conversation created successfully',
+    type: ConversationResponseDto,
+  })
+  @Post('conversations')
+  @HttpCode(HttpStatus.CREATED)
+  async createConversation(
+    @CurrentUser() user: AuthenticatedUserDto,
+    @Body() dto: CreateConversationDto,
+    @Req() req: Request,
+  ): Promise<ConversationResponseDto> {
+    const options = this.getCorrelationOptions(req);
+    return this.aiAgentService.createConversation(user.id, dto.title, options);
+  }
+
+  @ApiOperation({ summary: 'List paginated AI conversations for current user' })
+  @ApiResponse({
+    status: 200,
+    description: 'Paginated conversations list',
+    type: PaginatedConversationsResponseDto,
+  })
+  @Get('conversations')
+  async listConversations(
+    @CurrentUser() user: AuthenticatedUserDto,
+    @Query() query: ListConversationsQueryDto,
+  ): Promise<PaginatedConversationsResponseDto> {
+    return this.aiAgentService.getUserConversations(
+      user.id,
+      query.page,
+      query.limit,
+    );
+  }
+
+  @ApiOperation({ summary: 'Get single conversation metadata' })
+  @ApiParam({
+    name: 'conversationId',
+    description: 'UUID of the conversation',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Conversation details',
+    type: ConversationResponseDto,
+  })
+  @ApiResponse({ status: 404, description: 'Conversation not found' })
+  @Get('conversations/:conversationId')
+  async getConversation(
+    @CurrentUser() user: AuthenticatedUserDto,
+    @Param('conversationId', ParseUUIDPipe) conversationId: string,
+  ): Promise<ConversationResponseDto> {
+    return this.aiAgentService.getConversation(conversationId, user.id);
+  }
+
+  @ApiOperation({ summary: 'List paginated messages in a conversation' })
+  @ApiParam({
+    name: 'conversationId',
+    description: 'UUID of the conversation',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Paginated messages list',
+    type: PaginatedMessagesResponseDto,
+  })
+  @ApiResponse({ status: 404, description: 'Conversation not found' })
+  @Get('conversations/:conversationId/messages')
+  async listMessages(
+    @CurrentUser() user: AuthenticatedUserDto,
+    @Param('conversationId', ParseUUIDPipe) conversationId: string,
+    @Query() query: ListMessagesQueryDto,
+  ): Promise<PaginatedMessagesResponseDto> {
+    return this.aiAgentService.getConversationMessages(
+      conversationId,
+      user.id,
+      query.page,
+      query.limit,
+    );
+  }
+
+  @ApiOperation({ summary: 'Delete a conversation and its message history' })
+  @ApiParam({
+    name: 'conversationId',
+    description: 'UUID of the conversation',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Conversation deleted successfully',
+  })
+  @ApiResponse({ status: 404, description: 'Conversation not found' })
+  @Delete('conversations/:conversationId')
+  @HttpCode(HttpStatus.OK)
+  async deleteConversation(
+    @CurrentUser() user: AuthenticatedUserDto,
+    @Param('conversationId', ParseUUIDPipe) conversationId: string,
+    @Req() req: Request,
+  ): Promise<{ success: boolean; message: string }> {
+    const options = this.getCorrelationOptions(req);
+    await this.aiAgentService.deleteConversation(
+      conversationId,
+      user.id,
+      options,
+    );
+    return {
+      success: true,
+      message: 'Conversation deleted successfully',
+    };
   }
 
   @ApiOperation({
