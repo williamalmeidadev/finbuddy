@@ -65,11 +65,12 @@ function SheetOverlay({
 function Sheet({
   className,
   children,
+  side = "right",
+  showCloseButton = true,
   open,
   isOpen,
   onOpenChange,
-  side = "right",
-  showCloseButton = true,
+  title,
   ...props
 }: Omit<ModalOverlayPrimitiveProps, "className" | "children"> &
   Pick<React.ComponentProps<typeof ModalPrimitive>, "isDismissable"> & {
@@ -82,9 +83,12 @@ function Sheet({
     onOpenChange?: (open: boolean) => void
     title?: string
   }) {
-  const activeOpen = isOpen ?? open;
   return (
-    <SheetOverlay isOpen={activeOpen} onOpenChange={onOpenChange} {...props}>
+    <SheetOverlay
+      isOpen={isOpen ?? open}
+      onOpenChange={onOpenChange}
+      {...props}
+    >
       <ModalPrimitive
         data-slot="sheet-content"
         data-side={side}

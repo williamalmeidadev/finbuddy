@@ -1,19 +1,31 @@
 FROM node:22-alpine AS builder
 WORKDIR /app
+
 COPY package*.json ./
+COPY apps/api/package*.json ./apps/api/
+COPY apps/web/package*.json ./apps/web/
+
 RUN npm ci
+
 COPY . .
-RUN npx prisma generate
-RUN npm run build
+
+RUN npm run prisma:generate
+RUN npm run build:api
 
 FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+
 COPY package*.json ./
-RUN npm ci --only=production
-COPY --from=builder --chown=node:node /app/dist ./dist
-COPY --from=builder --chown=node:node /app/prisma ./prisma
-COPY --from=builder --chown=node:node /app/src/generated ./src/generated
+COPY apps/api/package*.json ./apps/api/
+COPY apps/web/package*.json ./apps/web/
+
+RUN npm ci --omit=dev
+
+COPY --from=builder --chown=node:node /app/apps/api/dist ./apps/api/dist
+COPY --from=builder --chown=node:node /app/apps/api/prisma ./apps/api/prisma
+COPY --from=builder --chown=node:node /app/node_modules ./node_modules
+
 USER node
 EXPOSE 3000
-CMD ["node", "dist/main.js"]
+CMD ["node", "apps/api/dist/main"]
