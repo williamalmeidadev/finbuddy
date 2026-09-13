@@ -1,29 +1,36 @@
-# compiled output
-/dist
+# Compiled & Build Output
 dist
+/dist
+**/dist
 .next
-/apps/*/dist
-/apps/*/.next
+/.next
+**/.next
+build
+/build
+**/build
+*.tsbuildinfo
 /apps/*/src/generated
+/generated/prisma
+/src/generated
+
+# Dependencies
 node_modules
 /node_modules
-apps/*/node_modules
-/build
+**/node_modules
 
-# Logs
-logs
-*.log
-npm-debug.log*
-pnpm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-lerna-debug.log*
+# Environment & Secret Files
+.env
+.env.*
+!.env.example
+*.env
+**/.env
+**/.env.*
+!**/.env.example
 
-# OS
-.DS_Store
-
-# Tests
+# Test Artifacts & Reports
+coverage
 /coverage
+**/coverage
 /.nyc_output
 test-results
 **/test-results
@@ -34,41 +41,32 @@ playwright-report
 blob-report
 **/blob-report
 
-# IDEs and editors
-/.idea
-.project
-.classpath
-.c9/
-*.launch
-.settings/
-*.sublime-workspace
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
 
-# IDE - VSCode
+# System & OS Files
+.DS_Store
+Thumbs.db
+
+# IDEs & Editors
+.idea
+/.idea
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+*.sublime-workspace
 
-# dotenv environment variable files
-.env
-.env.development.local
-.env.test.local
-.env.production.local
-.env.local
-/apps/*/.env
-/apps/*/.env.local
-./api/.env
-
-# Runtime data
+# Runtime & Process Data
 pids
 *.pid
 *.seed
 *.pid.lock
-
-# Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
-
-/generated/prisma
-/src/generated
-*.tsbuildinfo
