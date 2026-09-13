@@ -9,6 +9,7 @@ import { AiAgentObservabilityService } from './application/observability/ai-agen
 import { AgentResponse } from './domain/agent-response';
 
 import { AiConversationService } from './application/ai-conversation.service';
+import { AiMemoryService } from './application/memory/ai-memory.service';
 
 describe('AiAgentService', () => {
   let service: AiAgentService;
@@ -39,6 +40,15 @@ describe('AiAgentService', () => {
     getRecentHistory: jest.Mock;
     appendMessage: jest.Mock;
     deleteConversation: jest.Mock;
+  };
+  let mockMemoryService: {
+    getUserMemories: jest.Mock;
+    formatMemoriesForModelContext: jest.Mock;
+    saveMemory: jest.Mock;
+    getMemoryById: jest.Mock;
+    updateMemoryValue: jest.Mock;
+    deleteMemory: jest.Mock;
+    deleteAllMemoriesForUser: jest.Mock;
   };
 
   beforeEach(async () => {
@@ -74,6 +84,15 @@ describe('AiAgentService', () => {
       appendMessage: jest.fn().mockResolvedValue({ id: 'm-1' }),
       deleteConversation: jest.fn(),
     };
+    mockMemoryService = {
+      getUserMemories: jest.fn().mockResolvedValue([]),
+      formatMemoriesForModelContext: jest.fn().mockReturnValue(null),
+      saveMemory: jest.fn(),
+      getMemoryById: jest.fn(),
+      updateMemoryValue: jest.fn(),
+      deleteMemory: jest.fn(),
+      deleteAllMemoriesForUser: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -105,6 +124,10 @@ describe('AiAgentService', () => {
         {
           provide: AiConversationService,
           useValue: mockConversationService,
+        },
+        {
+          provide: AiMemoryService,
+          useValue: mockMemoryService,
         },
       ],
     }).compile();

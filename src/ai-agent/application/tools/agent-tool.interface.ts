@@ -27,6 +27,7 @@ export interface AgentTool {
   readonly capability: AgentCapability;
   readonly riskLevel: AgentToolRiskLevel;
   readonly readOnly: boolean;
+  readonly requiresConfirmation?: boolean;
 
   execute(context: AgentToolContext, input: unknown): Promise<AgentToolResult>;
 }

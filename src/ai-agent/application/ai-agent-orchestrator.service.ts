@@ -27,6 +27,7 @@ export interface ProcessUserMessageOptions {
   requestId?: string;
   aiRequestId?: string;
   history?: Array<{ role: 'USER' | 'ASSISTANT'; content: string }>;
+  memoryContext?: string;
 }
 
 @Injectable()
@@ -67,14 +68,24 @@ export class AiAgentOrchestratorService {
     let iterations = 0;
     let totalToolCalls = 0;
     let currentInput: string | any[] = userMessage;
-    if (options?.history && options.history.length > 0) {
-      currentInput = [
-        ...options.history.map((h) => ({
+
+    const historyItems = options?.history
+      ? options.history.map((h) => ({
           role: h.role.toLowerCase(),
           content: h.content,
-        })),
-        { role: 'user', content: userMessage },
-      ];
+        }))
+      : [];
+
+    if (options?.memoryContext || historyItems.length > 0) {
+      const items: any[] = [];
+      if (options?.memoryContext) {
+        items.push({ role: 'user', content: options.memoryContext });
+      }
+      if (historyItems.length > 0) {
+        items.push(...historyItems);
+      }
+      items.push({ role: 'user', content: userMessage });
+      currentInput = items;
     }
     let previousResponseId: string | undefined = undefined;
 
@@ -232,7 +243,10 @@ export class AiAgentOrchestratorService {
                   reasonCode: authDecision.reason,
                 },
               });
-            } else if (!tool.readOnly) {
+            } else if (
+              !tool.readOnly &&
+              (tool.requiresConfirmation ?? tool.name === 'create_transaction')
+            ) {
               // 3. Write tool detected: create confirmation & halt tool execution loop
               const confirmation =
                 await this.confirmationService.createConfirmation(

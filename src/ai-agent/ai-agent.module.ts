@@ -6,6 +6,7 @@ import { AgentToolRegistryService } from './application/tools/agent-tool-registr
 import { AgentToolAuthorizationService } from './application/authorization/agent-tool-authorization.service';
 import { AgentToolArgumentValidatorService } from './application/validation/agent-tool-argument-validator.service';
 import { AiConfirmationService } from './application/ai-confirmation.service';
+import { AiAgentObservabilityService } from './application/observability/ai-agent-observability.service';
 import { OpenAIClient } from './infrastructure/openai/openai.client';
 import { MetricsModule } from '../common/metrics/metrics.module';
 import { AccountModule } from '../account/account.module';
@@ -17,9 +18,12 @@ import { GetTransactionsTool } from './application/tools/impl/get-transactions.t
 import { GetFinancialSummaryTool } from './application/tools/impl/get-financial-summary.tool';
 import { GetBudgetsTool } from './application/tools/impl/get-budgets.tool';
 import { CreateTransactionTool } from './application/tools/impl/create-transaction.tool';
-import { AiAgentObservabilityService } from './application/observability/ai-agent-observability.service';
 import { AiConversationRepository } from './infrastructure/repositories/ai-conversation.repository';
 import { AiConversationService } from './application/ai-conversation.service';
+import { AiMemoryRepository } from './infrastructure/repositories/ai-memory.repository';
+import { AiMemoryPolicyService } from './application/memory/ai-memory-policy.service';
+import { AiMemoryService } from './application/memory/ai-memory.service';
+import { SaveMemoryTool } from './application/tools/impl/save-memory.tool';
 
 @Module({
   imports: [
@@ -40,18 +44,23 @@ import { AiConversationService } from './application/ai-conversation.service';
     AiAgentObservabilityService,
     AiConversationRepository,
     AiConversationService,
+    AiMemoryRepository,
+    AiMemoryPolicyService,
+    AiMemoryService,
     OpenAIClient,
     GetAccountsTool,
     GetTransactionsTool,
     GetFinancialSummaryTool,
     GetBudgetsTool,
     CreateTransactionTool,
+    SaveMemoryTool,
   ],
   exports: [
     AiAgentService,
     AiConfirmationService,
     AiAgentObservabilityService,
     AiConversationService,
+    AiMemoryService,
   ],
 })
 export class AiAgentModule {}

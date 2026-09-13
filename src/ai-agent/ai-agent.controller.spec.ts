@@ -17,6 +17,12 @@ describe('AiAgentController', () => {
     getUserConversations: jest.Mock;
     getConversationMessages: jest.Mock;
     deleteConversation: jest.Mock;
+    saveMemory: jest.Mock;
+    getUserMemories: jest.Mock;
+    getMemory: jest.Mock;
+    updateMemory: jest.Mock;
+    deleteMemory: jest.Mock;
+    deleteAllMemories: jest.Mock;
   };
 
   const mockUser: AuthenticatedUserDto = {
@@ -34,6 +40,12 @@ describe('AiAgentController', () => {
       getUserConversations: jest.fn(),
       getConversationMessages: jest.fn(),
       deleteConversation: jest.fn(),
+      saveMemory: jest.fn(),
+      getUserMemories: jest.fn(),
+      getMemory: jest.fn(),
+      updateMemory: jest.fn(),
+      deleteMemory: jest.fn(),
+      deleteAllMemories: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -231,6 +243,99 @@ describe('AiAgentController', () => {
       });
       expect(aiAgentService.deleteConversation).toHaveBeenCalledWith(
         'c-1',
+        mockUser.id,
+        { requestId: undefined, aiRequestId: undefined },
+      );
+    });
+  });
+
+  describe('memory endpoints', () => {
+    it('should list memories', async () => {
+      aiAgentService.getUserMemories.mockResolvedValue([]);
+
+      const res = await controller.listMemories(mockUser, {}, undefined as any);
+      expect(res).toEqual([]);
+      expect(aiAgentService.getUserMemories).toHaveBeenCalledWith(
+        mockUser.id,
+        {},
+        { requestId: undefined, aiRequestId: undefined },
+      );
+    });
+
+    it('should save memory', async () => {
+      const mockMem = {
+        id: 'mem-1',
+        userId: mockUser.id,
+        key: 'preferred_currency',
+        value: 'BRL',
+      };
+      aiAgentService.saveMemory.mockResolvedValue(mockMem);
+
+      const dto = {
+        type: 'PREFERENCE' as any,
+        key: 'preferred_currency',
+        value: 'BRL',
+      };
+      const res = await controller.saveMemory(mockUser, dto, undefined as any);
+      expect(res).toBe(mockMem);
+      expect(aiAgentService.saveMemory).toHaveBeenCalledWith(mockUser.id, dto, {
+        requestId: undefined,
+        aiRequestId: undefined,
+      });
+    });
+
+    it('should update memory', async () => {
+      const mockMem = { id: 'mem-1', userId: mockUser.id, value: 'USD' };
+      aiAgentService.updateMemory.mockResolvedValue(mockMem);
+
+      const dto = { value: 'USD' };
+      const res = await controller.updateMemory(
+        mockUser,
+        'mem-1',
+        dto,
+        undefined as any,
+      );
+      expect(res).toBe(mockMem);
+      expect(aiAgentService.updateMemory).toHaveBeenCalledWith(
+        'mem-1',
+        mockUser.id,
+        dto,
+        { requestId: undefined, aiRequestId: undefined },
+      );
+    });
+
+    it('should delete single memory', async () => {
+      aiAgentService.deleteMemory.mockResolvedValue(true);
+
+      const res = await controller.deleteMemory(
+        mockUser,
+        'mem-1',
+        undefined as any,
+      );
+      expect(res).toEqual({
+        success: true,
+        message: 'Memory entry deleted successfully',
+      });
+      expect(aiAgentService.deleteMemory).toHaveBeenCalledWith(
+        'mem-1',
+        mockUser.id,
+        { requestId: undefined, aiRequestId: undefined },
+      );
+    });
+
+    it('should delete all memories', async () => {
+      aiAgentService.deleteAllMemories.mockResolvedValue(3);
+
+      const res = await controller.deleteAllMemories(
+        mockUser,
+        undefined as any,
+      );
+      expect(res).toEqual({
+        success: true,
+        message: 'All user memories deleted successfully',
+        deletedCount: 3,
+      });
+      expect(aiAgentService.deleteAllMemories).toHaveBeenCalledWith(
         mockUser.id,
         { requestId: undefined, aiRequestId: undefined },
       );

@@ -7,6 +7,7 @@ import {
   GetBudgetsArgsDto,
   GetFinancialSummaryArgsDto,
   GetTransactionsArgsDto,
+  SaveMemoryArgsDto,
 } from './tool-argument.dtos';
 
 export interface ToolValidationResult {
@@ -25,6 +26,7 @@ export class AgentToolArgumentValidatorService {
     get_financial_summary: GetFinancialSummaryArgsDto,
     get_budgets: GetBudgetsArgsDto,
     create_transaction: CreateTransactionArgsDto,
+    save_memory: SaveMemoryArgsDto,
   };
 
   async validate(

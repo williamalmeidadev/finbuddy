@@ -18,6 +18,7 @@ export class CreateTransactionTool implements AgentTool {
   readonly capability = AgentCapability.CREATE_TRANSACTION;
   readonly riskLevel = AgentToolRiskLevel.MEDIUM;
   readonly readOnly = false;
+  readonly requiresConfirmation = true;
 
   readonly inputSchema = {
     type: 'object',

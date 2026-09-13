@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   Req,
@@ -33,6 +34,12 @@ import {
   PaginatedConversationsResponseDto,
   PaginatedMessagesResponseDto,
 } from './dto/conversation.dtos';
+import {
+  CreateMemoryDto,
+  ListMemoriesQueryDto,
+  MemoryResponseDto,
+  UpdateMemoryDto,
+} from './dto/memory.dtos';
 import {
   AiAgentService,
   ConfirmationExecutionResult,
@@ -259,5 +266,132 @@ export class AiAgentController {
   ): Promise<{ success: boolean; message: string }> {
     const options = this.getCorrelationOptions(req);
     return this.aiAgentService.cancelAction(user.id, confirmationId, options);
+  }
+
+  @ApiOperation({ summary: 'Save or update a structured user memory entry' })
+  @ApiResponse({
+    status: 201,
+    description: 'Memory saved successfully',
+    type: MemoryResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Validation error or limit reached',
+  })
+  @Post('memories')
+  @HttpCode(HttpStatus.CREATED)
+  async saveMemory(
+    @CurrentUser() user: AuthenticatedUserDto,
+    @Body() dto: CreateMemoryDto,
+    @Req() req: Request,
+  ): Promise<MemoryResponseDto> {
+    const options = this.getCorrelationOptions(req);
+    return this.aiAgentService.saveMemory(user.id, dto, options);
+  }
+
+  @ApiOperation({ summary: 'List structured user memories' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of user memories',
+    type: [MemoryResponseDto],
+  })
+  @Get('memories')
+  async listMemories(
+    @CurrentUser() user: AuthenticatedUserDto,
+    @Query() query: ListMemoriesQueryDto,
+    @Req() req: Request,
+  ): Promise<MemoryResponseDto[]> {
+    const options = this.getCorrelationOptions(req);
+    return this.aiAgentService.getUserMemories(user.id, query, options);
+  }
+
+  @ApiOperation({ summary: 'Get a single user memory entry by ID' })
+  @ApiParam({
+    name: 'memoryId',
+    description: 'UUID of the memory entry',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Memory entry details',
+    type: MemoryResponseDto,
+  })
+  @ApiResponse({ status: 404, description: 'Memory entry not found' })
+  @Get('memories/:memoryId')
+  async getMemory(
+    @CurrentUser() user: AuthenticatedUserDto,
+    @Param('memoryId', ParseUUIDPipe) memoryId: string,
+  ): Promise<MemoryResponseDto> {
+    return this.aiAgentService.getMemory(memoryId, user.id);
+  }
+
+  @ApiOperation({ summary: 'Update a user memory entry value' })
+  @ApiParam({
+    name: 'memoryId',
+    description: 'UUID of the memory entry',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Memory updated successfully',
+    type: MemoryResponseDto,
+  })
+  @ApiResponse({ status: 400, description: 'Validation error' })
+  @ApiResponse({ status: 404, description: 'Memory entry not found' })
+  @Patch('memories/:memoryId')
+  async updateMemory(
+    @CurrentUser() user: AuthenticatedUserDto,
+    @Param('memoryId', ParseUUIDPipe) memoryId: string,
+    @Body() dto: UpdateMemoryDto,
+    @Req() req: Request,
+  ): Promise<MemoryResponseDto> {
+    const options = this.getCorrelationOptions(req);
+    return this.aiAgentService.updateMemory(memoryId, user.id, dto, options);
+  }
+
+  @ApiOperation({ summary: 'Delete a single user memory entry' })
+  @ApiParam({
+    name: 'memoryId',
+    description: 'UUID of the memory entry',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Memory entry deleted successfully',
+  })
+  @ApiResponse({ status: 404, description: 'Memory entry not found' })
+  @Delete('memories/:memoryId')
+  @HttpCode(HttpStatus.OK)
+  async deleteMemory(
+    @CurrentUser() user: AuthenticatedUserDto,
+    @Param('memoryId', ParseUUIDPipe) memoryId: string,
+    @Req() req: Request,
+  ): Promise<{ success: boolean; message: string }> {
+    const options = this.getCorrelationOptions(req);
+    await this.aiAgentService.deleteMemory(memoryId, user.id, options);
+    return {
+      success: true,
+      message: 'Memory entry deleted successfully',
+    };
+  }
+
+  @ApiOperation({ summary: 'Delete all memories for the authenticated user' })
+  @ApiResponse({
+    status: 200,
+    description: 'All user memories deleted successfully',
+  })
+  @Delete('memories')
+  @HttpCode(HttpStatus.OK)
+  async deleteAllMemories(
+    @CurrentUser() user: AuthenticatedUserDto,
+    @Req() req: Request,
+  ): Promise<{ success: boolean; message: string; deletedCount: number }> {
+    const options = this.getCorrelationOptions(req);
+    const count = await this.aiAgentService.deleteAllMemories(user.id, options);
+    return {
+      success: true,
+      message: 'All user memories deleted successfully',
+      deletedCount: count,
+    };
   }
 }
