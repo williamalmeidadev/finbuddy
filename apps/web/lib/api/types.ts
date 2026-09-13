@@ -13,8 +13,10 @@ export interface ApiResponse<T = unknown> {
 export interface ApiUser {
   id: string;
   email: string;
-  status: "ACTIVE" | "INACTIVE" | "SUSPENDED";
-  createdAt: string;
+  name?: string;
+  role?: string;
+  status?: "ACTIVE" | "INACTIVE" | "SUSPENDED";
+  createdAt?: string;
 }
 
 export interface AuthResponse {
@@ -44,6 +46,8 @@ export interface CreateAccountDto {
 
 export interface UpdateAccountDto {
   name?: string;
+  type?: "CHECKING" | "SAVINGS" | "CREDIT_CARD" | "INVESTMENT" | "CASH";
+  currency?: string;
 }
 
 export interface ApiTransaction {
@@ -54,13 +58,14 @@ export interface ApiTransaction {
   transferId?: string | null;
   amount: number;
   type: "INCOME" | "EXPENSE";
-  source: "MANUAL" | "SYSTEM" | "IMPORT";
+  source?: "MANUAL" | "SYSTEM" | "IMPORT";
+  isSystem?: boolean;
   description?: string | null;
   transactionAt: string;
   createdAt: string;
   updatedAt: string;
-  account?: { name: string; type: string };
-  category?: { name: string; type: string };
+  account?: { name: string; type?: string };
+  category?: { name: string; type?: string };
 }
 
 export interface CreateTransactionDto {
@@ -84,11 +89,17 @@ export interface UpdateTransactionDto {
 export interface ApiTransfer {
   id: string;
   userId: string;
-  fromAccountId: string;
-  toAccountId: string;
+  fromAccountId?: string;
+  toAccountId?: string;
+  sourceAccountId?: string;
+  destinationAccountId?: string;
   amount: number;
-  transactionAt: string;
+  transferredAt?: string;
+  transactionAt?: string;
+  description?: string | null;
   createdAt: string;
+  sourceAccount?: { name: string };
+  destinationAccount?: { name: string };
   fromAccount?: { name: string };
   toAccount?: { name: string };
 }
@@ -97,14 +108,14 @@ export interface CreateTransferDto {
   fromAccountId: string;
   toAccountId: string;
   amount: number;
-  transactionAt?: string;
+  transferredAt?: string;
+  description?: string;
 }
 
 export interface UpdateTransferDto {
   amount?: number;
-  transactionAt?: string;
-  fromAccountId?: string;
-  toAccountId?: string;
+  transferredAt?: string;
+  description?: string;
 }
 
 export interface ApiCategory {
@@ -114,7 +125,7 @@ export interface ApiCategory {
   type: "INCOME" | "EXPENSE";
   icon?: string | null;
   color?: string | null;
-  isSystem: boolean;
+  isSystem?: boolean;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -137,19 +148,22 @@ export interface ApiBudget {
   id: string;
   userId: string;
   categoryId: string;
-  month: string; // YYYY-MM
+  month: number | string;
+  year?: number;
   amount: number;
-  spent: number;
-  remaining: number;
-  percentageUsed: number;
+  spent?: number;
+  spentAmount?: number;
+  remaining?: number;
+  percentageUsed?: number;
   createdAt: string;
   updatedAt: string;
-  category?: { name: string; type: string };
+  category?: { name: string; type?: string; color?: string };
 }
 
 export interface CreateBudgetDto {
   categoryId: string;
-  month: string; // YYYY-MM
+  month: number;
+  year: number;
   amount: number;
 }
 
@@ -167,11 +181,11 @@ export interface ApiRecurringTransaction {
   amount: number;
   type: "INCOME" | "EXPENSE";
   frequency: RecurrenceFrequency;
-  interval: number;
+  interval?: number;
   description?: string | null;
-  startDate: string;
-  endDate?: string | null;
-  nextOccurrence: string;
+  startDate?: string;
+  nextDueDate: string;
+  nextOccurrence?: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -186,8 +200,7 @@ export interface CreateRecurringTransactionDto {
   frequency: RecurrenceFrequency;
   interval?: number;
   description?: string;
-  startDate: string;
-  endDate?: string;
+  nextDueDate: string;
   categoryId?: string;
 }
 
@@ -196,25 +209,25 @@ export interface UpdateRecurringTransactionDto {
   description?: string;
   frequency?: RecurrenceFrequency;
   interval?: number;
-  startDate?: string;
-  endDate?: string;
+  nextDueDate?: string;
   categoryId?: string;
   isActive?: boolean;
 }
 
 export interface ApiFinancialSummary {
-  month: string;
-  totalIncome: number;
-  totalExpenses: number;
+  totalBalance: number;
+  monthlyIncome: number;
+  monthlyExpenses: number;
   netSavings: number;
-  savingsRate: number;
-  accountBalances: Array<{
+  savingsRate?: number;
+  month?: string;
+  accountBalances?: Array<{
     accountId: string;
     accountName: string;
     accountType: string;
     balance: number;
   }>;
-  categoryBreakdown: Array<{
+  categoryBreakdown?: Array<{
     categoryId: string;
     categoryName: string;
     type: "INCOME" | "EXPENSE";

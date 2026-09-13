@@ -1,17 +1,26 @@
-# FinBuddy Frontend Architecture & Design System Documentation (Phase 20)
+# FinBuddy Frontend Architecture & Design System Documentation (Phase 21)
 
 ## 1. Executive Summary
 
-Phase 20 establishes the clean monorepo architecture (`apps/api`, `apps/web`) and production-quality Next.js 15 frontend foundation for the FinBuddy personal financial management web application.
+Phase 20 established the monorepo foundation, and Phase 21 delivers the complete functional Web Application UI connected to the production-hardened NestJS API backend.
 
-The frontend foundation is built with:
-- **Framework**: Next.js 15 (App Router, Server Components)
+The frontend includes:
+- **Framework**: Next.js 15 (App Router, Server Components & Client Components)
 - **Styling**: Tailwind CSS & CSS Variables with custom semantic design tokens
-- **Component Foundation**: shadcn/ui (Radix-inspired accessible primitive components)
+- **Component Foundation**: shadcn/ui (Radix-inspired accessible primitive components, accessible Dialog modals)
 - **Icons**: Lucide React
 - **Theme Support**: `next-themes` (Light mode, Dark mode, System preference)
-- **API Boundary**: Centralized fetch wrapper (`apiClient`) with normalized error handling (`ApiError`)
-- **Authentication Boundary**: Token storage interface (`tokenStorage`), `AuthProvider`, and `useAuth` hook
+- **API Transport**: Centralized `apiClient` fetch wrapper with automatic 401 token refresh retry queuing and loop protection
+- **Authentication**: `tokenStorage` in-memory token management, `AuthProvider`, `useAuth` hook, and protected `/app/*` `AuthGuard`
+- **Financial Product Views**:
+  - **Dashboard**: Net worth summary, monthly income/expense/savings breakdown, connected account grid, recent ledger entries, category budget health indicators, and quick action modals.
+  - **Accounts**: Multi-account ledger overview (Checking, Savings, Credit Card, Investment, Cash), account creation modal, inline edit, and deactivation.
+  - **Transactions**: Paginated ledger view, multi-attribute filters (Search, Account, Category, Type), income/expense entry modal, edit/delete modals. Immutability locks enforced on SYSTEM & Transfer-linked records.
+  - **Transfers**: Inter-account atomic transfers, source/target flow presentation, edit modal, and balance-reversal delete confirmation modal.
+  - **Categories**: Income & Expense classification manager, color accent selector, icon assignment, system category protection.
+  - **Budgets**: Category spending limit monitor, month/year selector, visual progress bars with health badges (`Healthy` <= 80%, `Warning` > 80% <= 100%, `Exceeded` > 100%).
+  - **Recurring Transactions**: Subscriptions & scheduled automated entries, frequency controls (Daily, Weekly, Monthly, Yearly), active/paused status toggles.
+  - **Settings**: Authenticated user profile summary, role display, theme toggle, and API security status.
 
 ---
 
