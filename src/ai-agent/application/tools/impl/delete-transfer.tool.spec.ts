@@ -115,7 +115,10 @@ describe('DeleteTransferTool', () => {
 
     await tool.execute(
       { userId: USER_ID },
-      { transferId: TRANSFER_ID, userId: 'malicious-user-id' } as any,
+      {
+        transferId: TRANSFER_ID,
+        userId: 'malicious-user-id',
+      },
     );
 
     expect(transferService.delete).toHaveBeenCalledWith(TRANSFER_ID, USER_ID);

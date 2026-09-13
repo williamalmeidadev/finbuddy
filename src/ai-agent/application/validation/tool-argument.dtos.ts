@@ -210,4 +210,3 @@ export class DeleteTransferArgsDto {
   @IsNotEmpty()
   transferId!: string;
 }
-

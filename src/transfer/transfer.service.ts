@@ -168,10 +168,11 @@ export class TransferService {
       throw new NotFoundException('Transfer not found');
     }
 
-    const deleted = await this.transferRepository.deleteWithAtomicBalanceReversal(
-      transferId,
-      userId,
-    );
+    const deleted =
+      await this.transferRepository.deleteWithAtomicBalanceReversal(
+        transferId,
+        userId,
+      );
 
     return new TransferResponseDto(deleted);
   }
