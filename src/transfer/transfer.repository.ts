@@ -76,6 +76,111 @@ export class TransferRepository {
     });
   }
 
+  async updateWithAtomicBalanceUpdate(
+    transferId: string,
+    userId: string,
+    updates: {
+      amount?: number;
+      transactionAt?: Date;
+      fromAccountId?: string;
+      toAccountId?: string;
+    },
+  ): Promise<Transfer> {
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Fetch the current transfer scoped to the user (IDOR guard)
+      const current = await tx.transfer.findFirst({
+        where: {
+          id: transferId,
+          OR: [{ fromAccount: { userId } }, { toAccount: { userId } }],
+        },
+      });
+
+      if (!current) {
+        const { NotFoundException } = await import('@nestjs/common');
+        throw new NotFoundException('Transfer not found');
+      }
+
+      const oldAmount = (current.amount as unknown as { toNumber(): number })
+        .toNumber
+        ? (current.amount as unknown as { toNumber(): number }).toNumber()
+        : Number(current.amount);
+
+      const newAmount = updates.amount ?? oldAmount;
+      const newFromAccountId = updates.fromAccountId ?? current.fromAccountId;
+      const newToAccountId = updates.toAccountId ?? current.toAccountId;
+      const newTransactionAt = updates.transactionAt ?? current.transactionAt;
+
+      const accountsChanged =
+        newFromAccountId !== current.fromAccountId ||
+        newToAccountId !== current.toAccountId;
+      const amountChanged = newAmount !== oldAmount;
+
+      if (accountsChanged || amountChanged) {
+        // 2. Reverse the financial effect from OLD source account
+        await tx.account.update({
+          where: { id: current.fromAccountId },
+          data: { balance: { increment: oldAmount } },
+        });
+
+        // 3. Reverse the financial effect from OLD destination account
+        await tx.account.update({
+          where: { id: current.toAccountId },
+          data: { balance: { decrement: oldAmount } },
+        });
+
+        // 4. Apply financial effect to NEW source account (with sufficient balance guard)
+        const updatedSource = await tx.account.updateMany({
+          where: {
+            id: newFromAccountId,
+            balance: { gte: newAmount },
+          },
+          data: { balance: { decrement: newAmount } },
+        });
+
+        if (updatedSource.count === 0) {
+          const { BadRequestException } = await import('@nestjs/common');
+          throw new BadRequestException('Insufficient balance for transfer');
+        }
+
+        // 5. Apply financial effect to NEW destination account
+        await tx.account.update({
+          where: { id: newToAccountId },
+          data: { balance: { increment: newAmount } },
+        });
+      }
+
+      // 6. Update Transfer record
+      const updated = await tx.transfer.update({
+        where: { id: transferId },
+        data: {
+          amount: newAmount,
+          transactionAt: newTransactionAt,
+          fromAccountId: newFromAccountId,
+          toAccountId: newToAccountId,
+        },
+      });
+
+      // 7. Synchronize SYSTEM transactions linked to this transfer
+      const systemTxs = await tx.transaction.findMany({
+        where: { transferId },
+      });
+
+      for (const stx of systemTxs) {
+        const isSource = stx.type === TransactionType.EXPENSE;
+        await tx.transaction.update({
+          where: { id: stx.id },
+          data: {
+            amount: newAmount,
+            transactionAt: newTransactionAt,
+            accountId: isSource ? newFromAccountId : newToAccountId,
+          },
+        });
+      }
+
+      return updated;
+    });
+  }
+
   async findByIdAndUserId(
     id: string,
     userId: string,
