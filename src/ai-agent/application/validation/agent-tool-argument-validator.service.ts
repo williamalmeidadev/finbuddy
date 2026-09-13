@@ -3,6 +3,7 @@ import { ClassConstructor, plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import {
   CreateTransactionArgsDto,
+  DeleteTransactionArgsDto,
   GetAccountsArgsDto,
   GetBudgetsArgsDto,
   GetFinancialSummaryArgsDto,
@@ -29,6 +30,7 @@ export class AgentToolArgumentValidatorService {
     create_transaction: CreateTransactionArgsDto,
     save_memory: SaveMemoryArgsDto,
     update_transaction: UpdateTransactionArgsDto,
+    delete_transaction: DeleteTransactionArgsDto,
   };
 
   async validate(

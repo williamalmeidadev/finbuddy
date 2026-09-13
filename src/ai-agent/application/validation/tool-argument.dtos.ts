@@ -146,3 +146,9 @@ export class UpdateTransactionArgsDto {
   )
   transactionAt?: string;
 }
+
+export class DeleteTransactionArgsDto {
+  @IsUUID()
+  @IsNotEmpty()
+  transactionId!: string;
+}

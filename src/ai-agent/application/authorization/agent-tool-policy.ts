@@ -8,6 +8,7 @@ export class AgentToolPolicy {
     AgentCapability.READ_BUDGETS,
     AgentCapability.CREATE_TRANSACTION,
     AgentCapability.UPDATE_TRANSACTION,
+    AgentCapability.DELETE_TRANSACTION,
     AgentCapability.MANAGE_MEMORY,
   ]);
 

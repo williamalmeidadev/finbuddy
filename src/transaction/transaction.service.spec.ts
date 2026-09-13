@@ -533,6 +533,21 @@ describe('TransactionService', () => {
       );
     });
 
+    it('should throw BadRequestException if trying to delete transfer-linked or system transaction', async () => {
+      transactionRepository.findByIdAndUserId.mockResolvedValue({
+        id: 'tx-1',
+        accountId: 'acc-1',
+        type: TransactionType.EXPENSE,
+        amount: { toNumber: () => 100 },
+        source: TransactionSource.SYSTEM,
+        transferId: null,
+      });
+
+      await expect(service.delete('tx-1', userId)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
     it('should throw BadRequestException if deleting transaction for an inactive account', async () => {
       transactionRepository.findByIdAndUserId.mockResolvedValue({
         id: 'tx-1',
