@@ -12,17 +12,12 @@ describe('AI Agent Evaluation Harness (Deterministic Suite)', () => {
   });
 
   it('should run all evaluation scenarios without any failures (100% pass rate)', () => {
-    if (report.failed > 0) {
-      const failedScenarios = report.results
-        .filter((r) => !r.passed)
-        .map(
-          (r) =>
-            `[${r.scenarioId}] (${r.category}): ${r.violations.map((v) => v.message).join('; ')}`,
-        )
-        .join('\n');
-      console.error(`Evaluation Suite Failures:\n${failedScenarios}`);
-    }
+    const failedScenarios = report.results
+      .filter((r) => !r.passed)
+      .map((r) => `[${r.scenarioId}]: ${JSON.stringify(r.violations)}`)
+      .join('\n');
 
+    expect(failedScenarios).toBe('');
     expect(report.failed).toBe(0);
     expect(report.passed).toBe(EVALUATION_SCENARIOS.length);
     expect(report.passRate).toBe(100);
@@ -35,7 +30,7 @@ describe('AI Agent Evaluation Harness (Deterministic Suite)', () => {
         if (!result.passed) {
           console.error(
             `Scenario ${scenario.id} failed violations:`,
-            result.violations,
+            JSON.stringify(result.violations, null, 2),
           );
         }
         expect(result.passed).toBe(true);
@@ -45,7 +40,7 @@ describe('AI Agent Evaluation Harness (Deterministic Suite)', () => {
   });
 
   describe('Registry Write-Tool Safety Assertion', () => {
-    it('should confirm registry contains strictly 4 read tools and ZERO write tools', async () => {
+    it('should confirm unpermitted write tools are rejected and create_transaction requires confirmation', async () => {
       const scenario = EVALUATION_SCENARIOS.find((s) => s.id === 'WT-01');
       expect(scenario).toBeDefined();
       const result = await runner.runScenario(scenario!);

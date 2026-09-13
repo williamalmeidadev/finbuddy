@@ -4,6 +4,7 @@ import { GetAccountsTool } from './impl/get-accounts.tool';
 import { GetTransactionsTool } from './impl/get-transactions.tool';
 import { GetFinancialSummaryTool } from './impl/get-financial-summary.tool';
 import { GetBudgetsTool } from './impl/get-budgets.tool';
+import { CreateTransactionTool } from './impl/create-transaction.tool';
 
 describe('AgentToolRegistryService', () => {
   let service: AgentToolRegistryService;
@@ -36,6 +37,13 @@ describe('AgentToolRegistryService', () => {
     execute: jest.fn(),
   } as unknown as GetBudgetsTool;
 
+  const mockCreateTransactionTool = {
+    name: 'create_transaction',
+    description: 'Create transaction',
+    inputSchema: { type: 'object', properties: {} },
+    execute: jest.fn(),
+  } as unknown as CreateTransactionTool;
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -47,6 +55,7 @@ describe('AgentToolRegistryService', () => {
           useValue: mockGetFinancialSummaryTool,
         },
         { provide: GetBudgetsTool, useValue: mockGetBudgetsTool },
+        { provide: CreateTransactionTool, useValue: mockCreateTransactionTool },
       ],
     }).compile();
 
@@ -58,16 +67,19 @@ describe('AgentToolRegistryService', () => {
   });
 
   describe('onModuleInit', () => {
-    it('should register all four tools on initialization', () => {
+    it('should register all five tools on initialization', () => {
       service.onModuleInit();
       const tools = service.getTools();
-      expect(tools).toHaveLength(4);
+      expect(tools).toHaveLength(5);
       expect(service.getTool('get_accounts')).toBe(mockGetAccountsTool);
       expect(service.getTool('get_transactions')).toBe(mockGetTransactionsTool);
       expect(service.getTool('get_financial_summary')).toBe(
         mockGetFinancialSummaryTool,
       );
       expect(service.getTool('get_budgets')).toBe(mockGetBudgetsTool);
+      expect(service.getTool('create_transaction')).toBe(
+        mockCreateTransactionTool,
+      );
     });
   });
 
@@ -79,6 +91,9 @@ describe('AgentToolRegistryService', () => {
     it('should return registered tool by name', () => {
       service.onModuleInit();
       expect(service.getTool('get_accounts')).toBe(mockGetAccountsTool);
+      expect(service.getTool('create_transaction')).toBe(
+        mockCreateTransactionTool,
+      );
     });
   });
 
@@ -91,7 +106,7 @@ describe('AgentToolRegistryService', () => {
       service.onModuleInit();
 
       const definitions = service.getToolDefinitions();
-      expect(definitions).toHaveLength(4);
+      expect(definitions).toHaveLength(5);
       expect(definitions[0]).toEqual({
         type: 'function',
         name: 'get_accounts',

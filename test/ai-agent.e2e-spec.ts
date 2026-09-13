@@ -171,7 +171,7 @@ describe('AiAgentController (e2e)', () => {
     jest.clearAllMocks();
 
     await prisma.$executeRawUnsafe(
-      `TRUNCATE TABLE "users", "user_profiles", "user_identities", "refresh_tokens", "accounts", "categories", "transactions", "budgets" CASCADE;`,
+      `TRUNCATE TABLE "users", "user_profiles", "user_identities", "refresh_tokens", "accounts", "categories", "transactions", "budgets", "ai_confirmations" CASCADE;`,
     );
   });
 
@@ -347,6 +347,7 @@ describe('AiAgentController (e2e)', () => {
 
       expect(sendMessageSpy).toHaveBeenCalledWith(userA.userId, 'Hello AI');
       expect(response.body).toEqual({
+        type: 'response',
         message: 'Hello User A, your finances look balanced.',
       });
     });
@@ -371,6 +372,7 @@ describe('AiAgentController (e2e)', () => {
         'Hello AI from B',
       );
       expect(response.body).toEqual({
+        type: 'response',
         message: 'Hello User B, your finances look balanced.',
       });
     });
@@ -855,6 +857,329 @@ describe('AiAgentController (e2e)', () => {
       const secondCallArgs =
         mockOpenAiClient.createRawResponse.mock.calls[1][0];
       expect(secondCallArgs.input[0].type).toBe('function_call_output');
+    });
+  });
+
+  describe('9. Financial Write Tools & Confirmation Flow (Phase 13)', () => {
+    it('should return confirmation_required when agent calls create_transaction and NOT mutate database inline', async () => {
+      const userA = await createTestUser('write-e2e-1');
+      const account = await prisma.account.create({
+        data: {
+          userId: userA.userId,
+          name: 'Checking Account',
+          type: AccountType.CHECKING,
+          balance: 1000,
+          currency: 'BRL',
+          color: '#000000',
+        },
+      });
+
+      mockOpenAiClient.createRawResponse.mockResolvedValueOnce({
+        id: 'resp-write-1',
+        outputText: '',
+        functionCalls: [
+          {
+            callId: 'call-create-tx',
+            name: 'create_transaction',
+            arguments: {
+              accountId: account.id,
+              type: 'EXPENSE',
+              amount: 50.75,
+              description: 'Lunch expense',
+              transactionAt: '2026-09-13T12:00:00.000Z',
+            },
+          },
+        ],
+      });
+
+      const response = await request(app.getHttpServer())
+        .post('/ai-agent/messages')
+        .set('Authorization', `Bearer ${userA.token}`)
+        .send({ message: 'Create a transaction for 50.75 spent on lunch' })
+        .expect(200);
+
+      expect(response.body).toEqual({
+        type: 'confirmation_required',
+        message: expect.stringContaining('Confirmation required'),
+        confirmation: {
+          confirmationId: expect.any(String),
+          toolName: 'create_transaction',
+          action: {
+            accountId: account.id,
+            type: 'EXPENSE',
+            amount: 50.75,
+            description: 'Lunch expense',
+            transactionAt: '2026-09-13T12:00:00.000Z',
+          },
+          expiresAt: expect.any(String),
+        },
+      });
+
+      const count = await prisma.transaction.count({
+        where: { accountId: account.id },
+      });
+      expect(count).toBe(0);
+
+      const confirmationInDb = await prisma.aiConfirmation.findUnique({
+        where: { id: response.body.confirmation.confirmationId },
+      });
+      expect(confirmationInDb).toBeDefined();
+      expect(confirmationInDb?.status).toBe('PENDING');
+      expect(confirmationInDb?.userId).toBe(userA.userId);
+    });
+
+    it('should execute transaction after user confirms via POST /ai-agent/confirmations/:confirmationId', async () => {
+      const userA = await createTestUser('write-e2e-2');
+      const account = await prisma.account.create({
+        data: {
+          userId: userA.userId,
+          name: 'Checking Account',
+          type: AccountType.CHECKING,
+          balance: 1000,
+          currency: 'BRL',
+          color: '#000000',
+        },
+      });
+
+      mockOpenAiClient.createRawResponse.mockResolvedValueOnce({
+        id: 'resp-write-2',
+        outputText: '',
+        functionCalls: [
+          {
+            callId: 'call-create-tx-2',
+            name: 'create_transaction',
+            arguments: {
+              accountId: account.id,
+              type: 'EXPENSE',
+              amount: 120.0,
+              description: 'Supermarket',
+              transactionAt: '2026-09-13T12:00:00.000Z',
+            },
+          },
+        ],
+      });
+
+      const messageRes = await request(app.getHttpServer())
+        .post('/ai-agent/messages')
+        .set('Authorization', `Bearer ${userA.token}`)
+        .send({ message: 'Create transaction' })
+        .expect(200);
+
+      const confirmationId = messageRes.body.confirmation.confirmationId;
+
+      const confirmRes = await request(app.getHttpServer())
+        .post(`/ai-agent/confirmations/${confirmationId}`)
+        .set('Authorization', `Bearer ${userA.token}`)
+        .send({})
+        .expect(200);
+
+      expect(confirmRes.body).toEqual({
+        success: true,
+        message: expect.stringContaining('successfully'),
+        data: expect.objectContaining({
+          accountId: account.id,
+          amount: 120,
+          description: 'Supermarket',
+        }),
+      });
+
+      const count = await prisma.transaction.count({
+        where: { accountId: account.id },
+      });
+      expect(count).toBe(1);
+
+      const confirmationInDb = await prisma.aiConfirmation.findUnique({
+        where: { id: confirmationId },
+      });
+      expect(confirmationInDb?.status).toBe('CONSUMED');
+    });
+
+    it('should reject single-use replay of an already consumed confirmation with 400 Bad Request', async () => {
+      const userA = await createTestUser('write-e2e-3');
+      const account = await prisma.account.create({
+        data: {
+          userId: userA.userId,
+          name: 'Checking Account',
+          type: AccountType.CHECKING,
+          balance: 1000,
+          currency: 'BRL',
+          color: '#000000',
+        },
+      });
+
+      mockOpenAiClient.createRawResponse.mockResolvedValueOnce({
+        id: 'resp-write-3',
+        outputText: '',
+        functionCalls: [
+          {
+            callId: 'call-create-tx-3',
+            name: 'create_transaction',
+            arguments: {
+              accountId: account.id,
+              type: 'INCOME',
+              amount: 500.0,
+              description: 'Freelance work',
+              transactionAt: '2026-09-13T12:00:00.000Z',
+            },
+          },
+        ],
+      });
+
+      const messageRes = await request(app.getHttpServer())
+        .post('/ai-agent/messages')
+        .set('Authorization', `Bearer ${userA.token}`)
+        .send({ message: 'Create income' })
+        .expect(200);
+
+      const confirmationId = messageRes.body.confirmation.confirmationId;
+
+      await request(app.getHttpServer())
+        .post(`/ai-agent/confirmations/${confirmationId}`)
+        .set('Authorization', `Bearer ${userA.token}`)
+        .send({})
+        .expect(200);
+
+      const replayRes = await request(app.getHttpServer())
+        .post(`/ai-agent/confirmations/${confirmationId}`)
+        .set('Authorization', `Bearer ${userA.token}`)
+        .send({})
+        .expect(400);
+
+      expect(replayRes.body.message).toContain('already been executed');
+
+      const count = await prisma.transaction.count({
+        where: { accountId: account.id },
+      });
+      expect(count).toBe(1);
+    });
+
+    it('should handle confirmation cancellation via POST /ai-agent/confirmations/:confirmationId/cancel', async () => {
+      const userA = await createTestUser('write-e2e-4');
+      const account = await prisma.account.create({
+        data: {
+          userId: userA.userId,
+          name: 'Checking Account',
+          type: AccountType.CHECKING,
+          balance: 1000,
+          currency: 'BRL',
+          color: '#000000',
+        },
+      });
+
+      mockOpenAiClient.createRawResponse.mockResolvedValueOnce({
+        id: 'resp-write-4',
+        outputText: '',
+        functionCalls: [
+          {
+            callId: 'call-create-tx-4',
+            name: 'create_transaction',
+            arguments: {
+              accountId: account.id,
+              type: 'EXPENSE',
+              amount: 300.0,
+              description: 'Cancelled order',
+              transactionAt: '2026-09-13T12:00:00.000Z',
+            },
+          },
+        ],
+      });
+
+      const messageRes = await request(app.getHttpServer())
+        .post('/ai-agent/messages')
+        .set('Authorization', `Bearer ${userA.token}`)
+        .send({ message: 'Create transaction' })
+        .expect(200);
+
+      const confirmationId = messageRes.body.confirmation.confirmationId;
+
+      const cancelRes = await request(app.getHttpServer())
+        .post(`/ai-agent/confirmations/${confirmationId}/cancel`)
+        .set('Authorization', `Bearer ${userA.token}`)
+        .send({})
+        .expect(200);
+
+      expect(cancelRes.body).toEqual({
+        success: true,
+        message: 'Confirmation request cancelled',
+      });
+
+      const confirmationInDb = await prisma.aiConfirmation.findUnique({
+        where: { id: confirmationId },
+      });
+      expect(confirmationInDb?.status).toBe('CANCELLED');
+
+      await request(app.getHttpServer())
+        .post(`/ai-agent/confirmations/${confirmationId}`)
+        .set('Authorization', `Bearer ${userA.token}`)
+        .send({})
+        .expect(400);
+
+      const count = await prisma.transaction.count({
+        where: { accountId: account.id },
+      });
+      expect(count).toBe(0);
+    });
+
+    it('should reject cross-user confirmation attempts with 404 Not Found (IDOR protection)', async () => {
+      const userA = await createTestUser('write-e2e-5a');
+      const userB = await createTestUser('write-e2e-5b');
+
+      const accountA = await prisma.account.create({
+        data: {
+          userId: userA.userId,
+          name: 'User A Account',
+          type: AccountType.CHECKING,
+          balance: 1000,
+          currency: 'BRL',
+          color: '#000000',
+        },
+      });
+
+      mockOpenAiClient.createRawResponse.mockResolvedValueOnce({
+        id: 'resp-write-5',
+        outputText: '',
+        functionCalls: [
+          {
+            callId: 'call-create-tx-5',
+            name: 'create_transaction',
+            arguments: {
+              accountId: accountA.id,
+              type: 'EXPENSE',
+              amount: 99.0,
+              description: 'User A expense',
+              transactionAt: '2026-09-13T12:00:00.000Z',
+            },
+          },
+        ],
+      });
+
+      const messageRes = await request(app.getHttpServer())
+        .post('/ai-agent/messages')
+        .set('Authorization', `Bearer ${userA.token}`)
+        .send({ message: 'Create transaction for User A' })
+        .expect(200);
+
+      const confirmationId = messageRes.body.confirmation.confirmationId;
+
+      const crossUserRes = await request(app.getHttpServer())
+        .post(`/ai-agent/confirmations/${confirmationId}`)
+        .set('Authorization', `Bearer ${userB.token}`)
+        .send({})
+        .expect(404);
+
+      expect(crossUserRes.body.message).toContain(
+        'Confirmation request not found',
+      );
+
+      const confirmationInDb = await prisma.aiConfirmation.findUnique({
+        where: { id: confirmationId },
+      });
+      expect(confirmationInDb?.status).toBe('PENDING');
+
+      const count = await prisma.transaction.count({
+        where: { accountId: accountA.id },
+      });
+      expect(count).toBe(0);
     });
   });
 });

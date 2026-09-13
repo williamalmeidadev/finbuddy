@@ -11,6 +11,8 @@ import { MetricsService } from '../../common/metrics/metrics.service';
 import { AgentCapability } from './authorization/agent-capability.enum';
 import { AgentToolRiskLevel } from './tools/agent-tool.interface';
 
+import { AiConfirmationService } from './ai-confirmation.service';
+
 describe('AiAgentOrchestratorService', () => {
   let service: AiAgentOrchestratorService;
   let mockOpenAiClient: {
@@ -23,6 +25,9 @@ describe('AiAgentOrchestratorService', () => {
   let mockMetricsService: {
     increment: jest.Mock;
   };
+  let mockAiConfirmationService: {
+    createConfirmation: jest.Mock;
+  };
 
   beforeEach(async () => {
     mockOpenAiClient = {
@@ -34,6 +39,17 @@ describe('AiAgentOrchestratorService', () => {
     };
     mockMetricsService = {
       increment: jest.fn(),
+    };
+    mockAiConfirmationService = {
+      createConfirmation: jest.fn().mockResolvedValue({
+        id: 'conf-123',
+        userId: 'user-123',
+        toolName: 'create_transaction',
+        argumentsJson: {},
+        status: 'PENDING',
+        createdAt: new Date(),
+        expiresAt: new Date(Date.now() + 300000),
+      }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -48,6 +64,10 @@ describe('AiAgentOrchestratorService', () => {
         {
           provide: AgentToolRegistryService,
           useValue: mockToolRegistry,
+        },
+        {
+          provide: AiConfirmationService,
+          useValue: mockAiConfirmationService,
         },
         {
           provide: MetricsService,

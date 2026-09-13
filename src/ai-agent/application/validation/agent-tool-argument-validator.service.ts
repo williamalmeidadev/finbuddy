@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ClassConstructor, plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import {
+  CreateTransactionArgsDto,
   GetAccountsArgsDto,
   GetBudgetsArgsDto,
   GetFinancialSummaryArgsDto,
@@ -23,6 +24,7 @@ export class AgentToolArgumentValidatorService {
     get_transactions: GetTransactionsArgsDto,
     get_financial_summary: GetFinancialSummaryArgsDto,
     get_budgets: GetBudgetsArgsDto,
+    create_transaction: CreateTransactionArgsDto,
   };
 
   async validate(

@@ -2,6 +2,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { Logger } from '@nestjs/common';
 import { AiAgentService } from './ai-agent.service';
 import { AiAgentOrchestratorService } from './application/ai-agent-orchestrator.service';
+import { AiConfirmationService } from './application/ai-confirmation.service';
+import { AgentToolRegistryService } from './application/tools/agent-tool-registry.service';
+import { AgentToolAuthorizationService } from './application/authorization/agent-tool-authorization.service';
 import { MetricsService } from '../common/metrics/metrics.service';
 import { AgentResponse } from './domain/agent-response';
 
@@ -9,6 +12,16 @@ describe('AiAgentService', () => {
   let service: AiAgentService;
   let mockOrchestrator: {
     processUserMessage: jest.Mock;
+  };
+  let mockConfirmationService: {
+    consumeConfirmation: jest.Mock;
+    cancelConfirmation: jest.Mock;
+  };
+  let mockToolRegistry: {
+    getTool: jest.Mock;
+  };
+  let mockAuthorizationService: {
+    authorize: jest.Mock;
   };
   let mockMetricsService: {
     increment: jest.Mock;
@@ -18,6 +31,16 @@ describe('AiAgentService', () => {
   beforeEach(async () => {
     mockOrchestrator = {
       processUserMessage: jest.fn(),
+    };
+    mockConfirmationService = {
+      consumeConfirmation: jest.fn(),
+      cancelConfirmation: jest.fn(),
+    };
+    mockToolRegistry = {
+      getTool: jest.fn(),
+    };
+    mockAuthorizationService = {
+      authorize: jest.fn(),
     };
     mockMetricsService = {
       increment: jest.fn(),
@@ -33,6 +56,18 @@ describe('AiAgentService', () => {
         {
           provide: AiAgentOrchestratorService,
           useValue: mockOrchestrator,
+        },
+        {
+          provide: AiConfirmationService,
+          useValue: mockConfirmationService,
+        },
+        {
+          provide: AgentToolRegistryService,
+          useValue: mockToolRegistry,
+        },
+        {
+          provide: AgentToolAuthorizationService,
+          useValue: mockAuthorizationService,
         },
         {
           provide: MetricsService,
@@ -100,17 +135,65 @@ describe('AiAgentService', () => {
     });
   });
 
-  describe('processMessage', () => {
-    it('should delegate to sendMessage', async () => {
-      const mockResponse = new AgentResponse('Response');
-      const sendMessageSpy = jest
-        .spyOn(service, 'sendMessage')
-        .mockResolvedValue(mockResponse);
+  describe('confirmAction', () => {
+    it('should consume confirmation, verify tool authorization and execute tool directly', async () => {
+      const mockTool = {
+        name: 'create_transaction',
+        execute: jest
+          .fn()
+          .mockResolvedValue({ success: true, data: { id: 'tx-1' } }),
+      };
+      mockConfirmationService.consumeConfirmation.mockResolvedValue({
+        id: 'conf-1',
+        userId: 'user-1',
+        toolName: 'create_transaction',
+        argumentsJson: { amount: 50 },
+      });
+      mockToolRegistry.getTool.mockReturnValue(mockTool);
+      mockAuthorizationService.authorize.mockReturnValue({ authorized: true });
 
-      const result = await service.processMessage('user-2', 'Hello');
+      const result = await service.confirmAction('user-1', 'conf-1');
 
-      expect(sendMessageSpy).toHaveBeenCalledWith('user-2', 'Hello');
-      expect(result).toBe(mockResponse);
+      expect(mockConfirmationService.consumeConfirmation).toHaveBeenCalledWith(
+        'conf-1',
+        'user-1',
+      );
+      expect(mockToolRegistry.getTool).toHaveBeenCalledWith(
+        'create_transaction',
+      );
+      expect(mockAuthorizationService.authorize).toHaveBeenCalledWith(
+        'user-1',
+        mockTool,
+      );
+      expect(mockTool.execute).toHaveBeenCalledWith(
+        { userId: 'user-1' },
+        { amount: 50 },
+      );
+      expect(result).toEqual({
+        success: true,
+        message: 'Financial action executed successfully',
+        data: { id: 'tx-1' },
+      });
+    });
+  });
+
+  describe('cancelAction', () => {
+    it('should delegate cancellation to confirmation service', async () => {
+      mockConfirmationService.cancelConfirmation.mockResolvedValue({
+        id: 'conf-1',
+        status: 'CANCELLED',
+      });
+
+      const result = await service.cancelAction('user-1', 'conf-1');
+
+      expect(mockConfirmationService.cancelConfirmation).toHaveBeenCalledWith(
+        'conf-1',
+        'user-1',
+      );
+      expect(result).toEqual({
+        success: true,
+        message: 'Confirmation request cancelled',
+      });
     });
   });
 });

@@ -7,7 +7,7 @@ export const EVAL_USERS = {
 
 export const EVAL_ACCOUNTS = {
   ACCOUNT_A1: {
-    id: 'acc-eval-a1-1111-1111-1111',
+    id: 'a1111111-1111-4111-8111-111111111111',
     userId: EVAL_USERS.USER_A,
     name: 'Checking Account',
     type: AccountType.CHECKING,
@@ -19,7 +19,7 @@ export const EVAL_ACCOUNTS = {
     updatedAt: new Date('2026-09-01'),
   },
   ACCOUNT_B1: {
-    id: 'acc-eval-b1-2222-2222-2222',
+    id: 'b2222222-2222-4222-8222-222222222222',
     userId: EVAL_USERS.USER_B,
     name: 'Secret Investment Account',
     type: AccountType.INVESTMENT,

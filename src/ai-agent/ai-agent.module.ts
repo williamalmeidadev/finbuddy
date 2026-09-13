@@ -5,6 +5,7 @@ import { AiAgentOrchestratorService } from './application/ai-agent-orchestrator.
 import { AgentToolRegistryService } from './application/tools/agent-tool-registry.service';
 import { AgentToolAuthorizationService } from './application/authorization/agent-tool-authorization.service';
 import { AgentToolArgumentValidatorService } from './application/validation/agent-tool-argument-validator.service';
+import { AiConfirmationService } from './application/ai-confirmation.service';
 import { OpenAIClient } from './infrastructure/openai/openai.client';
 import { MetricsModule } from '../common/metrics/metrics.module';
 import { AccountModule } from '../account/account.module';
@@ -15,6 +16,7 @@ import { GetAccountsTool } from './application/tools/impl/get-accounts.tool';
 import { GetTransactionsTool } from './application/tools/impl/get-transactions.tool';
 import { GetFinancialSummaryTool } from './application/tools/impl/get-financial-summary.tool';
 import { GetBudgetsTool } from './application/tools/impl/get-budgets.tool';
+import { CreateTransactionTool } from './application/tools/impl/create-transaction.tool';
 
 @Module({
   imports: [
@@ -31,12 +33,14 @@ import { GetBudgetsTool } from './application/tools/impl/get-budgets.tool';
     AgentToolRegistryService,
     AgentToolAuthorizationService,
     AgentToolArgumentValidatorService,
+    AiConfirmationService,
     OpenAIClient,
     GetAccountsTool,
     GetTransactionsTool,
     GetFinancialSummaryTool,
     GetBudgetsTool,
+    CreateTransactionTool,
   ],
-  exports: [AiAgentService],
+  exports: [AiAgentService, AiConfirmationService],
 })
 export class AiAgentModule {}

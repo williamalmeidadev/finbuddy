@@ -96,6 +96,10 @@ class EnvironmentVariables {
   @IsNumber()
   @IsOptional()
   OPENAI_TIMEOUT_MS?: number = 30000;
+
+  @IsNumber()
+  @IsOptional()
+  AI_CONFIRMATION_TTL_SECONDS?: number = 300;
 }
 
 export function validate(config: Record<string, any>) {

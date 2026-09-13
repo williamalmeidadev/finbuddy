@@ -85,8 +85,10 @@ The FinBuddy AI Agent module (`src/ai-agent/`) provides a secure, modular, and r
 | `GetTransactionsTool` | Application Tool | `src/ai-agent/application/tools/impl/get-transactions.tool.ts` | Read-only tool `get_transactions`. Retains metadata (`READ_TRANSACTIONS`, `LOW`, `readOnly: true`). Invokes `TransactionService.findByUserId`. |
 | `GetFinancialSummaryTool` | Application Tool | `src/ai-agent/application/tools/impl/get-financial-summary.tool.ts` | Read-only tool `get_financial_summary`. Retains metadata (`READ_FINANCIAL_SUMMARY`, `LOW`, `readOnly: true`). Invokes `FinancialSummaryService.getSummary`. |
 | `GetBudgetsTool` | Application Tool | `src/ai-agent/application/tools/impl/get-budgets.tool.ts` | Read-only tool `get_budgets`. Retains metadata (`READ_BUDGETS`, `LOW`, `readOnly: true`). Invokes `BudgetService.findByUserId`. |
+| `CreateTransactionTool` | Application Tool | `src/ai-agent/application/tools/impl/create-transaction.tool.ts` | Write tool `create_transaction`. Retains metadata (`CREATE_TRANSACTION`, `MEDIUM`, `readOnly: false`). Invokes `TransactionService.create`. |
+| `AiConfirmationService` | Application Service | `src/ai-agent/application/ai-confirmation.service.ts` | Manages confirmation lifecycle, pending state, TTL expiration, single-use atomic consumption, and explicit user cancellation. |
 | `OpenAIClient` | Infrastructure | `src/ai-agent/infrastructure/openai/openai.client.ts` | Manages lazy instantiation of official `OpenAI` SDK client, injects timeout configurations (`OPENAI_TIMEOUT_MS`), handles multi-turn `previous_response_id`, and parses function calls. |
-| `FINBUDDY_AGENT_INSTRUCTIONS` | Domain / Policy | `src/ai-agent/application/prompts/finbuddy-agent.instructions.ts` | System prompt defining FinBuddy's persona, prompt injection defenses, tool output trust boundary, anti-hallucination rules, and non-authoritative execution safeguards. |
+| `FINBUDDY_AGENT_INSTRUCTIONS` | Domain / Policy | `src/ai-agent/application/prompts/finbuddy-agent.instructions.ts` | System prompt defining FinBuddy's persona, prompt injection defenses, tool output trust boundary, anti-hallucination rules, write confirmation prompts, and non-authoritative execution safeguards. |
 
 ---
 
@@ -103,6 +105,8 @@ The LLM does not access the database.
 
 The LLM cannot execute arbitrary application code.
 
+The LLM cannot directly mutate database records without explicit application-level human confirmation.
+
 The application validates and authorizes every tool call.
 ```
 
@@ -116,6 +120,7 @@ Currently authorized capabilities:
 - `get_transactions` → `READ_TRANSACTIONS` (`readOnly: true`, `riskLevel: LOW`)
 - `get_financial_summary` → `READ_FINANCIAL_SUMMARY` (`readOnly: true`, `riskLevel: LOW`)
 - `get_budgets` → `READ_BUDGETS` (`readOnly: true`, `riskLevel: LOW`)
+- `create_transaction` → `CREATE_TRANSACTION` (`readOnly: false`, `riskLevel: MEDIUM`)
 
 ### 3.3 Application-Level Argument Validation
 Model tool arguments are parsed, validated, and normalized before reaching any authorization or domain service:
@@ -123,24 +128,24 @@ Model tool arguments are parsed, validated, and normalized before reaching any a
 - `get_transactions`: Validates `accountId` UUID format, limits pagination strictly between 1 and 100, and non-negative offsets.
 - `get_financial_summary`: Validates `month` format strictly against `YYYY-MM`.
 - `get_budgets`: Validates `categoryId` UUID format and `month` format `YYYY-MM`.
+- `create_transaction`: Validates `accountId` UUID, `type` enum (`INCOME` / `EXPENSE`), positive `amount`, `transactionAt` ISO date string, optional `description`, and optional `categoryId` UUID.
 
 ---
 
 ## 4. Evaluation Harness & Security Regression Framework
 
-The evaluation harness (`test/ai-agent/evaluation/`) provides a deterministic, repeatable offline test suite covering 25 scenarios:
+The evaluation harness (`test/ai-agent/evaluation/`) provides a deterministic, repeatable offline test suite covering 36 scenarios:
 - **Offline Executions**: Uses `MockOpenAIClientEvaluation` to run scenarios without live OpenAI API network dependencies.
 - **Regression Suite**: Executes via `npm run ai:evaluate` or standard `npm test`.
-- **Security Matrix Coverage**: Validates IDOR prevention, prompt injection resistance, indirect injection safety, hallucination grounding, tool failure handling, and iteration bounds.
-- Full details documented in [`docs/ai-agent-evaluation.md`](file:///home/williamalmeida/github/finbuddy/docs/ai-agent-evaluation.md).
+- **Security Matrix Coverage**: Validates IDOR prevention, prompt injection resistance, indirect injection safety, hallucination grounding, tool failure handling, iteration bounds, and write tool confirmation requirements (WT-01 through WT-10).
+- Full details documented in [`docs/ai-agent-evaluation.md`](file:///home/williamalmeida/github/finbuddy/docs/ai-agent-evaluation.md) and [`docs/ai-agent-write-tools.md`](file:///home/williamalmeida/github/finbuddy/docs/ai-agent-write-tools.md).
 
 ---
 
 ## 5. Current Limitations & Roadmap
 
 ### Current Limitations
-- **No Write Tools**: Financial mutations (create/update/delete) are not exposed to the agent.
-- **No Confirmation Flow**: Two-step human confirmation workflows for write tools are not implemented in this phase.
+- **Limited Write Scope**: Only transaction creation (`create_transaction`) is exposed. Updates, deletes, recurring transactions, and transfers are not exposed.
 - **No Conversation Persistence**: Endpoint is stateless for now; conversation history is not saved in a database across HTTP requests.
 - **No Memory / RAG**: No vector embeddings, RAG, long-term memory, or Redis memory persistence.
 
@@ -152,5 +157,6 @@ The evaluation harness (`test/ai-agent/evaluation/`) provides a deterministic, r
 | **Phase 2** | **Financial Read Tools & Tool-Calling Loop** | **Completed** |
 | **Phase 3** | **Agent Guardrails & Tool Authorization** | **Completed** |
 | **Phase 4** | **Agent Evaluation Harness** | **Completed** |
-| **Phase 5** | **Confirmed Financial Mutations** | Planned |
-| **Phase 6** | **Conversational Memory & State** | Planned |
+| **Phase 13** | **Financial Write Tools & Confirmation** | **Completed** |
+| **Phase 14** | **Conversational Memory & State** | Planned |
+
