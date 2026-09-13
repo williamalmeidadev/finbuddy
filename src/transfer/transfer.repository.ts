@@ -181,6 +181,55 @@ export class TransferRepository {
     });
   }
 
+  async deleteWithAtomicBalanceReversal(
+    transferId: string,
+    userId: string,
+  ): Promise<Transfer> {
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Fetch current transfer scoped to user (IDOR guard)
+      const current = await tx.transfer.findFirst({
+        where: {
+          id: transferId,
+          OR: [{ fromAccount: { userId } }, { toAccount: { userId } }],
+        },
+      });
+
+      if (!current) {
+        const { NotFoundException } = await import('@nestjs/common');
+        throw new NotFoundException('Transfer not found');
+      }
+
+      const amount = (current.amount as unknown as { toNumber(): number })
+        .toNumber
+        ? (current.amount as unknown as { toNumber(): number }).toNumber()
+        : Number(current.amount);
+
+      // 2. Restore balance on source account
+      await tx.account.update({
+        where: { id: current.fromAccountId },
+        data: { balance: { increment: amount } },
+      });
+
+      // 3. Reverse balance on destination account
+      await tx.account.update({
+        where: { id: current.toAccountId },
+        data: { balance: { decrement: amount } },
+      });
+
+      // 4. Delete linked SYSTEM transactions
+      await tx.transaction.deleteMany({
+        where: { transferId },
+      });
+
+      // 5. Delete Transfer record
+      const deleted = await tx.transfer.delete({
+        where: { id: transferId },
+      });
+
+      return deleted;
+    });
+  }
+
   async findByIdAndUserId(
     id: string,
     userId: string,

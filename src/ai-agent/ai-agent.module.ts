@@ -29,6 +29,7 @@ import { UpdateTransactionTool } from './application/tools/impl/update-transacti
 import { DeleteTransactionTool } from './application/tools/impl/delete-transaction.tool';
 import { CreateTransferTool } from './application/tools/impl/create-transfer.tool';
 import { UpdateTransferTool } from './application/tools/impl/update-transfer.tool';
+import { DeleteTransferTool } from './application/tools/impl/delete-transfer.tool';
 
 @Module({
   imports: [
@@ -64,6 +65,7 @@ import { UpdateTransferTool } from './application/tools/impl/update-transfer.too
     DeleteTransactionTool,
     CreateTransferTool,
     UpdateTransferTool,
+    DeleteTransferTool,
   ],
   exports: [
     AiAgentService,

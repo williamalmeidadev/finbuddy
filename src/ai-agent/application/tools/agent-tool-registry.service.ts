@@ -10,6 +10,7 @@ import { UpdateTransactionTool } from './impl/update-transaction.tool';
 import { DeleteTransactionTool } from './impl/delete-transaction.tool';
 import { CreateTransferTool } from './impl/create-transfer.tool';
 import { UpdateTransferTool } from './impl/update-transfer.tool';
+import { DeleteTransferTool } from './impl/delete-transfer.tool';
 
 @Injectable()
 export class AgentToolRegistryService implements OnModuleInit {
@@ -26,6 +27,7 @@ export class AgentToolRegistryService implements OnModuleInit {
     private readonly deleteTransactionTool: DeleteTransactionTool,
     private readonly createTransferTool: CreateTransferTool,
     private readonly updateTransferTool: UpdateTransferTool,
+    private readonly deleteTransferTool: DeleteTransferTool,
   ) {}
 
   onModuleInit() {
@@ -39,6 +41,7 @@ export class AgentToolRegistryService implements OnModuleInit {
     this.registerTool(this.deleteTransactionTool);
     this.registerTool(this.createTransferTool);
     this.registerTool(this.updateTransferTool);
+    this.registerTool(this.deleteTransferTool);
   }
 
   registerTool(tool: AgentTool): void {

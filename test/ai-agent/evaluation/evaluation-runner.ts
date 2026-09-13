@@ -31,6 +31,7 @@ import { UpdateTransactionTool } from '../../../src/ai-agent/application/tools/i
 import { DeleteTransactionTool } from '../../../src/ai-agent/application/tools/impl/delete-transaction.tool';
 import { CreateTransferTool } from '../../../src/ai-agent/application/tools/impl/create-transfer.tool';
 import { UpdateTransferTool } from '../../../src/ai-agent/application/tools/impl/update-transfer.tool';
+import { DeleteTransferTool } from '../../../src/ai-agent/application/tools/impl/delete-transfer.tool';
 import { TransferService } from '../../../src/transfer/transfer.service';
 
 import {
@@ -367,6 +368,32 @@ export class AgentEvaluationRunner {
             };
           },
         ),
+      delete: jest
+        .fn()
+        .mockImplementation(async (transferId: string, userId: string) => {
+          // IDOR: cross-user transfer not found
+          if (
+            transferId === 'f3333333-3333-4333-8333-333333333333' &&
+            userId === EVAL_USERS.USER_A
+          ) {
+            const { NotFoundException } = await import('@nestjs/common');
+            throw new NotFoundException('Transfer not found');
+          }
+          // Non-existent transfer
+          if (transferId === 'a0000000-0000-4000-8000-000000000000') {
+            const { NotFoundException } = await import('@nestjs/common');
+            throw new NotFoundException('Transfer not found');
+          }
+          return {
+            id: transferId,
+            fromAccountId: EVAL_ACCOUNTS.ACCOUNT_A1.id,
+            toAccountId: EVAL_ACCOUNTS.ACCOUNT_A2.id,
+            amount: 100.0,
+            transactionAt: new Date('2026-09-13T15:30:00.000Z'),
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
+        }),
     };
 
     const conversationsMap = new Map<string, any>();
@@ -638,6 +665,7 @@ export class AgentEvaluationRunner {
         DeleteTransactionTool,
         CreateTransferTool,
         UpdateTransferTool,
+        DeleteTransferTool,
         { provide: OpenAIClient, useValue: mockOpenAiClient },
         { provide: MetricsService, useValue: mockMetricsService },
         { provide: AccountService, useValue: mockAccountService },

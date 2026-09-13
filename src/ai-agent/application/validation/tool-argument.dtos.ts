@@ -204,3 +204,9 @@ export class UpdateTransferArgsDto {
   @IsUUID()
   toAccountId?: string;
 }
+
+export class DeleteTransferArgsDto {
+  @IsUUID()
+  @IsNotEmpty()
+  transferId!: string;
+}
