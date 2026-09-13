@@ -18,7 +18,13 @@ import {
 } from './application/observability/ai-agent-observability.types';
 
 import { AiConversationService } from './application/ai-conversation.service';
+import { AiMemoryService } from './application/memory/ai-memory.service';
 import { ConversationMessageRole } from '../generated/prisma/enums';
+import {
+  CreateMemoryDto,
+  ListMemoriesQueryDto,
+  UpdateMemoryDto,
+} from './dto/memory.dtos';
 
 export interface ConfirmationExecutionResult {
   success: boolean;
@@ -44,6 +50,7 @@ export class AiAgentService {
     private readonly metricsService: MetricsService,
     private readonly observability: AiAgentObservabilityService,
     private readonly conversationService: AiConversationService,
+    private readonly memoryService: AiMemoryService,
   ) {}
 
   async sendMessage(
@@ -85,6 +92,15 @@ export class AiAgentService {
       content: h.content,
     }));
 
+    // Load user memories for context injection
+    const userMemories = await this.memoryService.getUserMemories(
+      userId,
+      undefined,
+      options,
+    );
+    const memoryContext =
+      this.memoryService.formatMemoriesForModelContext(userMemories);
+
     // Persist user message
     await this.conversationService.appendMessage(
       conversationId,
@@ -94,13 +110,14 @@ export class AiAgentService {
       options,
     );
 
-    // Run orchestrator loop with historical context
+    // Run orchestrator loop with historical & memory context
     const response = await this.orchestrator.processUserMessage(
       userId,
       message,
       {
         ...options,
         history,
+        memoryContext: memoryContext || undefined,
       },
     );
 
@@ -324,5 +341,52 @@ export class AiAgentService {
       success: true,
       message: 'Confirmation request cancelled',
     };
+  }
+
+  async saveMemory(
+    userId: string,
+    dto: CreateMemoryDto,
+    options?: RequestCorrelationOptions,
+  ) {
+    return this.memoryService.saveMemory(
+      userId,
+      dto.type,
+      dto.key,
+      dto.value,
+      options,
+    );
+  }
+
+  async getUserMemories(
+    userId: string,
+    query?: ListMemoriesQueryDto,
+    options?: RequestCorrelationOptions,
+  ) {
+    return this.memoryService.getUserMemories(userId, query?.type, options);
+  }
+
+  async getMemory(id: string, userId: string) {
+    return this.memoryService.getMemoryById(id, userId);
+  }
+
+  async updateMemory(
+    id: string,
+    userId: string,
+    dto: UpdateMemoryDto,
+    options?: RequestCorrelationOptions,
+  ) {
+    return this.memoryService.updateMemoryValue(id, userId, dto.value, options);
+  }
+
+  async deleteMemory(
+    id: string,
+    userId: string,
+    options?: RequestCorrelationOptions,
+  ) {
+    return this.memoryService.deleteMemory(id, userId, options);
+  }
+
+  async deleteAllMemories(userId: string, options?: RequestCorrelationOptions) {
+    return this.memoryService.deleteAllMemoriesForUser(userId, options);
   }
 }

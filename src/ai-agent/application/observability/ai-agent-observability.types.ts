@@ -39,6 +39,12 @@ export const AiEventName = {
   CONVERSATION_MESSAGE_PERSISTED: 'ai.conversation.message.persisted',
   CONVERSATION_HISTORY_LOADED: 'ai.conversation.history.loaded',
   CONVERSATION_DELETED: 'ai.conversation.deleted',
+
+  MEMORY_CREATED: 'ai.memory.created',
+  MEMORY_UPDATED: 'ai.memory.updated',
+  MEMORY_DELETED: 'ai.memory.deleted',
+  MEMORY_REJECTED: 'ai.memory.rejected',
+  MEMORY_LOADED: 'ai.memory.loaded',
 } as const;
 
 export const AiErrorCode = {

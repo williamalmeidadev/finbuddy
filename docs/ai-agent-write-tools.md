@@ -12,10 +12,11 @@ Because financial mutations carry inherent risk (unintended charges, duplicated 
 LLM output → UNTRUSTED → Argument Validation → Tool Authorization → Risk Assessment → Confirmation Check → Pending State → Human Confirmation → Domain Execution → Database
 ```
 
-1. **Zero Direct LLM Inline Database Mutations**:
-   - The LLM can propose financial transaction creation, but **cannot execute database writes inline** during the conversational tool loop.
-   - When a non-`readOnly` write tool (`create_transaction`) is selected by the model, the orchestrator intercepts execution, validates arguments, checks authorization, and creates a pending `AiConfirmation` entity.
-   - The API returns a structured response of type `confirmation_required` to the user interface. No financial record is modified at this stage.
+1. **Zero Direct LLM Inline Database Financial Mutations**:
+   - The LLM can propose financial transaction creation, but **cannot execute database writes inline** during the conversational tool loop for financial mutations.
+   - When a financial write tool (`create_transaction`, `requiresConfirmation = true`) is selected by the model, the orchestrator intercepts execution, validates arguments, checks authorization, and creates a pending `AiConfirmation` entity.
+   - Non-financial, low-risk state operations such as `save_memory` (`requiresConfirmation = false`) execute inline subject to policy validation.
+   - The API returns a structured response of type `confirmation_required` to the user interface for financial actions. No financial record is modified without explicit confirmation.
 
 2. **User Identity Boundary**:
    - Authenticated user identity (`userId`) comes strictly from the verified JWT context (`AgentToolContext.userId`).

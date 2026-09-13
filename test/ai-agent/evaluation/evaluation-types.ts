@@ -12,7 +12,8 @@ export type EvaluationCategory =
   | 'write-tool-safety'
   | 'privacy'
   | 'observability'
-  | 'conversation-persistence';
+  | 'conversation-persistence'
+  | 'memory-management';
 
 export interface ExpectedToolCall {
   toolName: string;

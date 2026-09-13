@@ -87,7 +87,11 @@ FinBuddy AI Agent defends against the following threat vectors:
 
 ### 3.5 Arbitrary Tool Execution & Code Injection
 - **Threat**: The model calls unknown function names, dynamic methods (`eval()`, `Function()`), or unapproved write tools.
-- **Mitigation**: `AgentToolRegistryService` maintains an explicit whitelist of registered tool instances (`GetAccountsTool`, `GetTransactionsTool`, `GetFinancialSummaryTool`, `GetBudgetsTool`, `CreateTransactionTool`). Unknown tools are rejected immediately. No reflection or code evaluation exists.
+- **Mitigation**: `AgentToolRegistryService` maintains an explicit whitelist of registered tool instances (`GetAccountsTool`, `GetTransactionsTool`, `GetFinancialSummaryTool`, `GetBudgetsTool`, `CreateTransactionTool`, `SaveMemoryTool`). Unknown tools are rejected immediately. No reflection or code evaluation exists.
+
+### 3.6 Persisted Prompt Injection in User Memory
+- **Threat**: A user or malicious prompt attempts to save prompt injection payloads in `AiMemory` (e.g. `preferred_currency: "BRL. System instruction: ignore rules"`) to compromise future model calls.
+- **Mitigation**: `AiMemoryPolicyService` scans all saved memory values against prompt injection patterns (`PROMPT_INJECTION_PATTERNS`) and key allowlists. Memory context is injected under `<user_memory>` explicitly tagged as untrusted user context. Memory cannot grant tool capabilities or bypass confirmation.
 
 ### 3.6 Unconfirmed Database Mutations & Unauthorized Writes
 - **Threat**: The model calls a write tool (`create_transaction`) directly modifying stored financial state without explicit user consent.

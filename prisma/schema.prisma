@@ -46,6 +46,7 @@ model User {
   aiConfirmations       AiConfirmation[]
   aiAuditEvents         AiAuditEvent[]
   aiConversations       AiConversation[]
+  memories              AiMemory[]
 
   @@map("users")
 }
@@ -346,4 +347,28 @@ model AiConversationMessage {
   @@index([conversationId, createdAt])
   @@map("ai_conversation_messages")
 }
+
+enum AiMemoryType {
+  PREFERENCE
+  FINANCIAL_GOAL
+  GENERAL_CONTEXT
+}
+
+model AiMemory {
+  id        String       @id @default(uuid()) @db.Uuid
+  userId    String       @map("user_id") @db.Uuid
+  type      AiMemoryType
+  key       String       @db.VarChar(100)
+  value     String       @db.VarChar(1000)
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type, key])
+  @@index([userId])
+  @@index([userId, type])
+  @@map("ai_memories")
+}
+
 

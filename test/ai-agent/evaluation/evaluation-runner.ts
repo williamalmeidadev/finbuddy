@@ -23,6 +23,10 @@ import { AgentResponse } from '../../../src/ai-agent/domain/agent-response';
 import { AiAgentService } from '../../../src/ai-agent/ai-agent.service';
 import { AiConversationService } from '../../../src/ai-agent/application/ai-conversation.service';
 import { AiConversationRepository } from '../../../src/ai-agent/infrastructure/repositories/ai-conversation.repository';
+import { AiMemoryRepository } from '../../../src/ai-agent/infrastructure/repositories/ai-memory.repository';
+import { AiMemoryPolicyService } from '../../../src/ai-agent/application/memory/ai-memory-policy.service';
+import { AiMemoryService } from '../../../src/ai-agent/application/memory/ai-memory.service';
+import { SaveMemoryTool } from '../../../src/ai-agent/application/tools/impl/save-memory.tool';
 
 import {
   AgentEvaluationScenario,
@@ -51,6 +55,7 @@ export class AgentEvaluationRunner {
     const violations: EvaluationViolation[] = [];
     const confirmationsMap = new Map<string, any>();
     const auditsList: any[] = [];
+    const memoriesMap = new Map<string, any>();
 
     // Mocks for domain financial services
     const mockAccountService = {
@@ -307,6 +312,86 @@ export class AgentEvaluationRunner {
           return Promise.resolve(msgs.length);
         }),
       },
+      aiMemory: {
+        upsert: jest
+          .fn()
+          .mockImplementation(({ where, update, create }: any) => {
+            const keyStr = `${where.userId_type_key.userId}:${where.userId_type_key.type}:${where.userId_type_key.key}`;
+            let record = memoriesMap.get(keyStr);
+            if (record) {
+              record.value = update.value;
+              record.updatedAt = new Date();
+            } else {
+              record = {
+                id: `mem-eval-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+                userId: create.userId,
+                type: create.type,
+                key: create.key,
+                value: create.value,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              };
+              memoriesMap.set(keyStr, record);
+            }
+            return Promise.resolve(record);
+          }),
+        findFirst: jest.fn().mockImplementation(({ where }: any) => {
+          for (const mem of memoriesMap.values()) {
+            if (
+              (!where.id || mem.id === where.id) &&
+              (!where.userId || mem.userId === where.userId) &&
+              (!where.type || mem.type === where.type) &&
+              (!where.key || mem.key === where.key)
+            ) {
+              return Promise.resolve(mem);
+            }
+          }
+          return Promise.resolve(null);
+        }),
+        findMany: jest.fn().mockImplementation(({ where }: any) => {
+          const list = Array.from(memoriesMap.values()).filter((mem) => {
+            if (where?.userId && mem.userId !== where.userId) return false;
+            if (where?.type && mem.type !== where.type) return false;
+            return true;
+          });
+          return Promise.resolve(list);
+        }),
+        count: jest.fn().mockImplementation(({ where }: any) => {
+          const list = Array.from(memoriesMap.values()).filter(
+            (m) => !where?.userId || m.userId === where.userId,
+          );
+          return Promise.resolve(list.length);
+        }),
+        update: jest.fn().mockImplementation(({ where, data }: any) => {
+          for (const mem of memoriesMap.values()) {
+            if (mem.id === where.id) {
+              if (data.value !== undefined) mem.value = data.value;
+              mem.updatedAt = new Date();
+              return Promise.resolve(mem);
+            }
+          }
+          return Promise.resolve(null);
+        }),
+        delete: jest.fn().mockImplementation(({ where }: any) => {
+          for (const [k, mem] of memoriesMap.entries()) {
+            if (mem.id === where.id) {
+              memoriesMap.delete(k);
+              return Promise.resolve(mem);
+            }
+          }
+          return Promise.resolve(null);
+        }),
+        deleteMany: jest.fn().mockImplementation(({ where }: any) => {
+          let count = 0;
+          for (const [k, mem] of Array.from(memoriesMap.entries())) {
+            if (!where?.userId || mem.userId === where.userId) {
+              memoriesMap.delete(k);
+              count++;
+            }
+          }
+          return Promise.resolve({ count });
+        }),
+      },
       $transaction: jest
         .fn()
         .mockImplementation((promises: any[]) => Promise.all(promises)),
@@ -349,11 +434,15 @@ export class AgentEvaluationRunner {
         AiConfirmationService,
         AiConversationRepository,
         AiConversationService,
+        AiMemoryRepository,
+        AiMemoryPolicyService,
+        AiMemoryService,
         GetAccountsTool,
         GetTransactionsTool,
         GetFinancialSummaryTool,
         GetBudgetsTool,
         CreateTransactionTool,
+        SaveMemoryTool,
         { provide: OpenAIClient, useValue: mockOpenAiClient },
         { provide: MetricsService, useValue: mockMetricsService },
         { provide: AccountService, useValue: mockAccountService },

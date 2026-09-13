@@ -241,6 +241,22 @@ export class AiAgentObservabilityService {
       case 'ai.conversation.deleted':
         this.metricsService.increment('ai_conversations_deleted_total');
         break;
+
+      case 'ai.memory.created':
+        this.metricsService.increment('ai_memories_created_total');
+        break;
+      case 'ai.memory.updated':
+        this.metricsService.increment('ai_memories_updated_total');
+        break;
+      case 'ai.memory.deleted':
+        this.metricsService.increment('ai_memories_deleted_total');
+        break;
+      case 'ai.memory.rejected':
+        this.metricsService.increment('ai_memories_rejected_total');
+        break;
+      case 'ai.memory.loaded':
+        this.metricsService.increment('ai_memories_loaded_total');
+        break;
     }
   }
 

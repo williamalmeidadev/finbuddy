@@ -14,7 +14,7 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import { TransactionType } from '../../../generated/prisma/enums';
+import { AiMemoryType, TransactionType } from '../../../generated/prisma/enums';
 
 export class GetAccountsArgsDto {}
 
@@ -89,4 +89,19 @@ export class CreateTransactionArgsDto {
     { message: 'transactionAt must be a valid ISO 8601 datetime string' },
   )
   transactionAt!: string;
+}
+
+export class SaveMemoryArgsDto {
+  @IsEnum(AiMemoryType)
+  type!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @Length(1, 100)
+  key!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @Length(1, 1000)
+  value!: string;
 }
