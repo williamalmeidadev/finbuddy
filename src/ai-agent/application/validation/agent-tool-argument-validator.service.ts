@@ -3,6 +3,7 @@ import { ClassConstructor, plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import {
   CreateTransactionArgsDto,
+  CreateTransferArgsDto,
   DeleteTransactionArgsDto,
   GetAccountsArgsDto,
   GetBudgetsArgsDto,
@@ -28,6 +29,7 @@ export class AgentToolArgumentValidatorService {
     get_financial_summary: GetFinancialSummaryArgsDto,
     get_budgets: GetBudgetsArgsDto,
     create_transaction: CreateTransactionArgsDto,
+    create_transfer: CreateTransferArgsDto,
     save_memory: SaveMemoryArgsDto,
     update_transaction: UpdateTransactionArgsDto,
     delete_transaction: DeleteTransactionArgsDto,
@@ -132,6 +134,19 @@ export class AgentToolArgumentValidatorService {
         return {
           valid: false,
           errors: ['At least one field to update must be provided'],
+        };
+      }
+    }
+
+    if (toolName === 'create_transfer') {
+      const transferArgs = instance as CreateTransferArgsDto;
+      if (transferArgs.fromAccountId === transferArgs.toAccountId) {
+        this.logger.warn(
+          `Tool argument validation failed for ${toolName}: Source and destination accounts must be different`,
+        );
+        return {
+          valid: false,
+          errors: ['Source and destination accounts must be different'],
         };
       }
     }

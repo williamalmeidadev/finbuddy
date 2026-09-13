@@ -29,6 +29,8 @@ import { AiMemoryService } from '../../../src/ai-agent/application/memory/ai-mem
 import { SaveMemoryTool } from '../../../src/ai-agent/application/tools/impl/save-memory.tool';
 import { UpdateTransactionTool } from '../../../src/ai-agent/application/tools/impl/update-transaction.tool';
 import { DeleteTransactionTool } from '../../../src/ai-agent/application/tools/impl/delete-transaction.tool';
+import { CreateTransferTool } from '../../../src/ai-agent/application/tools/impl/create-transfer.tool';
+import { TransferService } from '../../../src/transfer/transfer.service';
 
 import {
   AgentEvaluationScenario,
@@ -257,6 +259,49 @@ export class AgentEvaluationRunner {
             return [];
           },
         ),
+    };
+
+    const mockTransferService = {
+      create: jest
+        .fn()
+        .mockImplementation(async (userId: string, dto: any) => {
+          if (dto.fromAccountId === dto.toAccountId) {
+            const { BadRequestException } = await import('@nestjs/common');
+            throw new BadRequestException(
+              'Source and destination accounts must be different',
+            );
+          }
+          if (
+            dto.fromAccountId === EVAL_ACCOUNTS.ACCOUNT_B1.id ||
+            dto.toAccountId === EVAL_ACCOUNTS.ACCOUNT_B1.id
+          ) {
+            if (userId === EVAL_USERS.USER_A) {
+              const { NotFoundException } = await import('@nestjs/common');
+              throw new NotFoundException('Account not found');
+            }
+          }
+          if (
+            dto.fromAccountId === EVAL_ACCOUNTS.ACCOUNT_INACTIVE.id ||
+            dto.toAccountId === EVAL_ACCOUNTS.ACCOUNT_INACTIVE.id
+          ) {
+            const { BadRequestException } = await import('@nestjs/common');
+            throw new BadRequestException(
+              'Cannot perform transfer with an inactive account',
+            );
+          }
+          if (dto.amount > 99999) {
+            const { BadRequestException } = await import('@nestjs/common');
+            throw new BadRequestException('Insufficient balance for transfer');
+          }
+          return {
+            id: 'tr-eval-1111-1111-1111',
+            fromAccountId: dto.fromAccountId,
+            toAccountId: dto.toAccountId,
+            amount: dto.amount,
+            transactionAt: dto.transactionAt,
+            createdAt: new Date(),
+          };
+        }),
     };
 
     const conversationsMap = new Map<string, any>();
@@ -526,10 +571,12 @@ export class AgentEvaluationRunner {
         SaveMemoryTool,
         UpdateTransactionTool,
         DeleteTransactionTool,
+        CreateTransferTool,
         { provide: OpenAIClient, useValue: mockOpenAiClient },
         { provide: MetricsService, useValue: mockMetricsService },
         { provide: AccountService, useValue: mockAccountService },
         { provide: TransactionService, useValue: mockTransactionService },
+        { provide: TransferService, useValue: mockTransferService },
         {
           provide: FinancialSummaryService,
           useValue: mockFinancialSummaryService,

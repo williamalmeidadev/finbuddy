@@ -13,6 +13,7 @@ import { AccountModule } from '../account/account.module';
 import { TransactionModule } from '../transaction/transaction.module';
 import { FinancialSummaryModule } from '../financial-summary/financial-summary.module';
 import { BudgetModule } from '../budget/budget.module';
+import { TransferModule } from '../transfer/transfer.module';
 import { GetAccountsTool } from './application/tools/impl/get-accounts.tool';
 import { GetTransactionsTool } from './application/tools/impl/get-transactions.tool';
 import { GetFinancialSummaryTool } from './application/tools/impl/get-financial-summary.tool';
@@ -26,6 +27,7 @@ import { AiMemoryService } from './application/memory/ai-memory.service';
 import { SaveMemoryTool } from './application/tools/impl/save-memory.tool';
 import { UpdateTransactionTool } from './application/tools/impl/update-transaction.tool';
 import { DeleteTransactionTool } from './application/tools/impl/delete-transaction.tool';
+import { CreateTransferTool } from './application/tools/impl/create-transfer.tool';
 
 @Module({
   imports: [
@@ -34,6 +36,7 @@ import { DeleteTransactionTool } from './application/tools/impl/delete-transacti
     TransactionModule,
     FinancialSummaryModule,
     BudgetModule,
+    TransferModule,
   ],
   controllers: [AiAgentController],
   providers: [
@@ -58,6 +61,7 @@ import { DeleteTransactionTool } from './application/tools/impl/delete-transacti
     SaveMemoryTool,
     UpdateTransactionTool,
     DeleteTransactionTool,
+    CreateTransferTool,
   ],
   exports: [
     AiAgentService,

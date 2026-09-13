@@ -106,6 +106,32 @@ LLM output → UNTRUSTED → Argument Validation → Tool Authorization → Risk
 }
 ```
 
+### 4. `create_transfer`
+
+| Property | Value |
+|---|---|
+| **Tool Name** | `create_transfer` |
+| **Capability** | `AgentCapability.CREATE_TRANSFER` |
+| **Risk Level** | `AgentToolRiskLevel.HIGH` |
+| **Read-Only** | `false` |
+| **Description** | Create a financial transfer moving funds between two accounts belonging to the authenticated user. |
+
+#### Input Schema & Argument DTO Validation (`CreateTransferArgsDto`)
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "fromAccountId": { "type": "string", "description": "Source account UUID" },
+    "toAccountId": { "type": "string", "description": "Destination account UUID" },
+    "amount": { "type": "number", "minimum": 0.0001, "maximum": 999999999999.9999, "description": "Positive transfer amount" },
+    "transactionAt": { "type": "string", "description": "Transfer ISO date-time string" }
+  },
+  "required": ["fromAccountId", "toAccountId", "amount", "transactionAt"],
+  "additionalProperties": false
+}
+```
+
 ### Input Schema & Argument DTO Validation (`CreateTransactionArgsDto`)
 
 ```json
