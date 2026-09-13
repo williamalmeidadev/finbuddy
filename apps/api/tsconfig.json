@@ -4,6 +4,7 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "rootDir": "./",
+    "ignoreDeprecations": "6.0",
     "types": ["jest", "node"]
   },
   "include": ["src/**/*", "test/**/*"]
