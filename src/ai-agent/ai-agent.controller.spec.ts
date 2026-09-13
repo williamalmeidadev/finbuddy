@@ -10,6 +10,8 @@ describe('AiAgentController', () => {
   let controller: AiAgentController;
   let aiAgentService: {
     sendMessage: jest.Mock;
+    confirmAction: jest.Mock;
+    cancelAction: jest.Mock;
   };
 
   const mockUser: AuthenticatedUserDto = {
@@ -20,6 +22,8 @@ describe('AiAgentController', () => {
   beforeEach(async () => {
     aiAgentService = {
       sendMessage: jest.fn(),
+      confirmAction: jest.fn(),
+      cancelAction: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -74,6 +78,45 @@ describe('AiAgentController', () => {
         mockUser.id,
         dto.message,
       );
+    });
+  });
+
+  describe('confirmAction', () => {
+    it('should call aiAgentService.confirmAction with user.id and confirmationId', async () => {
+      const confirmationId = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      const mockExecutionResult = {
+        success: true,
+        message: 'Financial action executed successfully',
+        data: { id: 'tx-1' },
+      };
+      aiAgentService.confirmAction.mockResolvedValue(mockExecutionResult);
+
+      const result = await controller.confirmAction(mockUser, confirmationId);
+
+      expect(aiAgentService.confirmAction).toHaveBeenCalledWith(
+        mockUser.id,
+        confirmationId,
+      );
+      expect(result).toBe(mockExecutionResult);
+    });
+  });
+
+  describe('cancelAction', () => {
+    it('should call aiAgentService.cancelAction with user.id and confirmationId', async () => {
+      const confirmationId = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      const mockCancelResult = {
+        success: true,
+        message: 'Confirmation request cancelled',
+      };
+      aiAgentService.cancelAction.mockResolvedValue(mockCancelResult);
+
+      const result = await controller.cancelAction(mockUser, confirmationId);
+
+      expect(aiAgentService.cancelAction).toHaveBeenCalledWith(
+        mockUser.id,
+        confirmationId,
+      );
+      expect(result).toBe(mockCancelResult);
     });
   });
 });

@@ -25,6 +25,7 @@ export interface ExpectedBehavior {
   expectSuccess?: boolean;
   expectMaxIterationsReached?: boolean;
   expectServiceError?: boolean;
+  expectConfirmationRequired?: boolean;
   responseMustContain?: string[];
   responseMustNotContain?: string[];
 }

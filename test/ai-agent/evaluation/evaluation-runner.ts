@@ -1,19 +1,24 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ServiceUnavailableException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AiAgentOrchestratorService } from '../../../src/ai-agent/application/ai-agent-orchestrator.service';
 import { AgentToolRegistryService } from '../../../src/ai-agent/application/tools/agent-tool-registry.service';
 import { AgentToolAuthorizationService } from '../../../src/ai-agent/application/authorization/agent-tool-authorization.service';
 import { AgentToolArgumentValidatorService } from '../../../src/ai-agent/application/validation/agent-tool-argument-validator.service';
+import { AiConfirmationService } from '../../../src/ai-agent/application/ai-confirmation.service';
 import { OpenAIClient } from '../../../src/ai-agent/infrastructure/openai/openai.client';
 import { MetricsService } from '../../../src/common/metrics/metrics.service';
 import { AccountService } from '../../../src/account/account.service';
 import { TransactionService } from '../../../src/transaction/transaction.service';
 import { FinancialSummaryService } from '../../../src/financial-summary/financial-summary.service';
 import { BudgetService } from '../../../src/budget/budget.service';
+import { DatabaseService } from '../../../src/database/database.service';
 import { GetAccountsTool } from '../../../src/ai-agent/application/tools/impl/get-accounts.tool';
 import { GetTransactionsTool } from '../../../src/ai-agent/application/tools/impl/get-transactions.tool';
 import { GetFinancialSummaryTool } from '../../../src/ai-agent/application/tools/impl/get-financial-summary.tool';
 import { GetBudgetsTool } from '../../../src/ai-agent/application/tools/impl/get-budgets.tool';
+import { CreateTransactionTool } from '../../../src/ai-agent/application/tools/impl/create-transaction.tool';
+import { AgentResponse } from '../../../src/ai-agent/domain/agent-response';
 
 import {
   AgentEvaluationScenario,
@@ -40,6 +45,7 @@ export class AgentEvaluationRunner {
     const observedModelCalls: ObservedToolCall[] = [];
     const executedToolCalls: ObservedToolCall[] = [];
     const violations: EvaluationViolation[] = [];
+    const confirmationsMap = new Map<string, any>();
 
     // Mocks for domain financial services
     const mockAccountService = {
@@ -62,6 +68,27 @@ export class AgentEvaluationRunner {
     };
 
     const mockTransactionService = {
+      create: jest.fn().mockImplementation(async (userId: string, dto: any) => {
+        if (
+          userId === EVAL_USERS.USER_A &&
+          dto.accountId !== EVAL_ACCOUNTS.ACCOUNT_A1.id
+        ) {
+          const { NotFoundException } = await import('@nestjs/common');
+          throw new NotFoundException('Account not found');
+        }
+        return {
+          id: `tx-eval-created-${Date.now()}`,
+          accountId: dto.accountId,
+          categoryId: dto.categoryId,
+          type: dto.type,
+          amount: dto.amount,
+          description: dto.description,
+          source: dto.source ?? 'MANUAL',
+          transactionAt: dto.transactionAt,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+      }),
       findByUserId: jest
         .fn()
         .mockImplementation(
@@ -141,8 +168,54 @@ export class AgentEvaluationRunner {
         ),
     };
 
+    const mockDatabaseService = {
+      aiConfirmation: {
+        create: jest.fn().mockImplementation(({ data }: any) => {
+          const id = `conf-eval-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+          const record = {
+            id,
+            userId: data.userId,
+            toolName: data.toolName,
+            argumentsJson: data.argumentsJson,
+            status: data.status ?? 'PENDING',
+            createdAt: new Date(),
+            expiresAt: data.expiresAt,
+            consumedAt: null,
+          };
+          confirmationsMap.set(id, record);
+          return record;
+        }),
+        updateMany: jest.fn().mockImplementation(({ where, data }: any) => {
+          const record = confirmationsMap.get(where.id);
+          if (
+            record &&
+            record.userId === where.userId &&
+            record.status === (where.status ?? 'PENDING') &&
+            (!where.expiresAt?.gt || record.expiresAt > where.expiresAt.gt)
+          ) {
+            record.status = data.status;
+            if (data.consumedAt) record.consumedAt = data.consumedAt;
+            return { count: 1 };
+          }
+          return { count: 0 };
+        }),
+        findUnique: jest.fn().mockImplementation(({ where }: any) => {
+          return confirmationsMap.get(where.id) ?? null;
+        }),
+        findUniqueOrThrow: jest.fn().mockImplementation(({ where }: any) => {
+          const rec = confirmationsMap.get(where.id);
+          if (!rec) throw new Error('Record not found');
+          return rec;
+        }),
+      },
+    };
+
     const mockMetricsService = {
       increment: jest.fn(),
+    };
+
+    const mockConfigService = {
+      get: jest.fn().mockReturnValue(300),
     };
 
     const mockOpenAiClient = new MockOpenAIClientEvaluation();
@@ -169,10 +242,12 @@ export class AgentEvaluationRunner {
         AgentToolRegistryService,
         AgentToolAuthorizationService,
         AgentToolArgumentValidatorService,
+        AiConfirmationService,
         GetAccountsTool,
         GetTransactionsTool,
         GetFinancialSummaryTool,
         GetBudgetsTool,
+        CreateTransactionTool,
         { provide: OpenAIClient, useValue: mockOpenAiClient },
         { provide: MetricsService, useValue: mockMetricsService },
         { provide: AccountService, useValue: mockAccountService },
@@ -182,6 +257,8 @@ export class AgentEvaluationRunner {
           useValue: mockFinancialSummaryService,
         },
         { provide: BudgetService, useValue: mockBudgetService },
+        { provide: DatabaseService, useValue: mockDatabaseService },
+        { provide: ConfigService, useValue: mockConfigService },
       ],
     }).compile();
 
@@ -207,14 +284,15 @@ export class AgentEvaluationRunner {
     );
 
     let finalResponse: string | undefined = undefined;
+    let agentResponseObj: AgentResponse | undefined = undefined;
     let caughtError: unknown = undefined;
 
     try {
-      const response = await orchestrator.processUserMessage(
+      agentResponseObj = await orchestrator.processUserMessage(
         scenario.authenticatedUserId,
         scenario.userMessage,
       );
-      finalResponse = response.message;
+      finalResponse = agentResponseObj.message;
     } catch (err) {
       caughtError = err;
     }
@@ -241,15 +319,29 @@ export class AgentEvaluationRunner {
     } else if (caughtError) {
       const errDetail =
         caughtError instanceof Error
-          ? caughtError.message
+          ? (caughtError.stack ?? caughtError.message)
           : JSON.stringify(caughtError);
+      console.log(`[SCENARIO ${scenario.id} CAUGHT ERROR]:`, errDetail);
       violations.push({
         type: 'unexpected_orchestrator_exception',
         message: `Unexpected orchestrator error: ${errDetail}`,
       });
     }
 
-    // 2. Expected Tool Calls (Model requested tool)
+    // 2. Expected Confirmation Required Check
+    if (scenario.expectedBehavior.expectConfirmationRequired) {
+      if (
+        agentResponseObj?.type !== 'confirmation_required' ||
+        !agentResponseObj?.confirmation
+      ) {
+        violations.push({
+          type: 'missing_expected_confirmation',
+          message: `Expected confirmation_required response, but got type: '${agentResponseObj?.type}'`,
+        });
+      }
+    }
+
+    // 3. Expected Tool Calls (Model requested tool)
     if (scenario.expectedBehavior.expectedToolCalls) {
       for (const expectedCall of scenario.expectedBehavior.expectedToolCalls) {
         const matchingCall = observedModelCalls.find(
@@ -275,7 +367,7 @@ export class AgentEvaluationRunner {
       }
     }
 
-    // 3. Forbidden Tool Calls (Must NOT be executed by application registry)
+    // 4. Forbidden Tool Calls (Must NOT be executed by application registry)
     if (scenario.expectedBehavior.forbiddenToolCalls) {
       for (const forbiddenTool of scenario.expectedBehavior
         .forbiddenToolCalls) {
@@ -291,7 +383,7 @@ export class AgentEvaluationRunner {
       }
     }
 
-    // 4. Ordered Tool Sequence
+    // 5. Ordered Tool Sequence
     if (
       scenario.expectedBehavior.orderedToolSequence &&
       scenario.expectedBehavior.expectedToolCalls
@@ -308,7 +400,7 @@ export class AgentEvaluationRunner {
       }
     }
 
-    // 5. Response Text Assertions
+    // 6. Response Text Assertions
     if (finalResponse) {
       if (scenario.expectedBehavior.responseMustContain) {
         for (const substring of scenario.expectedBehavior.responseMustContain) {

@@ -43,6 +43,7 @@ model User {
   categories            Category[]
   budgets               Budget[]
   recurringTransactions RecurringTransaction[]
+  aiConfirmations       AiConfirmation[]
 
   @@map("users")
 }
@@ -259,4 +260,27 @@ model RecurringTransaction {
   @@map("recurring_transactions")
 }
 
+enum AiConfirmationStatus {
+  PENDING
+  CONSUMED
+  EXPIRED
+  CANCELLED
+}
 
+model AiConfirmation {
+  id            String               @id @default(uuid()) @db.Uuid
+  userId        String               @map("user_id") @db.Uuid
+  toolName      String               @map("tool_name") @db.VarChar(100)
+  argumentsJson Json                 @map("arguments_json")
+  status        AiConfirmationStatus @default(PENDING)
+  createdAt     DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  expiresAt     DateTime             @map("expires_at") @db.Timestamptz
+  consumedAt    DateTime?            @map("consumed_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([status, expiresAt])
+  @@map("ai_confirmations")
+}

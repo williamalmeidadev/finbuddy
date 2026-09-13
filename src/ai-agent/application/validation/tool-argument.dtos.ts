@@ -1,5 +1,20 @@
-import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsUUID, Matches, Max, Min } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import {
+  IsEnum,
+  IsInt,
+  IsISO8601,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  IsString,
+  IsUUID,
+  Length,
+  Matches,
+  Max,
+  Min,
+} from 'class-validator';
+import { TransactionType } from '../../../generated/prisma/enums';
 
 export class GetAccountsArgsDto {}
 
@@ -40,4 +55,38 @@ export class GetBudgetsArgsDto {
     message: 'month must be in YYYY-MM format',
   })
   month?: string;
+}
+
+export class CreateTransactionArgsDto {
+  @IsUUID()
+  @IsNotEmpty()
+  accountId!: string;
+
+  @IsOptional()
+  @IsUUID()
+  categoryId?: string;
+
+  @IsEnum(TransactionType)
+  type!: TransactionType;
+
+  @Type(() => Number)
+  @IsNumber()
+  @IsPositive({ message: 'amount must be a positive number' })
+  @Min(0.0001)
+  @Max(999999999999.9999)
+  amount!: number;
+
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
+  @Length(1, 255)
+  description?: string;
+
+  @IsISO8601(
+    {},
+    { message: 'transactionAt must be a valid ISO 8601 datetime string' },
+  )
+  transactionAt!: string;
 }

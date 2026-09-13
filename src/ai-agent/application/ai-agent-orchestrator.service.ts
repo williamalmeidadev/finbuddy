@@ -7,6 +7,7 @@ import { OpenAIClient } from '../infrastructure/openai/openai.client';
 import { AgentToolRegistryService } from './tools/agent-tool-registry.service';
 import { AgentToolAuthorizationService } from './authorization/agent-tool-authorization.service';
 import { AgentToolArgumentValidatorService } from './validation/agent-tool-argument-validator.service';
+import { AiConfirmationService } from './ai-confirmation.service';
 import { FINBUDDY_AGENT_INSTRUCTIONS } from './prompts/finbuddy-agent.instructions';
 import { AgentResponse } from '../domain/agent-response';
 import {
@@ -25,6 +26,7 @@ export class AiAgentOrchestratorService {
     private readonly toolRegistry: AgentToolRegistryService,
     private readonly authorizationService: AgentToolAuthorizationService,
     private readonly argumentValidator: AgentToolArgumentValidatorService,
+    private readonly confirmationService: AiConfirmationService,
     private readonly metricsService: MetricsService,
   ) {}
 
@@ -111,8 +113,36 @@ export class AiAgentOrchestratorService {
                 success: false,
                 error: `Unauthorized tool execution: ${authDecision.reason}`,
               };
+            } else if (!tool.readOnly) {
+              // 3. Write tool detected: create confirmation & halt tool execution loop
+              const confirmation =
+                await this.confirmationService.createConfirmation(
+                  context.userId,
+                  tool.name,
+                  validationResult.value,
+                );
+
+              const durationMs = Date.now() - startTime;
+              this.logger.log(
+                `Financial write proposed, awaiting user confirmation: tool=${tool.name}, confirmationId=${confirmation.id}, durationMs=${durationMs}`,
+              );
+              this.metricsService.increment('ai_requests_total');
+              this.metricsService.increment(
+                'ai_requests_confirmation_required_total',
+              );
+
+              return new AgentResponse(
+                `Confirmation required to execute ${tool.name}. Please confirm or cancel this financial action.`,
+                'confirmation_required',
+                {
+                  confirmationId: confirmation.id,
+                  toolName: tool.name,
+                  action: validationResult.value as Record<string, any>,
+                  expiresAt: confirmation.expiresAt.toISOString(),
+                },
+              );
             } else {
-              // 3. Execution via Application Service
+              // 4. Read tool execution via Application Service
               try {
                 result = await tool.execute(context, validationResult.value);
                 if (!result.success) {

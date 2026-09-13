@@ -86,14 +86,22 @@ FinBuddy AI Agent defends against the following threat vectors:
 - **Mitigation**: Argument validation (`AgentToolArgumentValidatorService`) uses strict DTO schema validation with `forbidNonWhitelisted: true`. Unexpected fields are rejected. Tools strictly read `userId` from `AgentToolContext`.
 
 ### 3.5 Arbitrary Tool Execution & Code Injection
-- **Threat**: The model calls unknown function names, dynamic methods (`eval()`, `Function()`), or requests write tools.
-- **Mitigation**: `AgentToolRegistryService` maintains an explicit whitelist of registered tool instances (`GetAccountsTool`, `GetTransactionsTool`, `GetFinancialSummaryTool`, `GetBudgetsTool`). Unknown tools are rejected immediately. No reflection or code evaluation exists.
+- **Threat**: The model calls unknown function names, dynamic methods (`eval()`, `Function()`), or unapproved write tools.
+- **Mitigation**: `AgentToolRegistryService` maintains an explicit whitelist of registered tool instances (`GetAccountsTool`, `GetTransactionsTool`, `GetFinancialSummaryTool`, `GetBudgetsTool`, `CreateTransactionTool`). Unknown tools are rejected immediately. No reflection or code evaluation exists.
 
-### 3.6 Resource Exhaustion & Unbounded Loops
+### 3.6 Unconfirmed Database Mutations & Unauthorized Writes
+- **Threat**: The model calls a write tool (`create_transaction`) directly modifying stored financial state without explicit user consent.
+- **Mitigation**: All non-`readOnly` tools require application-level human confirmation (`AiConfirmationService`). Proposing a write operation produces a pending `AiConfirmation` record and returns `confirmation_required` without executing database writes. Mutations execute exclusively when the human user submits `POST /ai-agent/confirmations/:confirmationId`.
+
+### 3.7 Confirmation Replay & Race Conditions
+- **Threat**: A malicious user or script replays an already consumed or cancelled `confirmationId` to execute duplicate financial mutations.
+- **Mitigation**: `AiConfirmationService` executes single-use consumption atomically using database conditional queries (`UPDATE ai_confirmations SET status = 'CONSUMED' WHERE id = :id AND status = 'PENDING' AND expires_at > NOW()`). Subsequent requests return `400 Bad Request`.
+
+### 3.8 Resource Exhaustion & Unbounded Loops
 - **Threat**: The model enters a recursive loop calling tools repeatedly.
 - **Mitigation**: Hard iteration limit (`MAX_TOOL_ITERATIONS = 5`). Execution terminates with `503 Service Unavailable` if exceeded.
 
-### 3.7 Sensitive Data Leakage & Provider Failure
+### 3.9 Sensitive Data Leakage & Provider Failure
 - **Threat**: Upstream API failures expose API keys, credentials, or internal stack traces.
 - **Mitigation**: `OpenAIClient` and NestJS exception filters catch upstream errors and return clean sanitized responses (`503 Service Unavailable`) without internal stack traces or secrets.
 
@@ -104,7 +112,9 @@ FinBuddy AI Agent defends against the following threat vectors:
 FinBuddy provides the following explicit architectural guarantees:
 
 1. **Zero LLM Authorization Power**: The model cannot make authorization decisions or elevate user permissions.
-2. **Zero Write Tool Execution**: Write operations (`CREATE`, `UPDATE`, `DELETE`, `TRANSFER`) are not registered in the agent module.
-3. **Strict Tenant Isolation**: All financial queries are scoped to `context.userId` derived from the request JWT.
-4. **Mandatory Schema Validation**: Every model argument object is parsed, validated against DTO schemas, normalized, and checked for whitelisted properties before tool invocation.
-5. **Private Operational Logging**: Operational logs contain `requestId`, `userId`, `toolName`, `durationMs`, and `success/failure` status, never logging API keys, JWTs, or raw financial amounts.
+2. **Zero Direct LLM Inline Mutations**: Write operations (`create_transaction`) cannot write to the database inline during model tool execution without human confirmation via `POST /ai-agent/confirmations/:confirmationId`.
+3. **Single-Use Replay Protection**: Confirmations use atomic state transitions, preventing duplicate or replayed executions.
+4. **Strict Tenant Isolation**: All financial queries and confirmation actions are scoped strictly to `context.userId` derived from the request JWT. Cross-tenant access attempts return `404 Not Found`.
+5. **Mandatory Schema Validation**: Every model argument object is parsed, validated against DTO schemas, normalized, and checked for whitelisted properties before tool invocation.
+6. **Private Operational Logging**: Operational logs contain `requestId`, `userId`, `toolName`, `durationMs`, and `success/failure` status, never logging API keys, JWTs, or raw financial amounts.
+

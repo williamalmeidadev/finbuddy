@@ -6,6 +6,7 @@ export class AgentToolPolicy {
     AgentCapability.READ_TRANSACTIONS,
     AgentCapability.READ_FINANCIAL_SUMMARY,
     AgentCapability.READ_BUDGETS,
+    AgentCapability.CREATE_TRANSACTION,
   ]);
 
   static isCapabilityAllowed(capability: AgentCapability): boolean {
