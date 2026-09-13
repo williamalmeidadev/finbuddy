@@ -155,6 +155,27 @@ export class TransferService {
     return new TransferResponseDto(transfer);
   }
 
+  async delete(
+    transferId: string,
+    userId: string,
+  ): Promise<TransferResponseDto> {
+    const current = await this.transferRepository.findByIdAndUserId(
+      transferId,
+      userId,
+    );
+
+    if (!current) {
+      throw new NotFoundException('Transfer not found');
+    }
+
+    const deleted = await this.transferRepository.deleteWithAtomicBalanceReversal(
+      transferId,
+      userId,
+    );
+
+    return new TransferResponseDto(deleted);
+  }
+
   async findByUserId(
     userId: string,
     query?: TransferQueryDto,
