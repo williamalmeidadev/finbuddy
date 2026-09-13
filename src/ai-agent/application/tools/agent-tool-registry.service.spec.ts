@@ -6,6 +6,7 @@ import { GetFinancialSummaryTool } from './impl/get-financial-summary.tool';
 import { GetBudgetsTool } from './impl/get-budgets.tool';
 import { CreateTransactionTool } from './impl/create-transaction.tool';
 import { SaveMemoryTool } from './impl/save-memory.tool';
+import { UpdateTransactionTool } from './impl/update-transaction.tool';
 
 describe('AgentToolRegistryService', () => {
   let service: AgentToolRegistryService;
@@ -52,6 +53,13 @@ describe('AgentToolRegistryService', () => {
     execute: jest.fn(),
   } as unknown as SaveMemoryTool;
 
+  const mockUpdateTransactionTool = {
+    name: 'update_transaction',
+    description: 'Update transaction',
+    inputSchema: { type: 'object', properties: {} },
+    execute: jest.fn(),
+  } as unknown as UpdateTransactionTool;
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -65,6 +73,7 @@ describe('AgentToolRegistryService', () => {
         { provide: GetBudgetsTool, useValue: mockGetBudgetsTool },
         { provide: CreateTransactionTool, useValue: mockCreateTransactionTool },
         { provide: SaveMemoryTool, useValue: mockSaveMemoryTool },
+        { provide: UpdateTransactionTool, useValue: mockUpdateTransactionTool },
       ],
     }).compile();
 
@@ -76,10 +85,10 @@ describe('AgentToolRegistryService', () => {
   });
 
   describe('onModuleInit', () => {
-    it('should register all six tools on initialization', () => {
+    it('should register all seven tools on initialization', () => {
       service.onModuleInit();
       const tools = service.getTools();
-      expect(tools).toHaveLength(6);
+      expect(tools).toHaveLength(7);
       expect(service.getTool('get_accounts')).toBe(mockGetAccountsTool);
       expect(service.getTool('get_transactions')).toBe(mockGetTransactionsTool);
       expect(service.getTool('get_financial_summary')).toBe(
@@ -90,6 +99,9 @@ describe('AgentToolRegistryService', () => {
         mockCreateTransactionTool,
       );
       expect(service.getTool('save_memory')).toBe(mockSaveMemoryTool);
+      expect(service.getTool('update_transaction')).toBe(
+        mockUpdateTransactionTool,
+      );
     });
   });
 
@@ -105,6 +117,9 @@ describe('AgentToolRegistryService', () => {
         mockCreateTransactionTool,
       );
       expect(service.getTool('save_memory')).toBe(mockSaveMemoryTool);
+      expect(service.getTool('update_transaction')).toBe(
+        mockUpdateTransactionTool,
+      );
     });
   });
 
@@ -117,7 +132,7 @@ describe('AgentToolRegistryService', () => {
       service.onModuleInit();
 
       const definitions = service.getToolDefinitions();
-      expect(definitions).toHaveLength(6);
+      expect(definitions).toHaveLength(7);
       expect(definitions[0]).toEqual({
         type: 'function',
         name: 'get_accounts',

@@ -1591,4 +1591,200 @@ describe('AiAgentController (e2e)', () => {
         .expect(400);
     });
   });
+
+  describe('11. Financial Write Tool: update_transaction (e2e)', () => {
+    it('should require confirmation for update_transaction and execute mutation upon user confirmation', async () => {
+      const userA = await createTestUser('update-tx-user');
+
+      const account = await prisma.account.create({
+        data: {
+          userId: userA.userId,
+          name: 'Checking Account',
+          type: AccountType.CHECKING,
+          balance: 1000.0,
+          currency: 'BRL',
+          color: '#0055FF',
+          isActive: true,
+        },
+      });
+
+      const tx = await prisma.transaction.create({
+        data: {
+          accountId: account.id,
+          type: TransactionType.EXPENSE,
+          amount: 100.0,
+          description: 'Lunch',
+          source: 'MANUAL',
+          transactionAt: new Date('2026-09-10T12:00:00Z'),
+        },
+      });
+
+      // Account balance is updated to 900
+      await prisma.account.update({
+        where: { id: account.id },
+        data: { balance: 900.0 },
+      });
+
+      // 1. LLM requests update_transaction
+      mockOpenAiClient.createRawResponse.mockResolvedValueOnce({
+        id: 'resp-update-1',
+        outputText: '',
+        functionCalls: [
+          {
+            callId: 'call-update-1',
+            name: 'update_transaction',
+            arguments: {
+              transactionId: tx.id,
+              description: 'Dinner Party',
+              amount: 150.0,
+            },
+          },
+        ],
+        tokens: { inputTokens: 10, outputTokens: 20, totalTokens: 30 },
+      });
+
+      const messageRes = await request(app.getHttpServer())
+        .post('/ai-agent/messages')
+        .set('Authorization', `Bearer ${userA.token}`)
+        .send({
+          message:
+            'Update transaction amount to 150 and description to Dinner Party',
+        })
+        .expect(200);
+
+      expect(messageRes.body.type).toBe('confirmation_required');
+      expect(messageRes.body.confirmation).toBeDefined();
+      expect(messageRes.body.confirmation.toolName).toBe('update_transaction');
+
+      const confirmationId = messageRes.body.confirmation.confirmationId;
+
+      // Verify state was NOT mutated before confirmation
+      const txBefore = await prisma.transaction.findUnique({
+        where: { id: tx.id },
+      });
+      expect(txBefore?.amount.toNumber()).toBe(100.0);
+      expect(txBefore?.description).toBe('Lunch');
+
+      // 2. User confirms execution
+      const confirmRes = await request(app.getHttpServer())
+        .post(`/ai-agent/confirmations/${confirmationId}`)
+        .set('Authorization', `Bearer ${userA.token}`)
+        .send({})
+        .expect(200);
+
+      expect(confirmRes.body.success).toBe(true);
+      expect(confirmRes.body.data).toBeDefined();
+      expect(confirmRes.body.data.amount).toBe(150.0);
+      expect(confirmRes.body.data.description).toBe('Dinner Party');
+
+      // Verify database state AFTER confirmation
+      const txAfter = await prisma.transaction.findUnique({
+        where: { id: tx.id },
+      });
+      expect(txAfter?.amount.toNumber()).toBe(150.0);
+      expect(txAfter?.description).toBe('Dinner Party');
+
+      const accountAfter = await prisma.account.findUnique({
+        where: { id: account.id },
+      });
+      expect(accountAfter?.balance.toNumber()).toBe(850.0); // 900 - 50 delta = 850
+
+      // Verify audit event persisted
+      const audit = await prisma.aiAuditEvent.findFirst({
+        where: {
+          userId: userA.userId,
+          toolName: 'update_transaction',
+          eventType: 'ai.confirmation.confirmed',
+        },
+      });
+      expect(audit).toBeDefined();
+    });
+
+    it('should support atomic cross-account transaction moves', async () => {
+      const userA = await createTestUser('update-cross-account');
+
+      const accountA = await prisma.account.create({
+        data: {
+          userId: userA.userId,
+          name: 'Account A',
+          type: AccountType.CHECKING,
+          balance: 800.0,
+          currency: 'BRL',
+          color: '#0055FF',
+          isActive: true,
+        },
+      });
+
+      const accountB = await prisma.account.create({
+        data: {
+          userId: userA.userId,
+          name: 'Account B',
+          type: AccountType.SAVINGS,
+          balance: 500.0,
+          currency: 'BRL',
+          color: '#00FF55',
+          isActive: true,
+        },
+      });
+
+      const tx = await prisma.transaction.create({
+        data: {
+          accountId: accountA.id,
+          type: TransactionType.EXPENSE,
+          amount: 200.0,
+          description: 'Shopping',
+          source: 'MANUAL',
+          transactionAt: new Date('2026-09-10T12:00:00Z'),
+        },
+      });
+
+      mockOpenAiClient.createRawResponse.mockResolvedValueOnce({
+        id: 'resp-update-2',
+        outputText: '',
+        functionCalls: [
+          {
+            callId: 'call-update-cross',
+            name: 'update_transaction',
+            arguments: {
+              transactionId: tx.id,
+              accountId: accountB.id,
+            },
+          },
+        ],
+        tokens: { inputTokens: 10, outputTokens: 20, totalTokens: 30 },
+      });
+
+      const msgRes = await request(app.getHttpServer())
+        .post('/ai-agent/messages')
+        .set('Authorization', `Bearer ${userA.token}`)
+        .send({ message: 'Move transaction to Account B' })
+        .expect(200);
+
+      const confirmationId = msgRes.body.confirmation.confirmationId;
+
+      await request(app.getHttpServer())
+        .post(`/ai-agent/confirmations/${confirmationId}`)
+        .set('Authorization', `Bearer ${userA.token}`)
+        .send({})
+        .expect(200);
+
+      // Verify transaction moved to Account B
+      const txAfter = await prisma.transaction.findUnique({
+        where: { id: tx.id },
+      });
+      expect(txAfter?.accountId).toBe(accountB.id);
+
+      // Account A balance restored: 800 + 200 = 1000
+      const accA = await prisma.account.findUnique({
+        where: { id: accountA.id },
+      });
+      expect(accA?.balance.toNumber()).toBe(1000.0);
+
+      // Account B balance deducted: 500 - 200 = 300
+      const accB = await prisma.account.findUnique({
+        where: { id: accountB.id },
+      });
+      expect(accB?.balance.toNumber()).toBe(300.0);
+    });
+  });
 });

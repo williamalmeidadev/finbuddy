@@ -88,8 +88,14 @@ export class TransactionRepository {
   async updateWithBalanceUpdate(
     id: string,
     userId: string,
-    data: Prisma.TransactionUpdateInput,
+    data: Prisma.TransactionUncheckedUpdateInput,
     balanceDelta: number,
+    accountChange?: {
+      oldAccountId: string;
+      oldAccountReversalDelta: number;
+      newAccountId: string;
+      newAccountDelta: number;
+    },
   ): Promise<Transaction | null> {
     return this.prisma.$transaction(async (tx) => {
       const existing = await tx.transaction.findFirst({
@@ -110,7 +116,69 @@ export class TransactionRepository {
         data,
       });
 
-      if (balanceDelta !== 0) {
+      if (accountChange) {
+        if (accountChange.oldAccountReversalDelta < 0) {
+          const updatedOldAccount = await tx.account.updateMany({
+            where: {
+              id: accountChange.oldAccountId,
+              balance: {
+                gte: Math.abs(accountChange.oldAccountReversalDelta),
+              },
+            },
+            data: {
+              balance: {
+                increment: accountChange.oldAccountReversalDelta,
+              },
+            },
+          });
+
+          if (updatedOldAccount.count === 0) {
+            throw new BadRequestException(
+              'Insufficient balance in original account',
+            );
+          }
+        } else if (accountChange.oldAccountReversalDelta !== 0) {
+          await tx.account.update({
+            where: { id: accountChange.oldAccountId },
+            data: {
+              balance: {
+                increment: accountChange.oldAccountReversalDelta,
+              },
+            },
+          });
+        }
+
+        if (accountChange.newAccountDelta < 0) {
+          const updatedNewAccount = await tx.account.updateMany({
+            where: {
+              id: accountChange.newAccountId,
+              balance: {
+                gte: Math.abs(accountChange.newAccountDelta),
+              },
+            },
+            data: {
+              balance: {
+                increment: accountChange.newAccountDelta,
+              },
+            },
+          });
+
+          if (updatedNewAccount.count === 0) {
+            throw new BadRequestException(
+              'Insufficient balance in target account',
+            );
+          }
+        } else if (accountChange.newAccountDelta !== 0) {
+          await tx.account.update({
+            where: { id: accountChange.newAccountId },
+            data: {
+              balance: {
+                increment: accountChange.newAccountDelta,
+              },
+            },
+          });
+        }
+      } else if (balanceDelta !== 0) {
         if (balanceDelta < 0) {
           const updatedAccount = await tx.account.updateMany({
             where: {

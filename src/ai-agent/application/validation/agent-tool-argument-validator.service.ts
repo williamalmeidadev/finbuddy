@@ -8,6 +8,7 @@ import {
   GetFinancialSummaryArgsDto,
   GetTransactionsArgsDto,
   SaveMemoryArgsDto,
+  UpdateTransactionArgsDto,
 } from './tool-argument.dtos';
 
 export interface ToolValidationResult {
@@ -27,6 +28,7 @@ export class AgentToolArgumentValidatorService {
     get_budgets: GetBudgetsArgsDto,
     create_transaction: CreateTransactionArgsDto,
     save_memory: SaveMemoryArgsDto,
+    update_transaction: UpdateTransactionArgsDto,
   };
 
   async validate(
@@ -109,6 +111,27 @@ export class AgentToolArgumentValidatorService {
         valid: false,
         errors: messages.length > 0 ? messages : ['Invalid tool arguments'],
       };
+    }
+
+    if (toolName === 'update_transaction') {
+      const updateArgs = instance as UpdateTransactionArgsDto;
+      const hasUpdateField =
+        updateArgs.accountId !== undefined ||
+        updateArgs.categoryId !== undefined ||
+        updateArgs.type !== undefined ||
+        updateArgs.amount !== undefined ||
+        updateArgs.description !== undefined ||
+        updateArgs.transactionAt !== undefined;
+
+      if (!hasUpdateField) {
+        this.logger.warn(
+          `Tool argument validation failed for ${toolName}: At least one field to update must be provided`,
+        );
+        return {
+          valid: false,
+          errors: ['At least one field to update must be provided'],
+        };
+      }
     }
 
     return {

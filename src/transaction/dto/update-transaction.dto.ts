@@ -19,6 +19,14 @@ import {
 
 export class UpdateTransactionDto {
   @ApiPropertyOptional({
+    description: 'Updated account UUID',
+    example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+  })
+  @IsUUID()
+  @IsOptional()
+  accountId?: string;
+
+  @ApiPropertyOptional({
     description: 'Updated category UUID (or null to unassign)',
     example: 'c1d2e3f4-a5b6-7890-abcd-ef1234567890',
     nullable: true,
