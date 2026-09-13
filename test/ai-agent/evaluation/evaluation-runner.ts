@@ -193,6 +193,27 @@ export class AgentEvaluationRunner {
             return [];
           },
         ),
+      delete: jest
+        .fn()
+        .mockImplementation(async (id: string, userId: string) => {
+          if (
+            id === 'a0000000-0000-4000-8000-000000000000' ||
+            (id === EVAL_TRANSACTIONS.TX_B1.id && userId === EVAL_USERS.USER_A)
+          ) {
+            const { NotFoundException } = await import('@nestjs/common');
+            throw new NotFoundException('Transaction not found');
+          }
+          if (
+            id === EVAL_TRANSACTIONS.TX_TRANSFER.id ||
+            id === EVAL_TRANSACTIONS.TX_SYSTEM.id
+          ) {
+            const { BadRequestException } = await import('@nestjs/common');
+            throw new BadRequestException(
+              'Cannot delete transfer-linked or system transactions',
+            );
+          }
+          return;
+        }),
     };
 
     const mockFinancialSummaryService = {
