@@ -133,6 +133,29 @@ LLM output → UNTRUSTED → Argument Validation → Tool Authorization → Risk
 }
 ```
 
+### 6. `delete_transfer`
+
+| Property | Value |
+|---|---|
+| **Tool Name** | `delete_transfer` |
+| **Capability** | `AgentCapability.DELETE_TRANSFER` |
+| **Risk Level** | `AgentToolRiskLevel.HIGH` |
+| **Read-Only** | `false` |
+| **Description** | Delete an existing financial transfer between two accounts belonging to the authenticated user. Atomically removes Transfer entity, removes linked SYSTEM transactions, and restores original account balances. |
+
+#### Input Schema & Argument DTO Validation (`DeleteTransferArgsDto`)
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "transferId": { "type": "string", "description": "UUID of the transfer to delete" }
+  },
+  "required": ["transferId"],
+  "additionalProperties": false
+}
+```
+
 ### Input Schema & Argument DTO Validation (`CreateTransactionArgsDto`)
 
 ```json
