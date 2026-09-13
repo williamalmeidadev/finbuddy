@@ -15,6 +15,8 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 
+import { Throttle } from '@nestjs/throttler';
+
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthenticatedUserDto } from '../auth/dto/authenticated-user.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -44,6 +46,12 @@ export class UserController {
       'Validation failure (e.g. invalid email format or password length)',
   })
   @ApiResponse({ status: 409, description: 'Email address already exists' })
+  @Throttle({
+    auth: {
+      ttl: Number(process.env.THROTTLE_TTL || 60000),
+      limit: Number(process.env.THROTTLE_AUTH_LIMIT || 10),
+    },
+  })
   @Post()
   create(@Body() dto: CreateUserDto) {
     return this.userService.create(dto);

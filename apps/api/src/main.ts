@@ -16,16 +16,18 @@ async function bootstrap() {
       : true;
   const corsOrigin = process.env.CORS_ORIGIN;
 
-  app.use(helmet());
-  app.enableShutdownHooks();
   app.enableCors({
     origin: corsOrigin
       ? corsOrigin.split(',').map((o) => o.trim())
-      : nodeEnv === 'production'
-        ? false
-        : true,
+      : true,
     credentials: true,
   });
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
+  );
+  app.enableShutdownHooks();
 
   app.useGlobalPipes(
     new ValidationPipe({
