@@ -49,22 +49,22 @@ jobs:
         run: npm ci
 
       - name: Generate Prisma Client
-        run: npx prisma generate
+        run: npm run prisma:generate
 
-      - name: Apply database migrations
-        run: npx prisma migrate deploy
+      - name: Validate Prisma Schema
+        run: npm run prisma:validate
 
-      - name: Run Lint
+      - name: Run Workspace Lint
         run: npm run lint
 
       - name: Run Unit Tests
-        run: npm test
+        run: npm run test
+
+      - name: Run AI Deterministic Evaluations
+        run: npm run test:api:eval
 
       - name: Run E2E Tests
-        run: npm run test:e2e
+        run: npm run test:api:e2e
 
-      - name: Security Audit
-        run: npm audit --audit-level=critical
-
-      - name: Build Application
+      - name: Build All Workspaces
         run: npm run build

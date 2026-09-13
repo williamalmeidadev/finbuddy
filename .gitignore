@@ -1,6 +1,13 @@
 # compiled output
 /dist
+dist
+.next
+/apps/*/dist
+/apps/*/.next
+/apps/*/src/generated
+node_modules
 /node_modules
+apps/*/node_modules
 /build
 
 # Logs
@@ -41,11 +48,10 @@ lerna-debug.log*
 .env.test.local
 .env.production.local
 .env.local
-
-# temp directory
-.temp
-.tmp
+/apps/*/.env
+/apps/*/.env.local
 ./api/.env
+
 # Runtime data
 pids
 *.pid
