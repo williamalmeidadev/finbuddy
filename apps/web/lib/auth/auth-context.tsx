@@ -3,13 +3,15 @@
 import * as React from "react";
 import { ApiUser } from "../api/types";
 import { tokenStorage } from "./token-storage";
+import { apiClient } from "../api/client";
 
 export interface AuthContextType {
   user: ApiUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  setAuth: (user: ApiUser, token: string) => void;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 export const AuthContext = React.createContext<AuthContextType | undefined>(
@@ -20,27 +22,80 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<ApiUser | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
 
+  // Restore authenticated session on initial render
   React.useEffect(() => {
-    const token = tokenStorage.getAccessToken();
-    if (token) {
-      // In production foundation, initial token presence marks auth state
-      setUser({
-        id: "user-foundation-id",
-        email: "user@finbuddy.dev",
-        status: "ACTIVE",
-        createdAt: new Date().toISOString(),
-      });
+    async function restoreSession() {
+      const token = tokenStorage.getAccessToken();
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
+      try {
+        const currentUser = await apiClient<ApiUser>("/auth/me", {
+          requiresAuth: true,
+        });
+        setUser(currentUser);
+      } catch (err) {
+        tokenStorage.clearTokens();
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+      }
     }
-    setIsLoading(false);
+    restoreSession();
   }, []);
 
-  const setAuth = React.useCallback((newUser: ApiUser, token: string) => {
-    tokenStorage.setAccessToken(token);
-    setUser(newUser);
+  const login = React.useCallback(async (email: string, password: string) => {
+    setIsLoading(true);
+    try {
+      const res = await apiClient<{
+        accessToken: string;
+        refreshToken: string;
+        user: ApiUser;
+      }>("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+        requiresAuth: false,
+      });
+
+      tokenStorage.setTokens(res.accessToken, res.refreshToken);
+      setUser(res.user);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  const logout = React.useCallback(() => {
-    tokenStorage.clearAccessToken();
+  const register = React.useCallback(async (email: string, password: string) => {
+    setIsLoading(true);
+    try {
+      // 1. Create user account
+      await apiClient<ApiUser>("/users", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+        requiresAuth: false,
+      });
+
+      // 2. Automatically log in after registration
+      await login(email, password);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [login]);
+
+  const logout = React.useCallback(async () => {
+    const refreshToken = tokenStorage.getRefreshToken();
+    if (refreshToken) {
+      try {
+        await apiClient<{ message: string }>("/auth/logout", {
+          method: "POST",
+          body: JSON.stringify({ refreshToken }),
+          requiresAuth: false,
+        });
+      } catch {
+        // Ignore logout errors upstream
+      }
+    }
+    tokenStorage.clearTokens();
     setUser(null);
   }, []);
 
@@ -50,7 +105,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         isAuthenticated: !!user,
         isLoading,
-        setAuth,
+        login,
+        register,
         logout,
       }}
     >
@@ -58,3 +114,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     </AuthContext.Provider>
   );
 }
+
+export function useAuth(): AuthContextType {
+  const context = React.useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+}
+
