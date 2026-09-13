@@ -10,6 +10,7 @@ import { AgentResponse } from './domain/agent-response';
 
 import { AiConversationService } from './application/ai-conversation.service';
 import { AiMemoryService } from './application/memory/ai-memory.service';
+import { ConfigService } from '@nestjs/config';
 
 describe('AiAgentService', () => {
   let service: AiAgentService;
@@ -128,6 +129,18 @@ describe('AiAgentService', () => {
         {
           provide: AiMemoryService,
           useValue: mockMemoryService,
+        },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn((key: string, defaultValue?: any) => {
+              if (key === 'AI_MAX_INPUT_CHARS') return 2000;
+              if (key === 'AI_MAX_CONTEXT_CHARS') return 15000;
+              if (key === 'AI_MAX_MEMORY_CONTEXT_CHARS') return 2000;
+              if (key === 'AI_MAX_CONCURRENT_REQUESTS_PER_USER') return 3;
+              return defaultValue;
+            }),
+          },
         },
       ],
     }).compile();

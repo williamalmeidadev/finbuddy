@@ -36,7 +36,8 @@ export type EvaluationCategory =
   | 'ADV-OBSERVABILITY'
   | 'ADV-AUDIT'
   | 'ADV-OPENAI'
-  | 'ADV-API';
+  | 'ADV-API'
+  | 'PROD-HARDENING';
 
 export interface ExpectedToolCall {
   toolName: string;
@@ -66,6 +67,8 @@ export interface MockModelCall {
     arguments: Record<string, unknown>;
   }>;
   outputText?: string;
+  shouldThrowError?: boolean;
+  errorMessage?: string;
 }
 
 export interface AgentEvaluationScenario {

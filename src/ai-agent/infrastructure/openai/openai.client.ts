@@ -1,10 +1,12 @@
 import {
   Injectable,
   Logger,
+  Optional,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
+import { MetricsService } from '../../../common/metrics/metrics.service';
 import {
   CreateResponseOptions,
   OpenAIResponseItem,
@@ -12,12 +14,30 @@ import {
   OpenAIRawResponsePayload,
 } from './openai.types';
 
+export type CircuitBreakerState = 'CLOSED' | 'OPEN' | 'HALF_OPEN';
+
 @Injectable()
 export class OpenAIClient {
   private readonly logger = new Logger(OpenAIClient.name);
   private sdkClient: OpenAI | null = null;
+  private circuitState: CircuitBreakerState = 'CLOSED';
+  private failureCount = 0;
+  private lastFailureTime = 0;
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    @Optional() private readonly metricsService?: MetricsService,
+  ) {}
+
+  getCircuitState(): CircuitBreakerState {
+    return this.circuitState;
+  }
+
+  resetCircuitBreaker(): void {
+    this.circuitState = 'CLOSED';
+    this.failureCount = 0;
+    this.lastFailureTime = 0;
+  }
 
   private getClient(): OpenAI {
     const apiKey = this.configService.get<string>('OPENAI_API_KEY');
@@ -45,16 +65,39 @@ export class OpenAIClient {
   async createRawResponse(
     options: CreateResponseOptions,
   ): Promise<OpenAIResponseOutput> {
+    const failureThreshold =
+      this.configService.get<number>('AI_CIRCUIT_BREAKER_FAILURE_THRESHOLD') ??
+      5;
+    const resetTimeoutMs =
+      this.configService.get<number>('AI_CIRCUIT_BREAKER_RESET_TIMEOUT_MS') ??
+      30000;
+
+    if (this.circuitState === 'OPEN') {
+      if (Date.now() - this.lastFailureTime > resetTimeoutMs) {
+        this.circuitState = 'HALF_OPEN';
+        this.logger.log('Circuit breaker transitioning from OPEN to HALF_OPEN');
+      } else {
+        this.metricsService?.increment('ai_circuit_breaker_open_total');
+        this.metricsService?.increment('ai_requests_failed_total');
+        throw new ServiceUnavailableException(
+          'AI service temporarily unavailable (circuit breaker open)',
+        );
+      }
+    }
+
     const client = this.getClient();
     const defaultModel =
       this.configService.get<string>('OPENAI_MODEL') ?? 'gpt-5.5';
     const model = options.model || defaultModel;
+    const maxTokens =
+      this.configService.get<number>('OPENAI_MAX_OUTPUT_TOKENS') ?? 1000;
 
     try {
       const payload: Record<string, unknown> = {
         model,
         instructions: options.instructions,
         input: options.input,
+        max_tokens: maxTokens,
         tools:
           options.tools && options.tools.length > 0 ? options.tools : undefined,
       };
@@ -114,18 +157,55 @@ export class OpenAIClient {
         );
       }
 
+      // Success recovery
+      if (this.circuitState !== 'CLOSED') {
+        this.logger.log(
+          'Circuit breaker reset to CLOSED after successful OpenAI response',
+        );
+      }
+      this.circuitState = 'CLOSED';
+      this.failureCount = 0;
+      this.metricsService?.increment('ai_llm_calls_total');
+
       return {
         id: response.id || '',
         outputText,
         functionCalls,
       };
     } catch (error) {
+      this.failureCount++;
+      this.metricsService?.increment('ai_llm_failures_total');
+
+      if (this.failureCount >= failureThreshold) {
+        this.circuitState = 'OPEN';
+        this.lastFailureTime = Date.now();
+        this.metricsService?.increment('ai_circuit_breaker_open_total');
+        this.logger.warn(
+          `Circuit breaker opened after ${this.failureCount} consecutive failures`,
+        );
+      }
+
       if (error instanceof ServiceUnavailableException) {
         throw error;
       }
+
       const message = error instanceof Error ? error.message : String(error);
+      const safeMessage = message
+        .replace(/sk-[a-zA-Z0-9_-]+/g, 'sk-***')
+        .replace(/Bearer\s+[a-zA-Z0-9._-]+/gi, 'Bearer ***')
+        .replace(/postgres(ql)?:\/\/[^\s]+/gi, 'postgresql://***');
       const stack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`OpenAI Responses API call failed: ${message}`, stack);
+      const safeStack = stack
+        ? stack
+            .replace(/sk-[a-zA-Z0-9_-]+/g, 'sk-***')
+            .replace(/Bearer\s+[a-zA-Z0-9._-]+/gi, 'Bearer ***')
+            .replace(/postgres(ql)?:\/\/[^\s]+/gi, 'postgresql://***')
+        : undefined;
+
+      this.logger.error(
+        `OpenAI Responses API call failed: ${safeMessage}`,
+        safeStack,
+      );
       throw new ServiceUnavailableException(
         'AI service temporarily unavailable',
       );

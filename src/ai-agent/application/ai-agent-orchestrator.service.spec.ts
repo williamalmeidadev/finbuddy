@@ -13,6 +13,7 @@ import { AgentToolRiskLevel } from './tools/agent-tool.interface';
 
 import { AiConfirmationService } from './ai-confirmation.service';
 import { AiAgentObservabilityService } from './observability/ai-agent-observability.service';
+import { ConfigService } from '@nestjs/config';
 
 describe('AiAgentOrchestratorService', () => {
   let service: AiAgentOrchestratorService;
@@ -83,6 +84,16 @@ describe('AiAgentOrchestratorService', () => {
         {
           provide: AiAgentObservabilityService,
           useValue: mockObservability,
+        },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn((key: string, defaultValue?: any) => {
+              if (key === 'OPENAI_MAX_MODEL_CALLS') return 10;
+              if (key === 'OPENAI_MAX_TOOL_ITERATIONS') return 5;
+              return defaultValue;
+            }),
+          },
         },
       ],
     }).compile();

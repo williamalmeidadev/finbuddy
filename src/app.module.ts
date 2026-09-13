@@ -44,6 +44,11 @@ import { validate } from './config/env.validation';
           ttl: configService.get<number>('THROTTLE_TTL') ?? 60000,
           limit: configService.get<number>('THROTTLE_AUTH_LIMIT') ?? 10,
         },
+        {
+          name: 'ai',
+          ttl: configService.get<number>('AI_THROTTLE_TTL') ?? 60000,
+          limit: configService.get<number>('AI_THROTTLE_LIMIT') ?? 20,
+        },
       ],
     }),
     DatabaseModule,

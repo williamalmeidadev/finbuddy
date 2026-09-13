@@ -100,6 +100,50 @@ class EnvironmentVariables {
   @IsNumber()
   @IsOptional()
   AI_CONFIRMATION_TTL_SECONDS?: number = 300;
+
+  @IsNumber()
+  @IsOptional()
+  AI_THROTTLE_TTL?: number = 60000;
+
+  @IsNumber()
+  @IsOptional()
+  AI_THROTTLE_LIMIT?: number = 20;
+
+  @IsNumber()
+  @IsOptional()
+  OPENAI_MAX_TOOL_ITERATIONS?: number = 5;
+
+  @IsNumber()
+  @IsOptional()
+  OPENAI_MAX_MODEL_CALLS?: number = 10;
+
+  @IsNumber()
+  @IsOptional()
+  OPENAI_MAX_OUTPUT_TOKENS?: number = 1000;
+
+  @IsNumber()
+  @IsOptional()
+  AI_MAX_INPUT_CHARS?: number = 2000;
+
+  @IsNumber()
+  @IsOptional()
+  AI_MAX_CONTEXT_CHARS?: number = 15000;
+
+  @IsNumber()
+  @IsOptional()
+  AI_MAX_MEMORY_CONTEXT_CHARS?: number = 2000;
+
+  @IsNumber()
+  @IsOptional()
+  AI_CIRCUIT_BREAKER_FAILURE_THRESHOLD?: number = 5;
+
+  @IsNumber()
+  @IsOptional()
+  AI_CIRCUIT_BREAKER_RESET_TIMEOUT_MS?: number = 30000;
+
+  @IsNumber()
+  @IsOptional()
+  AI_MAX_CONCURRENT_REQUESTS_PER_USER?: number = 3;
 }
 
 export function validate(config: Record<string, any>) {
@@ -113,5 +157,104 @@ export function validate(config: Record<string, any>) {
   if (errors.length > 0) {
     throw new Error(`Config validation error: ${errors.toString()}`);
   }
+
+  // Production Hardening Validations
+  if (
+    validatedConfig.OPENAI_TIMEOUT_MS !== undefined &&
+    validatedConfig.OPENAI_TIMEOUT_MS <= 0
+  ) {
+    throw new Error(
+      'Config validation error: OPENAI_TIMEOUT_MS must be greater than 0',
+    );
+  }
+  if (
+    validatedConfig.AI_THROTTLE_TTL !== undefined &&
+    validatedConfig.AI_THROTTLE_TTL <= 0
+  ) {
+    throw new Error(
+      'Config validation error: AI_THROTTLE_TTL must be greater than 0',
+    );
+  }
+  if (
+    validatedConfig.AI_THROTTLE_LIMIT !== undefined &&
+    validatedConfig.AI_THROTTLE_LIMIT <= 0
+  ) {
+    throw new Error(
+      'Config validation error: AI_THROTTLE_LIMIT must be greater than 0',
+    );
+  }
+  if (
+    validatedConfig.OPENAI_MAX_TOOL_ITERATIONS !== undefined &&
+    validatedConfig.OPENAI_MAX_TOOL_ITERATIONS <= 0
+  ) {
+    throw new Error(
+      'Config validation error: OPENAI_MAX_TOOL_ITERATIONS must be greater than 0',
+    );
+  }
+  if (
+    validatedConfig.OPENAI_MAX_MODEL_CALLS !== undefined &&
+    validatedConfig.OPENAI_MAX_MODEL_CALLS <= 0
+  ) {
+    throw new Error(
+      'Config validation error: OPENAI_MAX_MODEL_CALLS must be greater than 0',
+    );
+  }
+  if (
+    validatedConfig.OPENAI_MAX_OUTPUT_TOKENS !== undefined &&
+    validatedConfig.OPENAI_MAX_OUTPUT_TOKENS <= 0
+  ) {
+    throw new Error(
+      'Config validation error: OPENAI_MAX_OUTPUT_TOKENS must be greater than 0',
+    );
+  }
+  if (
+    validatedConfig.AI_MAX_INPUT_CHARS !== undefined &&
+    validatedConfig.AI_MAX_INPUT_CHARS <= 0
+  ) {
+    throw new Error(
+      'Config validation error: AI_MAX_INPUT_CHARS must be greater than 0',
+    );
+  }
+  if (
+    validatedConfig.AI_MAX_CONTEXT_CHARS !== undefined &&
+    validatedConfig.AI_MAX_CONTEXT_CHARS <= 0
+  ) {
+    throw new Error(
+      'Config validation error: AI_MAX_CONTEXT_CHARS must be greater than 0',
+    );
+  }
+  if (
+    validatedConfig.AI_MAX_MEMORY_CONTEXT_CHARS !== undefined &&
+    validatedConfig.AI_MAX_MEMORY_CONTEXT_CHARS <= 0
+  ) {
+    throw new Error(
+      'Config validation error: AI_MAX_MEMORY_CONTEXT_CHARS must be greater than 0',
+    );
+  }
+  if (
+    validatedConfig.AI_CIRCUIT_BREAKER_FAILURE_THRESHOLD !== undefined &&
+    validatedConfig.AI_CIRCUIT_BREAKER_FAILURE_THRESHOLD <= 0
+  ) {
+    throw new Error(
+      'Config validation error: AI_CIRCUIT_BREAKER_FAILURE_THRESHOLD must be greater than 0',
+    );
+  }
+  if (
+    validatedConfig.AI_CIRCUIT_BREAKER_RESET_TIMEOUT_MS !== undefined &&
+    validatedConfig.AI_CIRCUIT_BREAKER_RESET_TIMEOUT_MS <= 0
+  ) {
+    throw new Error(
+      'Config validation error: AI_CIRCUIT_BREAKER_RESET_TIMEOUT_MS must be greater than 0',
+    );
+  }
+  if (
+    validatedConfig.AI_MAX_CONCURRENT_REQUESTS_PER_USER !== undefined &&
+    validatedConfig.AI_MAX_CONCURRENT_REQUESTS_PER_USER <= 0
+  ) {
+    throw new Error(
+      'Config validation error: AI_MAX_CONCURRENT_REQUESTS_PER_USER must be greater than 0',
+    );
+  }
+
   return validatedConfig;
 }

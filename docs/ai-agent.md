@@ -179,4 +179,33 @@ The evaluation harness (`test/ai-agent/evaluation/`) provides a deterministic, r
 | **Phase 17A** | **AI Financial Write Tool: update_transaction** | **Completed** |
 | **Phase 17B** | **AI Financial Write Tool: delete_transaction** | **Completed** |
 | **Phase 17C** | **AI Financial Write Tool: create_transfer** | **Completed** |
+| **Phase 17D** | **AI Financial Write Tool: update_transfer** | **Completed** |
+| **Phase 17E** | **AI Financial Write Tool: delete_transfer** | **Completed** |
+| **Phase 18** | **AI Agent Advanced Evaluation Suite** | **Completed** |
+| **Phase 19** | **AI Agent Production Hardening** | **Completed** |
+
+---
+
+## 6. Production Hardening Architecture & Defenses (Phase 19)
+
+Phase 19 equips the FinBuddy AI Agent with explicit, deterministic production safeguards against upstream failures, runaway execution loops, resource exhaustion, and secret leakage.
+
+### 6.1 Defense-in-Depth Control Pipeline
+
+| Control Tier | Parameter / Setting | Default Value | Enforcement Location | Security / Resilience Goal |
+|---|---|---|---|---|
+| **Rate Limiting** | `AI_THROTTLE_TTL`<br>`AI_THROTTLE_LIMIT` | `60000ms`<br>`20 req/min` | `AiAgentController` (`@Throttle`) | Protects backend against denial-of-service and high-frequency automated polling. |
+| **Input Validation** | `AI_MAX_INPUT_CHARS` | `2000 chars` | `AiAgentService` | Fast-rejects oversized prompts before invoking DB or OpenAI API. |
+| **Context Windowing** | `AI_MAX_CONTEXT_CHARS`<br>`AI_MAX_MEMORY_CONTEXT_CHARS` | `15000 chars`<br>`2000 chars` | `AiAgentService` | Trims deep conversation history and bounds injected user memory context. |
+| **Runaway Loop Protection** | `OPENAI_MAX_MODEL_CALLS`<br>`OPENAI_MAX_TOOL_ITERATIONS` | `10 calls`<br>`5 iterations` | `AiAgentOrchestratorService` | Prevents infinite tool-calling loops and controls API costs. |
+| **Token Budgeting** | `OPENAI_MAX_OUTPUT_TOKENS` | `1000 tokens` | `OpenAIClient` | Restricts model response generation length per single LLM call. |
+| **Circuit Breaker** | `AI_CIRCUIT_BREAKER_FAILURE_THRESHOLD`<br>`AI_CIRCUIT_BREAKER_RESET_TIMEOUT_MS` | `5 failures`<br>`30000ms` | `OpenAIClient` | Fast-fails downstream requests during OpenAI outages to prevent thread pool exhaustion. |
+| **User Concurrency** | `AI_MAX_CONCURRENT_REQUESTS_PER_USER` | `3 active requests` | `AiAgentService` | Prevents a single user from overwhelming system capacity with parallel requests. |
+| **Secret Sanitization** | `redactSecrets(text)` | Regex replacement | `OpenAIClient` / Logger | Replaces API keys (`sk-***`), JWT tokens, and connection strings with masked placeholders. |
+
+### 6.2 Implementation Topology vs Distributed Recommendation
+
+> [!NOTE]
+> Currently, stateful controls such as the Circuit Breaker (`CircuitBreakerState`), User Concurrency map (`activeRequestsPerUser`), and Rate Limiter use in-memory structures appropriate for single-instance NestJS node deployment. For multi-node distributed production environments, these counters should be backed by a centralized Redis cluster.
+
 

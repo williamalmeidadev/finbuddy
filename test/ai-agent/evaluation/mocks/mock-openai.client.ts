@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { OpenAIClient } from '../../../../src/ai-agent/infrastructure/openai/openai.client';
 import { MockModelCall } from '../evaluation-types';
 
@@ -28,6 +28,11 @@ export class MockOpenAIClientEvaluation extends OpenAIClient {
     await Promise.resolve();
     if (this.responseQueue.length > 0) {
       const nextCall = this.responseQueue.shift()!;
+      if (nextCall.shouldThrowError) {
+        throw new ServiceUnavailableException(
+          nextCall.errorMessage ?? 'AI service temporarily unavailable',
+        );
+      }
       return {
         id: `mock-resp-${Date.now()}-${Math.random().toString(36).substring(7)}`,
         outputText: nextCall.outputText ?? '',

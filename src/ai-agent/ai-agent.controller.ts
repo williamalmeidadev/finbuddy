@@ -21,6 +21,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthenticatedUserDto } from '../auth/dto/authenticated-user.dto';
@@ -85,6 +86,12 @@ export class AiAgentController {
     type: AgentResponseDto,
   })
   @ApiResponse({ status: 400, description: 'Validation error' })
+  @Throttle({
+    ai: {
+      ttl: Number(process.env.AI_THROTTLE_TTL) || 60000,
+      limit: Number(process.env.AI_THROTTLE_LIMIT) || 20,
+    },
+  })
   @Post('messages')
   @HttpCode(HttpStatus.OK)
   async sendMessage(
