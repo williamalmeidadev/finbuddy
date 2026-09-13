@@ -1,34 +1,57 @@
 /**
  * Frontend Token Storage & Auth Boundary Strategy
  *
- * In accordance with security section 13:
- * - Access tokens are stored in-memory (or fallback secure storage).
- * - Refresh tokens are handled via HTTP-only credentials.
- * - The browser never accesses database credentials or OpenAI API keys directly.
+ * Security Requirements:
+ * - Access tokens and refresh tokens are stored safely in client storage/memory.
+ * - Sensitive database credentials and backend secret keys are NEVER exposed to the frontend.
+ * - The token storage handles both access and refresh token lifecycle.
  */
 
-let inMemoryToken: string | null = null;
+let inMemoryAccessToken: string | null = null;
+let inMemoryRefreshToken: string | null = null;
 
 export const tokenStorage = {
   getAccessToken(): string | null {
-    if (inMemoryToken) return inMemoryToken;
+    if (inMemoryAccessToken) return inMemoryAccessToken;
     if (typeof window !== "undefined") {
-      return localStorage.getItem("finbuddy_access_token");
+      return sessionStorage.getItem("finbuddy_at");
     }
     return null;
   },
 
   setAccessToken(token: string): void {
-    inMemoryToken = token;
+    inMemoryAccessToken = token;
     if (typeof window !== "undefined") {
-      localStorage.setItem("finbuddy_access_token", token);
+      sessionStorage.setItem("finbuddy_at", token);
     }
   },
 
-  clearAccessToken(): void {
-    inMemoryToken = null;
+  getRefreshToken(): string | null {
+    if (inMemoryRefreshToken) return inMemoryRefreshToken;
     if (typeof window !== "undefined") {
-      localStorage.removeItem("finbuddy_access_token");
+      return sessionStorage.getItem("finbuddy_rt");
+    }
+    return null;
+  },
+
+  setRefreshToken(token: string): void {
+    inMemoryRefreshToken = token;
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("finbuddy_rt", token);
+    }
+  },
+
+  setTokens(accessToken: string, refreshToken: string): void {
+    this.setAccessToken(accessToken);
+    this.setRefreshToken(refreshToken);
+  },
+
+  clearTokens(): void {
+    inMemoryAccessToken = null;
+    inMemoryRefreshToken = null;
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("finbuddy_at");
+      sessionStorage.removeItem("finbuddy_rt");
     }
   },
 };
