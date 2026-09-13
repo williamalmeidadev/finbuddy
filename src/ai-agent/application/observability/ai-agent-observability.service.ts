@@ -269,6 +269,7 @@ export class AiAgentObservabilityService {
       'create_transaction',
       'update_transaction',
       'delete_transaction',
+      'create_transfer',
       'save_memory',
     ];
     return allowed.includes(toolName) ? toolName : 'unknown_tool';
@@ -292,7 +293,8 @@ export class AiAgentObservabilityService {
         event.event === 'ai.tool.failed') &&
       (event.toolName === 'create_transaction' ||
         event.toolName === 'update_transaction' ||
-        event.toolName === 'delete_transaction')
+        event.toolName === 'delete_transaction' ||
+        event.toolName === 'create_transfer')
     ) {
       return true;
     }
