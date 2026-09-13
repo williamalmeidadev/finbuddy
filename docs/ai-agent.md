@@ -87,6 +87,8 @@ The FinBuddy AI Agent module (`src/ai-agent/`) provides a secure, modular, and r
 | `GetFinancialSummaryTool` | Application Tool | `src/ai-agent/application/tools/impl/get-financial-summary.tool.ts` | Read-only tool `get_financial_summary`. Retains metadata (`READ_FINANCIAL_SUMMARY`, `LOW`, `readOnly: true`). Invokes `FinancialSummaryService.getSummary`. |
 | `GetBudgetsTool` | Application Tool | `src/ai-agent/application/tools/impl/get-budgets.tool.ts` | Read-only tool `get_budgets`. Retains metadata (`READ_BUDGETS`, `LOW`, `readOnly: true`). Invokes `BudgetService.findByUserId`. |
 | `CreateTransactionTool` | Application Tool | `src/ai-agent/application/tools/impl/create-transaction.tool.ts` | Write tool `create_transaction`. Retains metadata (`CREATE_TRANSACTION`, `MEDIUM`, `readOnly: false`). Invokes `TransactionService.create`. |
+| `UpdateTransactionTool` | Application Tool | `src/ai-agent/application/tools/impl/update-transaction.tool.ts` | Write tool `update_transaction`. Retains metadata (`UPDATE_TRANSACTION`, `MEDIUM`, `readOnly: false`). Invokes `TransactionService.update`. |
+| `DeleteTransactionTool` | Application Tool | `src/ai-agent/application/tools/impl/delete-transaction.tool.ts` | Write tool `delete_transaction`. Retains metadata (`DELETE_TRANSACTION`, `HIGH`, `readOnly: false`). Invokes `TransactionService.delete`. |
 | `SaveMemoryTool` | Application Tool | `src/ai-agent/application/tools/impl/save-memory.tool.ts` | Write tool `save_memory`. Retains metadata (`MANAGE_MEMORY`, `LOW`, `readOnly: false`, `requiresConfirmation: false`). Invokes `AiMemoryService.saveMemory`. |
 | `AiMemoryService` | Application Service | `src/ai-agent/application/memory/ai-memory.service.ts` | Manages memory lifecycle, policy validation, length checks, user isolation, and formatting `<user_memory>` context for model injection. |
 | `AiConfirmationService` | Application Service | `src/ai-agent/application/ai-confirmation.service.ts` | Manages confirmation lifecycle, pending state, TTL expiration, single-use atomic consumption, and explicit user cancellation. |
@@ -124,6 +126,8 @@ Currently authorized capabilities:
 - `get_financial_summary` → `READ_FINANCIAL_SUMMARY` (`readOnly: true`, `riskLevel: LOW`)
 - `get_budgets` → `READ_BUDGETS` (`readOnly: true`, `riskLevel: LOW`)
 - `create_transaction` → `CREATE_TRANSACTION` (`readOnly: false`, `riskLevel: MEDIUM`)
+- `update_transaction` → `UPDATE_TRANSACTION` (`readOnly: false`, `riskLevel: MEDIUM`)
+- `delete_transaction` → `DELETE_TRANSACTION` (`readOnly: false`, `riskLevel: HIGH`)
 - `save_memory` → `MANAGE_MEMORY` (`readOnly: false`, `riskLevel: LOW`, `requiresConfirmation: false`)
 
 ### 3.3 Application-Level Argument Validation
@@ -133,16 +137,18 @@ Model tool arguments are parsed, validated, and normalized before reaching any a
 - `get_financial_summary`: Validates `month` format strictly against `YYYY-MM`.
 - `get_budgets`: Validates `categoryId` UUID format and `month` format `YYYY-MM`.
 - `create_transaction`: Validates `accountId` UUID, `type` enum (`INCOME` / `EXPENSE`), positive `amount`, `transactionAt` ISO date string, optional `description`, and optional `categoryId` UUID.
+- `update_transaction`: Validates `transactionId` UUID, requiring at least one optional update field (`amount`, `description`, `type`, `categoryId`, `accountId`, `transactionAt`).
+- `delete_transaction`: Validates `transactionId` UUID format.
 - `save_memory`: Validates `type` enum (`PREFERENCE` / `FINANCIAL_GOAL` / `GENERAL_CONTEXT`), `key` string length (1-100), and `value` string length (1-1000).
 
 ---
 
 ## 4. Evaluation Harness & Security Regression Framework
 
-The evaluation harness (`test/ai-agent/evaluation/`) provides a deterministic, repeatable offline test suite covering 75 scenarios:
+The evaluation harness (`test/ai-agent/evaluation/`) provides a deterministic, repeatable offline test suite covering 99 scenarios:
 - **Offline Executions**: Uses `MockOpenAIClientEvaluation` to run scenarios without live OpenAI API network dependencies.
 - **Regression Suite**: Executes via `npm run ai:evaluate` or standard `npm test`.
-- **Security & Observability Matrix Coverage**: Validates IDOR prevention, prompt injection resistance, indirect injection safety, hallucination grounding, tool failure handling, iteration bounds, write tool confirmation requirements (WT-01 through WT-10), request observability/audit events (OBS-01 through OBS-10), conversation persistence (CP-01 through CP-14), and memory management (MEM-01 through MEM-15).
+- **Security & Observability Matrix Coverage**: Validates IDOR prevention, prompt injection resistance, indirect injection safety, hallucination grounding, tool failure handling, iteration bounds, write tool confirmation requirements (WT-01 through WT-60), request observability/audit events (OBS-01 through OBS-10), conversation persistence (CP-01 through CP-14), and memory management (MEM-01 through MEM-15).
 - Full details documented in [`docs/ai-agent-evaluation.md`](file:///home/williamalmeida/github/finbuddy/docs/ai-agent-evaluation.md), [`docs/ai-agent-memory.md`](file:///home/williamalmeida/github/finbuddy/docs/ai-agent-memory.md), [`docs/ai-agent-conversations.md`](file:///home/williamalmeida/github/finbuddy/docs/ai-agent-conversations.md), [`docs/ai-agent-write-tools.md`](file:///home/williamalmeida/github/finbuddy/docs/ai-agent-write-tools.md), and [`docs/ai-agent-observability.md`](file:///home/williamalmeida/github/finbuddy/docs/ai-agent-observability.md).
 
 ---
@@ -150,7 +156,7 @@ The evaluation harness (`test/ai-agent/evaluation/`) provides a deterministic, r
 ## 5. Current Limitations & Roadmap
 
 ### Current Limitations
-- **Limited Write Scope**: Only transaction creation (`create_transaction`) and memory saving (`save_memory`) are exposed. Updates, deletes, recurring transactions, and transfers are not exposed via AI tools.
+- **Limited Write Scope**: Transaction creation (`create_transaction`), updating (`update_transaction`), deletion (`delete_transaction`), and memory saving (`save_memory`) are exposed. Recurring transaction rules and transfers are not exposed via AI tools.
 - **No Vector Search / Semantic Memory**: Structured memory is key-value based (`AiMemory`). No vector embeddings, pgvector, or semantic search.
 
 ### Phase Roadmap
@@ -165,4 +171,6 @@ The evaluation harness (`test/ai-agent/evaluation/`) provides a deterministic, r
 | **Phase 14** | **AI Agent Observability & Auditability** | **Completed** |
 | **Phase 15** | **AI Agent Conversation Persistence** | **Completed** |
 | **Phase 16** | **AI Agent Memory / Context Management** | **Completed** |
+| **Phase 17A** | **AI Financial Write Tool: update_transaction** | **Completed** |
+| **Phase 17B** | **AI Financial Write Tool: delete_transaction** | **Completed** |
 

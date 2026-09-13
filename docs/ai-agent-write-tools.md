@@ -2,9 +2,9 @@
 
 ## 1. Executive Summary & Security Philosophy
 
-Phase 13 introduces FinBuddy's first AI-controlled financial write tool: `create_transaction`.
+Phase 13, 17A, and 17B introduce FinBuddy's financial write tools: `create_transaction`, `update_transaction`, and `delete_transaction`.
 
-Because financial mutations carry inherent risk (unintended charges, duplicated records, erroneous amounts), FinBuddy enforces a strict **Human-in-the-Loop Confirmation Policy** for all financial mutations.
+Because financial mutations carry inherent risk (unintended charges, duplicated records, erroneous amounts, unintended deletions), FinBuddy enforces a strict **Human-in-the-Loop Confirmation Policy** for all financial mutations.
 
 ### Core Security Invariants
 
@@ -13,8 +13,8 @@ LLM output → UNTRUSTED → Argument Validation → Tool Authorization → Risk
 ```
 
 1. **Zero Direct LLM Inline Database Financial Mutations**:
-   - The LLM can propose financial transaction creation, but **cannot execute database writes inline** during the conversational tool loop for financial mutations.
-   - When a financial write tool (`create_transaction`, `requiresConfirmation = true`) is selected by the model, the orchestrator intercepts execution, validates arguments, checks authorization, and creates a pending `AiConfirmation` entity.
+   - The LLM can propose financial transaction creation, update, or deletion, but **cannot execute database writes inline** during the conversational tool loop for financial mutations.
+   - When a financial write tool (`create_transaction`, `update_transaction`, `delete_transaction`, `requiresConfirmation = true`) is selected by the model, the orchestrator intercepts execution, validates arguments, checks authorization, and creates a pending `AiConfirmation` entity.
    - Non-financial, low-risk state operations such as `save_memory` (`requiresConfirmation = false`) execute inline subject to policy validation.
    - The API returns a structured response of type `confirmation_required` to the user interface for financial actions. No financial record is modified without explicit confirmation.
 
@@ -28,7 +28,10 @@ LLM output → UNTRUSTED → Argument Validation → Tool Authorization → Risk
 
 4. **Tenant Isolation (IDOR Protection)**:
    - Confirmations are strictly bound to `userId`. User B cannot inspect, execute, or cancel User A's confirmation request (returns `404 Not Found`).
-   - Account ownership is enforced by `TransactionService` during execution. If an account does not belong to the user, creation fails safely.
+   - Account and transaction ownership is enforced by `TransactionService` during execution. If an account or transaction does not belong to the user, the operation fails safely.
+
+5. **Transfer-Linked & System Protection**:
+   - System-sourced transactions (`source: SYSTEM`) and transfer-linked transactions (`transferId !== null`) are protected from being updated or deleted via AI tools.
 
 ---
 
@@ -58,7 +61,9 @@ LLM output → UNTRUSTED → Argument Validation → Tool Authorization → Risk
 
 ---
 
-## 3. Tool Specification: `create_transaction`
+## 3. Financial Write Tools Specifications
+
+### 1. `create_transaction`
 
 | Property | Value |
 |---|---|
@@ -67,6 +72,39 @@ LLM output → UNTRUSTED → Argument Validation → Tool Authorization → Risk
 | **Risk Level** | `AgentToolRiskLevel.MEDIUM` |
 | **Read-Only** | `false` |
 | **Description** | Create a new financial transaction (income or expense) for the authenticated user. |
+
+### 2. `update_transaction`
+
+| Property | Value |
+|---|---|
+| **Tool Name** | `update_transaction` |
+| **Capability** | `AgentCapability.UPDATE_TRANSACTION` |
+| **Risk Level** | `AgentToolRiskLevel.MEDIUM` |
+| **Read-Only** | `false` |
+| **Description** | Update an existing financial transaction (amount, description, type, category, account, or date) for the authenticated user. |
+
+### 3. `delete_transaction`
+
+| Property | Value |
+|---|---|
+| **Tool Name** | `delete_transaction` |
+| **Capability** | `AgentCapability.DELETE_TRANSACTION` |
+| **Risk Level** | `AgentToolRiskLevel.HIGH` |
+| **Read-Only** | `false` |
+| **Description** | Delete an existing financial transaction for the authenticated user and restore account balance. |
+
+#### Input Schema & Argument DTO Validation (`DeleteTransactionArgsDto`)
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "transactionId": { "type": "string", "description": "Transaction UUID to delete" }
+  },
+  "required": ["transactionId"],
+  "additionalProperties": false
+}
+```
 
 ### Input Schema & Argument DTO Validation (`CreateTransactionArgsDto`)
 
