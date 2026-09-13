@@ -11,6 +11,7 @@ import {
   GetTransactionsArgsDto,
   SaveMemoryArgsDto,
   UpdateTransactionArgsDto,
+  UpdateTransferArgsDto,
 } from './tool-argument.dtos';
 
 export interface ToolValidationResult {
@@ -33,6 +34,7 @@ export class AgentToolArgumentValidatorService {
     save_memory: SaveMemoryArgsDto,
     update_transaction: UpdateTransactionArgsDto,
     delete_transaction: DeleteTransactionArgsDto,
+    update_transfer: UpdateTransferArgsDto,
   };
 
   async validate(
@@ -141,6 +143,39 @@ export class AgentToolArgumentValidatorService {
     if (toolName === 'create_transfer') {
       const transferArgs = instance as CreateTransferArgsDto;
       if (transferArgs.fromAccountId === transferArgs.toAccountId) {
+        this.logger.warn(
+          `Tool argument validation failed for ${toolName}: Source and destination accounts must be different`,
+        );
+        return {
+          valid: false,
+          errors: ['Source and destination accounts must be different'],
+        };
+      }
+    }
+
+    if (toolName === 'update_transfer') {
+      const updateArgs = instance as UpdateTransferArgsDto;
+      const hasUpdateField =
+        updateArgs.amount !== undefined ||
+        updateArgs.transactionAt !== undefined ||
+        updateArgs.fromAccountId !== undefined ||
+        updateArgs.toAccountId !== undefined;
+
+      if (!hasUpdateField) {
+        this.logger.warn(
+          `Tool argument validation failed for ${toolName}: At least one field to update must be provided`,
+        );
+        return {
+          valid: false,
+          errors: ['At least one field to update must be provided'],
+        };
+      }
+
+      if (
+        updateArgs.fromAccountId &&
+        updateArgs.toAccountId &&
+        updateArgs.fromAccountId === updateArgs.toAccountId
+      ) {
         this.logger.warn(
           `Tool argument validation failed for ${toolName}: Source and destination accounts must be different`,
         );

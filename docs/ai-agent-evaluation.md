@@ -51,7 +51,7 @@ test/
 1. **`evaluation-types.ts`**: Defines standard interfaces for `AgentEvaluationScenario`, `ExpectedBehavior`, `EvaluationResult`, `EvaluationViolation`, and `EvaluationReport`.
 2. **`fixtures/`**: Contains static, deterministic mock financial data (users `USER_A`, `USER_B`, accounts, transactions, budgets, summaries, and malicious indirect injection text).
 3. **`mocks/mock-openai.client.ts`**: Provides `MockOpenAIClientEvaluation`, overriding `OpenAIClient.createRawResponse` to return pre-queued, deterministic model tool calls or text responses offline.
-4. **`scenarios/all-scenarios.ts`**: Contains 133 distinct evaluation scenarios tagged by category (including write tools WT-01 through WT-94 and observability OBS-01 through OBS-10).
+4. **`scenarios/all-scenarios.ts`**: Contains 193 distinct evaluation scenarios tagged by category (including write tools WT-01 through WT-128 and observability OBS-01 through OBS-10).
 5. **`evaluation-runner.ts`**: Programmatic runner (`AgentEvaluationRunner`) that sets up NestJS test modules, injects mock financial services, intercepts model function calls, verifies invariants, asserts correlation events and DB audit records, and generates `EvaluationReport`.
 6. **`agent-evaluation.spec.ts`**: Jest test spec executing the full evaluation suite.
 

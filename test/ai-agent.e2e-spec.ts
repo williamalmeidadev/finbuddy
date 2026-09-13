@@ -2373,6 +2373,308 @@ describe('AiAgentController (e2e)', () => {
       });
       expect(accBAfter?.balance.toNumber()).toBe(5000.0);
     });
+
+    describe('update_transfer write tool', () => {
+      it('should execute full update_transfer workflow safely with confirmation, balance update, SYSTEM tx sync, audit, and replay protection', async () => {
+        const userA = await createTestUser('update-transfer-flow');
+
+        const accountA = await prisma.account.create({
+          data: {
+            userId: userA.userId,
+            name: 'Checking Account',
+            type: AccountType.CHECKING,
+            balance: 1000.0,
+            currency: 'BRL',
+            color: '#0055FF',
+            isActive: true,
+          },
+        });
+
+        const accountB = await prisma.account.create({
+          data: {
+            userId: userA.userId,
+            name: 'Savings Account',
+            type: AccountType.SAVINGS,
+            balance: 500.0,
+            currency: 'BRL',
+            color: '#00FF55',
+            isActive: true,
+          },
+        });
+
+        // 1. Create an initial transfer of 200 from A to B (A: 800, B: 700)
+        const initialTransfer = await prisma.transfer.create({
+          data: {
+            fromAccountId: accountA.id,
+            toAccountId: accountB.id,
+            amount: 200.0,
+            transactionAt: new Date('2026-09-10T12:00:00Z'),
+          },
+        });
+        await prisma.account.update({
+          where: { id: accountA.id },
+          data: { balance: { decrement: 200.0 } },
+        });
+        await prisma.account.update({
+          where: { id: accountB.id },
+          data: { balance: { increment: 200.0 } },
+        });
+        await prisma.transaction.createMany({
+          data: [
+            {
+              accountId: accountA.id,
+              transferId: initialTransfer.id,
+              type: TransactionType.EXPENSE,
+              amount: 200.0,
+              description: 'Transfer to Savings Account',
+              source: TransactionSource.SYSTEM,
+              transactionAt: new Date('2026-09-10T12:00:00Z'),
+            },
+            {
+              accountId: accountB.id,
+              transferId: initialTransfer.id,
+              type: TransactionType.INCOME,
+              amount: 200.0,
+              description: 'Transfer from Checking Account',
+              source: TransactionSource.SYSTEM,
+              transactionAt: new Date('2026-09-10T12:00:00Z'),
+            },
+          ],
+        });
+
+        // 2. User requests update_transfer: update amount from 200 to 300
+        mockOpenAiClient.createRawResponse.mockResolvedValueOnce({
+          id: 'resp-up-tr-1',
+          outputText: '',
+          functionCalls: [
+            {
+              callId: 'call-up-tr-1',
+              name: 'update_transfer',
+              arguments: {
+                transferId: initialTransfer.id,
+                amount: 300.0,
+              },
+            },
+          ],
+          tokens: { inputTokens: 10, outputTokens: 20, totalTokens: 30 },
+        });
+
+        const msgRes = await request(app.getHttpServer())
+          .post('/ai-agent/messages')
+          .set('Authorization', `Bearer ${userA.token}`)
+          .send({ message: 'Update my transfer amount to 300' })
+          .expect(200);
+
+        expect(msgRes.body.type).toBe('confirmation_required');
+        const confirmationId = msgRes.body.confirmation.confirmationId;
+        expect(confirmationId).toBeDefined();
+
+        // 3. Verify financial state has NOT changed before confirmation
+        const accABefore = await prisma.account.findUnique({
+          where: { id: accountA.id },
+        });
+        const accBBefore = await prisma.account.findUnique({
+          where: { id: accountB.id },
+        });
+        expect(accABefore?.balance.toNumber()).toBe(800.0);
+        expect(accBBefore?.balance.toNumber()).toBe(700.0);
+
+        // 4. User confirms the operation
+        const confirmRes = await request(app.getHttpServer())
+          .post(`/ai-agent/confirmations/${confirmationId}`)
+          .set('Authorization', `Bearer ${userA.token}`)
+          .send({})
+          .expect(200);
+
+        expect(confirmRes.body.success).toBe(true);
+        expect(confirmRes.body.data.amount).toBe(300.0);
+
+        // 5. Verify updated financial state: A: 1000 - 300 = 700, B: 500 + 300 = 800
+        const accAAfter = await prisma.account.findUnique({
+          where: { id: accountA.id },
+        });
+        const accBAfter = await prisma.account.findUnique({
+          where: { id: accountB.id },
+        });
+        expect(accAAfter?.balance.toNumber()).toBe(700.0);
+        expect(accBAfter?.balance.toNumber()).toBe(800.0);
+
+        // 6. Verify Transfer record updated
+        const updatedTransfer = await prisma.transfer.findUnique({
+          where: { id: initialTransfer.id },
+        });
+        expect(updatedTransfer?.amount.toNumber()).toBe(300.0);
+
+        // 7. Verify SYSTEM transactions synchronized
+        const systemTxs = await prisma.transaction.findMany({
+          where: { transferId: initialTransfer.id },
+        });
+        expect(systemTxs).toHaveLength(2);
+        for (const stx of systemTxs) {
+          expect(stx.amount.toNumber()).toBe(300.0);
+        }
+
+        // 8. Verify audit event persisted
+        const audit = await prisma.aiAuditEvent.findFirst({
+          where: {
+            userId: userA.userId,
+            toolName: 'update_transfer',
+            eventType: 'ai.confirmation.confirmed',
+          },
+        });
+        expect(audit).toBeDefined();
+
+        // 9. Replay attempt fails
+        const replayRes = await request(app.getHttpServer())
+          .post(`/ai-agent/confirmations/${confirmationId}`)
+          .set('Authorization', `Bearer ${userA.token}`)
+          .send({});
+        expect(replayRes.status).toBe(400);
+      });
+
+      it('should reject IDOR attempt when user attempts to update another user transfer', async () => {
+        const userA = await createTestUser('up-tr-idor-a');
+        const userB = await createTestUser('up-tr-idor-b');
+
+        const accountB1 = await prisma.account.create({
+          data: {
+            userId: userB.userId,
+            name: 'User B Checking',
+            type: AccountType.CHECKING,
+            balance: 1000.0,
+            currency: 'BRL',
+            color: '#0055FF',
+            isActive: true,
+          },
+        });
+        const accountB2 = await prisma.account.create({
+          data: {
+            userId: userB.userId,
+            name: 'User B Savings',
+            type: AccountType.SAVINGS,
+            balance: 500.0,
+            currency: 'BRL',
+            color: '#00FF55',
+            isActive: true,
+          },
+        });
+
+        const transferB = await prisma.transfer.create({
+          data: {
+            fromAccountId: accountB1.id,
+            toAccountId: accountB2.id,
+            amount: 100.0,
+            transactionAt: new Date(),
+          },
+        });
+
+        // User A attempts to update User B's transfer
+        mockOpenAiClient.createRawResponse.mockResolvedValueOnce({
+          id: 'resp-up-tr-idor',
+          outputText: '',
+          functionCalls: [
+            {
+              callId: 'call-up-tr-idor',
+              name: 'update_transfer',
+              arguments: {
+                transferId: transferB.id,
+                amount: 500.0,
+              },
+            },
+          ],
+          tokens: { inputTokens: 10, outputTokens: 20, totalTokens: 30 },
+        });
+
+        const msgRes = await request(app.getHttpServer())
+          .post('/ai-agent/messages')
+          .set('Authorization', `Bearer ${userA.token}`)
+          .send({ message: 'Update transfer amount to 500' })
+          .expect(200);
+
+        const confirmationId = msgRes.body.confirmation.confirmationId;
+
+        const confirmRes = await request(app.getHttpServer())
+          .post(`/ai-agent/confirmations/${confirmationId}`)
+          .set('Authorization', `Bearer ${userA.token}`)
+          .send({});
+
+        expect(confirmRes.status).toBe(400);
+
+        // Verify transfer B amount was unchanged
+        const trBAfter = await prisma.transfer.findUnique({
+          where: { id: transferB.id },
+        });
+        expect(trBAfter?.amount.toNumber()).toBe(100.0);
+      });
+
+      it('should reject update_transfer with same source and destination account', async () => {
+        const userA = await createTestUser('up-tr-same-acc');
+
+        const accountA = await prisma.account.create({
+          data: {
+            userId: userA.userId,
+            name: 'Account A',
+            type: AccountType.CHECKING,
+            balance: 1000.0,
+            currency: 'BRL',
+            color: '#0055FF',
+            isActive: true,
+          },
+        });
+        const accountB = await prisma.account.create({
+          data: {
+            userId: userA.userId,
+            name: 'Account B',
+            type: AccountType.SAVINGS,
+            balance: 500.0,
+            currency: 'BRL',
+            color: '#00FF55',
+            isActive: true,
+          },
+        });
+
+        const transfer = await prisma.transfer.create({
+          data: {
+            fromAccountId: accountA.id,
+            toAccountId: accountB.id,
+            amount: 100.0,
+            transactionAt: new Date(),
+          },
+        });
+
+        mockOpenAiClient.createRawResponse
+          .mockResolvedValueOnce({
+            id: 'resp-up-tr-same-1',
+            outputText: '',
+            functionCalls: [
+              {
+                callId: 'call-up-tr-same',
+                name: 'update_transfer',
+                arguments: {
+                  transferId: transfer.id,
+                  fromAccountId: accountA.id,
+                  toAccountId: accountA.id,
+                },
+              },
+            ],
+            tokens: { inputTokens: 10, outputTokens: 20, totalTokens: 30 },
+          })
+          .mockResolvedValueOnce({
+            id: 'resp-up-tr-same-2',
+            outputText: 'Source and destination accounts must be different.',
+            functionCalls: [],
+            tokens: { inputTokens: 10, outputTokens: 20, totalTokens: 30 },
+          });
+
+        const msgRes = await request(app.getHttpServer())
+          .post('/ai-agent/messages')
+          .set('Authorization', `Bearer ${userA.token}`)
+          .send({ message: 'Update transfer source and dest to account A' })
+          .expect(200);
+
+        // Validation failure occurs at tool argument validation step
+        expect(msgRes.body.type).toBe('response');
+      });
+    });
   });
 });
-

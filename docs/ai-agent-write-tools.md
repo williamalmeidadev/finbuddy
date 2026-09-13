@@ -106,28 +106,29 @@ LLM output → UNTRUSTED → Argument Validation → Tool Authorization → Risk
 }
 ```
 
-### 4. `create_transfer`
+### 5. `update_transfer`
 
 | Property | Value |
 |---|---|
-| **Tool Name** | `create_transfer` |
-| **Capability** | `AgentCapability.CREATE_TRANSFER` |
+| **Tool Name** | `update_transfer` |
+| **Capability** | `AgentCapability.UPDATE_TRANSFER` |
 | **Risk Level** | `AgentToolRiskLevel.HIGH` |
 | **Read-Only** | `false` |
-| **Description** | Create a financial transfer moving funds between two accounts belonging to the authenticated user. |
+| **Description** | Update an existing financial transfer between two accounts belonging to the authenticated user. Atomically synchronizes Transfer, source/destination account balances, and linked SYSTEM transactions. |
 
-#### Input Schema & Argument DTO Validation (`CreateTransferArgsDto`)
+#### Input Schema & Argument DTO Validation (`UpdateTransferArgsDto`)
 
 ```json
 {
   "type": "object",
   "properties": {
-    "fromAccountId": { "type": "string", "description": "Source account UUID" },
-    "toAccountId": { "type": "string", "description": "Destination account UUID" },
-    "amount": { "type": "number", "minimum": 0.0001, "maximum": 999999999999.9999, "description": "Positive transfer amount" },
-    "transactionAt": { "type": "string", "description": "Transfer ISO date-time string" }
+    "transferId": { "type": "string", "description": "UUID of the transfer to update" },
+    "amount": { "type": "number", "minimum": 0.0001, "maximum": 999999999999.9999, "description": "Optional updated positive transfer amount" },
+    "transactionAt": { "type": "string", "description": "Optional updated transfer ISO date-time string" },
+    "fromAccountId": { "type": "string", "description": "Optional updated source account UUID" },
+    "toAccountId": { "type": "string", "description": "Optional updated destination account UUID" }
   },
-  "required": ["fromAccountId", "toAccountId", "amount", "transactionAt"],
+  "required": ["transferId"],
   "additionalProperties": false
 }
 ```

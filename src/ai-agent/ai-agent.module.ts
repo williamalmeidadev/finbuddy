@@ -28,6 +28,7 @@ import { SaveMemoryTool } from './application/tools/impl/save-memory.tool';
 import { UpdateTransactionTool } from './application/tools/impl/update-transaction.tool';
 import { DeleteTransactionTool } from './application/tools/impl/delete-transaction.tool';
 import { CreateTransferTool } from './application/tools/impl/create-transfer.tool';
+import { UpdateTransferTool } from './application/tools/impl/update-transfer.tool';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { CreateTransferTool } from './application/tools/impl/create-transfer.too
     UpdateTransactionTool,
     DeleteTransactionTool,
     CreateTransferTool,
+    UpdateTransferTool,
   ],
   exports: [
     AiAgentService,

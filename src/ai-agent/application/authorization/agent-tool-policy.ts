@@ -10,6 +10,7 @@ export class AgentToolPolicy {
     AgentCapability.UPDATE_TRANSACTION,
     AgentCapability.DELETE_TRANSACTION,
     AgentCapability.CREATE_TRANSFER,
+    AgentCapability.UPDATE_TRANSFER,
     AgentCapability.MANAGE_MEMORY,
   ]);
 

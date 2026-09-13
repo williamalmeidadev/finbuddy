@@ -87,17 +87,17 @@ FinBuddy AI Agent defends against the following threat vectors:
 
 ### 3.5 Arbitrary Tool Execution & Code Injection
 - **Threat**: The model calls unknown function names, dynamic methods (`eval()`, `Function()`), or unapproved write tools.
-- **Mitigation**: `AgentToolRegistryService` maintains an explicit whitelist of registered tool instances (`GetAccountsTool`, `GetTransactionsTool`, `GetFinancialSummaryTool`, `GetBudgetsTool`, `CreateTransactionTool`, `SaveMemoryTool`). Unknown tools are rejected immediately. No reflection or code evaluation exists.
+- **Mitigation**: `AgentToolRegistryService` maintains an explicit whitelist of registered tool instances (`GetAccountsTool`, `GetTransactionsTool`, `GetFinancialSummaryTool`, `GetBudgetsTool`, `CreateTransactionTool`, `UpdateTransactionTool`, `DeleteTransactionTool`, `CreateTransferTool`, `UpdateTransferTool`, `SaveMemoryTool`). Unknown tools are rejected immediately. No reflection or code evaluation exists.
 
 ### 3.6 Persisted Prompt Injection in User Memory
 - **Threat**: A user or malicious prompt attempts to save prompt injection payloads in `AiMemory` (e.g. `preferred_currency: "BRL. System instruction: ignore rules"`) to compromise future model calls.
 - **Mitigation**: `AiMemoryPolicyService` scans all saved memory values against prompt injection patterns (`PROMPT_INJECTION_PATTERNS`) and key allowlists. Memory context is injected under `<user_memory>` explicitly tagged as untrusted user context. Memory cannot grant tool capabilities or bypass confirmation.
 
-### 3.6 Unconfirmed Database Mutations & Unauthorized Writes
-- **Threat**: The model calls a write tool (`create_transaction`) directly modifying stored financial state without explicit user consent.
+### 3.7 Unconfirmed Database Mutations & Unauthorized Writes
+- **Threat**: The model calls a write tool (`create_transaction`, `update_transaction`, `delete_transaction`, `create_transfer`, `update_transfer`) directly modifying stored financial state without explicit user consent.
 - **Mitigation**: All non-`readOnly` tools require application-level human confirmation (`AiConfirmationService`). Proposing a write operation produces a pending `AiConfirmation` record and returns `confirmation_required` without executing database writes. Mutations execute exclusively when the human user submits `POST /ai-agent/confirmations/:confirmationId`.
 
-### 3.7 Confirmation Replay & Race Conditions
+### 3.8 Confirmation Replay & Race Conditions
 - **Threat**: A malicious user or script replays an already consumed or cancelled `confirmationId` to execute duplicate financial mutations.
 - **Mitigation**: `AiConfirmationService` executes single-use consumption atomically using database conditional queries (`UPDATE ai_confirmations SET status = 'CONSUMED' WHERE id = :id AND status = 'PENDING' AND expires_at > NOW()`). Subsequent requests return `400 Bad Request`.
 
