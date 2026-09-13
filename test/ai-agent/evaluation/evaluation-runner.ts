@@ -30,6 +30,7 @@ import { SaveMemoryTool } from '../../../src/ai-agent/application/tools/impl/sav
 import { UpdateTransactionTool } from '../../../src/ai-agent/application/tools/impl/update-transaction.tool';
 import { DeleteTransactionTool } from '../../../src/ai-agent/application/tools/impl/delete-transaction.tool';
 import { CreateTransferTool } from '../../../src/ai-agent/application/tools/impl/create-transfer.tool';
+import { UpdateTransferTool } from '../../../src/ai-agent/application/tools/impl/update-transfer.tool';
 import { TransferService } from '../../../src/transfer/transfer.service';
 
 import {
@@ -300,6 +301,67 @@ export class AgentEvaluationRunner {
           createdAt: new Date(),
         };
       }),
+      update: jest
+        .fn()
+        .mockImplementation(async (transferId: string, userId: string, dto: any) => {
+          // IDOR: cross-user transfer not found
+          if (
+            transferId === 'f3333333-3333-4333-8333-333333333333' &&
+            userId === EVAL_USERS.USER_A
+          ) {
+            const { NotFoundException } = await import('@nestjs/common');
+            throw new NotFoundException('Transfer not found');
+          }
+          // Non-existent transfer
+          if (transferId === 'a0000000-0000-4000-8000-000000000000') {
+            const { NotFoundException } = await import('@nestjs/common');
+            throw new NotFoundException('Transfer not found');
+          }
+          // Same account guard
+          if (
+            dto.fromAccountId &&
+            dto.toAccountId &&
+            dto.fromAccountId === dto.toAccountId
+          ) {
+            const { BadRequestException } = await import('@nestjs/common');
+            throw new BadRequestException(
+              'Source and destination accounts must be different',
+            );
+          }
+          // Inactive account
+          if (
+            dto.fromAccountId === EVAL_ACCOUNTS.ACCOUNT_INACTIVE.id ||
+            dto.toAccountId === EVAL_ACCOUNTS.ACCOUNT_INACTIVE.id
+          ) {
+            const { BadRequestException } = await import('@nestjs/common');
+            throw new BadRequestException(
+              'Cannot perform transfer with an inactive account',
+            );
+          }
+          // Cross-user account (USER_A accessing USER_B account)
+          if (
+            userId === EVAL_USERS.USER_A &&
+            (dto.fromAccountId === EVAL_ACCOUNTS.ACCOUNT_B1.id ||
+              dto.toAccountId === EVAL_ACCOUNTS.ACCOUNT_B1.id)
+          ) {
+            const { NotFoundException } = await import('@nestjs/common');
+            throw new NotFoundException('Account not found');
+          }
+          // Insufficient balance guard (large amounts)
+          if (dto.amount && dto.amount > 99999) {
+            const { BadRequestException } = await import('@nestjs/common');
+            throw new BadRequestException('Insufficient balance for transfer');
+          }
+          return {
+            id: transferId,
+            fromAccountId: dto.fromAccountId ?? EVAL_ACCOUNTS.ACCOUNT_A1.id,
+            toAccountId: dto.toAccountId ?? EVAL_ACCOUNTS.ACCOUNT_A2.id,
+            amount: dto.amount ?? 100.0,
+            transactionAt: dto.transactionAt ?? new Date('2026-09-13T15:30:00.000Z'),
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
+        }),
     };
 
     const conversationsMap = new Map<string, any>();
@@ -570,6 +632,7 @@ export class AgentEvaluationRunner {
         UpdateTransactionTool,
         DeleteTransactionTool,
         CreateTransferTool,
+        UpdateTransferTool,
         { provide: OpenAIClient, useValue: mockOpenAiClient },
         { provide: MetricsService, useValue: mockMetricsService },
         { provide: AccountService, useValue: mockAccountService },
