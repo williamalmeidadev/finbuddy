@@ -634,7 +634,7 @@ export class AgentEvaluationRunner {
       }),
     };
 
-    const mockOpenAiClient = new MockOpenAIClientEvaluation();
+    const mockOpenAiClient = new MockOpenAIClientEvaluation(mockConfigService as any);
     mockOpenAiClient.setResponseQueue(scenario.mockModelResponses ?? []);
 
     // Intercept model calls to record model-requested function calls

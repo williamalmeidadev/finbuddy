@@ -13,7 +13,6 @@ describe('RecurringTransactionExecutionController', () => {
   const user: AuthenticatedUserDto = {
     id: 'user-1',
     email: 'user@example.com',
-    status: 'ACTIVE',
   };
 
   beforeEach(async () => {
