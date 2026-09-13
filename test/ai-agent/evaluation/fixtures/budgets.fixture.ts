@@ -2,14 +2,20 @@ import { EVAL_USERS } from './accounts.fixture';
 
 export const EVAL_CATEGORIES = {
   CAT_A1: {
-    id: 'cat-eval-a1-1111-1111-1111',
+    id: 'c1111111-1111-4111-8111-111111111111',
     userId: EVAL_USERS.USER_A,
     name: 'Groceries',
   },
   CAT_B1: {
-    id: 'cat-eval-b1-2222-2222-2222',
+    id: 'c2222222-2222-4222-8222-222222222222',
     userId: EVAL_USERS.USER_B,
     name: 'Secret Project',
+  },
+  INCOME_CAT: {
+    id: 'c3333333-3333-4333-8333-333333333333',
+    userId: EVAL_USERS.USER_A,
+    name: 'Salary',
+    type: 'INCOME',
   },
 };
 

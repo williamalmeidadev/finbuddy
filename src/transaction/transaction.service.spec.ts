@@ -399,8 +399,29 @@ describe('TransactionService', () => {
       // Old impact: +100. New impact: -50. Delta = -50 - (+100) = -150
       expect(
         transactionRepository.updateWithBalanceUpdate,
-      ).toHaveBeenCalledWith('tx-1', userId, expect.any(Object), -150);
+      ).toHaveBeenCalledWith(
+        'tx-1',
+        userId,
+        expect.any(Object),
+        -150,
+        undefined,
+      );
       expect(result.type).toBe(TransactionType.EXPENSE);
+    });
+
+    it('should throw BadRequestException if trying to update transfer-linked or system transaction', async () => {
+      transactionRepository.findByIdAndUserId.mockResolvedValue({
+        id: 'tx-1',
+        accountId: 'acc-1',
+        type: TransactionType.EXPENSE,
+        amount: { toNumber: () => 100 },
+        source: TransactionSource.SYSTEM,
+        transferId: null,
+      });
+
+      await expect(
+        service.update('tx-1', userId, { amount: 200 }),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException if updating transaction for an inactive account', async () => {

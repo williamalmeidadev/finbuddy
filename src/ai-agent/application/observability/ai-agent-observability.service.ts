@@ -267,6 +267,8 @@ export class AiAgentObservabilityService {
       'get_financial_summary',
       'get_budgets',
       'create_transaction',
+      'update_transaction',
+      'save_memory',
     ];
     return allowed.includes(toolName) ? toolName : 'unknown_tool';
   }
@@ -287,7 +289,8 @@ export class AiAgentObservabilityService {
     if (
       (event.event === 'ai.tool.completed' ||
         event.event === 'ai.tool.failed') &&
-      event.toolName === 'create_transaction'
+      (event.toolName === 'create_transaction' ||
+        event.toolName === 'update_transaction')
     ) {
       return true;
     }

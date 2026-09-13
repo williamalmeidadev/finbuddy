@@ -105,3 +105,44 @@ export class SaveMemoryArgsDto {
   @Length(1, 1000)
   value!: string;
 }
+
+export class UpdateTransactionArgsDto {
+  @IsUUID()
+  @IsNotEmpty()
+  transactionId!: string;
+
+  @IsOptional()
+  @IsUUID()
+  accountId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  categoryId?: string;
+
+  @IsOptional()
+  @IsEnum(TransactionType)
+  type?: TransactionType;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @IsPositive({ message: 'amount must be a positive number' })
+  @Min(0.0001)
+  @Max(999999999999.9999)
+  amount?: number;
+
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
+  @Length(1, 255)
+  description?: string;
+
+  @IsOptional()
+  @IsISO8601(
+    {},
+    { message: 'transactionAt must be a valid ISO 8601 datetime string' },
+  )
+  transactionAt?: string;
+}

@@ -28,9 +28,9 @@ describe('AI Agent Evaluation Harness (Deterministic Suite)', () => {
       it(`Scenario ${scenario.id}: ${scenario.description} [${scenario.category}]`, async () => {
         const result = await runner.runScenario(scenario);
         if (!result.passed) {
-          console.error(
-            `Scenario ${scenario.id} failed violations:`,
-            JSON.stringify(result.violations, null, 2),
+          throw new Error(
+            `Scenario ${scenario.id} violations: ` +
+              JSON.stringify(result.violations, null, 2),
           );
         }
         expect(result.passed).toBe(true);

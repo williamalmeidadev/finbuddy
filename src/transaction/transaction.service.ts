@@ -136,15 +136,42 @@ export class TransactionService {
       throw new NotFoundException('Transaction not found');
     }
 
-    const account = await this.accountRepository.findByIdAndUserId(
+    if (
+      transaction.source === TransactionSource.SYSTEM ||
+      Boolean(transaction.transferId)
+    ) {
+      throw new BadRequestException(
+        'Cannot modify transfer-linked or system transactions',
+      );
+    }
+
+    const currentAccount = await this.accountRepository.findByIdAndUserId(
       transaction.accountId,
       userId,
     );
 
-    if (!account || !account.isActive) {
+    if (!currentAccount || !currentAccount.isActive) {
       throw new BadRequestException(
         'Cannot update transaction for an inactive account',
       );
+    }
+
+    if (
+      dto.accountId !== undefined &&
+      dto.accountId !== transaction.accountId
+    ) {
+      const targetAccount = await this.accountRepository.findByIdAndUserId(
+        dto.accountId,
+        userId,
+      );
+
+      if (!targetAccount) {
+        throw new NotFoundException('Account not found');
+      }
+
+      if (!targetAccount.isActive) {
+        throw new BadRequestException('Cannot assign an inactive account');
+      }
     }
 
     const newType = dto.type ?? transaction.type;
@@ -191,12 +218,35 @@ export class TransactionService {
     const newImpact =
       newType === TransactionType.INCOME ? newAmount : -newAmount;
 
-    const balanceDelta = newImpact - oldImpact;
+    let balanceDelta = 0;
+    let accountChange:
+      | {
+          oldAccountId: string;
+          oldAccountReversalDelta: number;
+          newAccountId: string;
+          newAccountDelta: number;
+        }
+      | undefined;
+
+    if (
+      dto.accountId !== undefined &&
+      dto.accountId !== transaction.accountId
+    ) {
+      accountChange = {
+        oldAccountId: transaction.accountId,
+        oldAccountReversalDelta: -oldImpact,
+        newAccountId: dto.accountId,
+        newAccountDelta: newImpact,
+      };
+    } else {
+      balanceDelta = newImpact - oldImpact;
+    }
 
     const updated = await this.transactionRepository.updateWithBalanceUpdate(
       id,
       userId,
       {
+        ...(dto.accountId !== undefined ? { accountId: dto.accountId } : {}),
         ...(dto.categoryId !== undefined ? { categoryId: dto.categoryId } : {}),
         ...(dto.type ? { type: dto.type } : {}),
         ...(dto.amount !== undefined ? { amount: dto.amount } : {}),
@@ -207,6 +257,7 @@ export class TransactionService {
         ...(dto.transactionAt ? { transactionAt: dto.transactionAt } : {}),
       },
       balanceDelta,
+      accountChange,
     );
 
     if (!updated) {

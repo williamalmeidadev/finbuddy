@@ -27,6 +27,7 @@ import { AiMemoryRepository } from '../../../src/ai-agent/infrastructure/reposit
 import { AiMemoryPolicyService } from '../../../src/ai-agent/application/memory/ai-memory-policy.service';
 import { AiMemoryService } from '../../../src/ai-agent/application/memory/ai-memory.service';
 import { SaveMemoryTool } from '../../../src/ai-agent/application/tools/impl/save-memory.tool';
+import { UpdateTransactionTool } from '../../../src/ai-agent/application/tools/impl/update-transaction.tool';
 
 import {
   AgentEvaluationScenario,
@@ -40,6 +41,7 @@ import { MockOpenAIClientEvaluation } from './mocks/mock-openai.client';
 import {
   EVAL_ACCOUNTS,
   EVAL_BUDGETS,
+  EVAL_CATEGORIES,
   EVAL_SUMMARIES,
   EVAL_TRANSACTIONS,
   EVAL_USERS,
@@ -99,6 +101,63 @@ export class AgentEvaluationRunner {
           updatedAt: new Date(),
         };
       }),
+      update: jest
+        .fn()
+        .mockImplementation(async (id: string, userId: string, dto: any) => {
+          if (
+            id === 'a0000000-0000-4000-8000-000000000000' ||
+            id === EVAL_TRANSACTIONS.TX_B1.id
+          ) {
+            const { NotFoundException } = await import('@nestjs/common');
+            throw new NotFoundException('Transaction not found');
+          }
+          if (
+            id === EVAL_TRANSACTIONS.TX_TRANSFER.id ||
+            id === EVAL_TRANSACTIONS.TX_SYSTEM.id
+          ) {
+            const { BadRequestException } = await import('@nestjs/common');
+            throw new BadRequestException(
+              'Cannot modify transfer-linked or system transactions',
+            );
+          }
+          if (dto.accountId === EVAL_ACCOUNTS.ACCOUNT_INACTIVE.id) {
+            const { BadRequestException } = await import('@nestjs/common');
+            throw new BadRequestException('Cannot assign an inactive account');
+          }
+          if (
+            dto.accountId === EVAL_ACCOUNTS.ACCOUNT_B1.id ||
+            dto.accountId === 'acc-non-existent'
+          ) {
+            const { NotFoundException } = await import('@nestjs/common');
+            throw new NotFoundException('Account not found');
+          }
+          if (
+            dto.categoryId === EVAL_CATEGORIES.INCOME_CAT.id &&
+            dto.type === 'EXPENSE'
+          ) {
+            const { BadRequestException } = await import('@nestjs/common');
+            throw new BadRequestException(
+              'Category type does not match transaction type',
+            );
+          }
+          if (dto.amount && dto.amount > 99999) {
+            const { BadRequestException } = await import('@nestjs/common');
+            throw new BadRequestException('Insufficient balance');
+          }
+          return {
+            id,
+            accountId: dto.accountId ?? EVAL_ACCOUNTS.ACCOUNT_A1.id,
+            categoryId: dto.categoryId ?? EVAL_TRANSACTIONS.TX_A1.categoryId,
+            type: dto.type ?? EVAL_TRANSACTIONS.TX_A1.type,
+            amount: dto.amount ?? EVAL_TRANSACTIONS.TX_A1.amount,
+            description: dto.description ?? EVAL_TRANSACTIONS.TX_A1.description,
+            source: 'MANUAL',
+            transactionAt:
+              dto.transactionAt ?? EVAL_TRANSACTIONS.TX_A1.transactionAt,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
+        }),
       findByUserId: jest
         .fn()
         .mockImplementation(
@@ -443,6 +502,7 @@ export class AgentEvaluationRunner {
         GetBudgetsTool,
         CreateTransactionTool,
         SaveMemoryTool,
+        UpdateTransactionTool,
         { provide: OpenAIClient, useValue: mockOpenAiClient },
         { provide: MetricsService, useValue: mockMetricsService },
         { provide: AccountService, useValue: mockAccountService },

@@ -6,6 +6,7 @@ import { GetFinancialSummaryTool } from './impl/get-financial-summary.tool';
 import { GetBudgetsTool } from './impl/get-budgets.tool';
 import { CreateTransactionTool } from './impl/create-transaction.tool';
 import { SaveMemoryTool } from './impl/save-memory.tool';
+import { UpdateTransactionTool } from './impl/update-transaction.tool';
 
 @Injectable()
 export class AgentToolRegistryService implements OnModuleInit {
@@ -18,6 +19,7 @@ export class AgentToolRegistryService implements OnModuleInit {
     private readonly getBudgetsTool: GetBudgetsTool,
     private readonly createTransactionTool: CreateTransactionTool,
     private readonly saveMemoryTool: SaveMemoryTool,
+    private readonly updateTransactionTool: UpdateTransactionTool,
   ) {}
 
   onModuleInit() {
@@ -27,6 +29,7 @@ export class AgentToolRegistryService implements OnModuleInit {
     this.registerTool(this.getBudgetsTool);
     this.registerTool(this.createTransactionTool);
     this.registerTool(this.saveMemoryTool);
+    this.registerTool(this.updateTransactionTool);
   }
 
   registerTool(tool: AgentTool): void {

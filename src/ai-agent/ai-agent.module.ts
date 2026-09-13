@@ -24,6 +24,7 @@ import { AiMemoryRepository } from './infrastructure/repositories/ai-memory.repo
 import { AiMemoryPolicyService } from './application/memory/ai-memory-policy.service';
 import { AiMemoryService } from './application/memory/ai-memory.service';
 import { SaveMemoryTool } from './application/tools/impl/save-memory.tool';
+import { UpdateTransactionTool } from './application/tools/impl/update-transaction.tool';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { SaveMemoryTool } from './application/tools/impl/save-memory.tool';
     GetBudgetsTool,
     CreateTransactionTool,
     SaveMemoryTool,
+    UpdateTransactionTool,
   ],
   exports: [
     AiAgentService,
