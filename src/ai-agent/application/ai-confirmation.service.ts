@@ -59,10 +59,7 @@ export class AiConfirmationService {
         requestId,
         aiRequestId,
         toolName,
-        argumentsJson: (argumentsJson ?? {}) as unknown as Record<
-          string,
-          unknown
-        >,
+        argumentsJson: argumentsJson ?? {},
         status: AiConfirmationStatus.PENDING,
         expiresAt,
       },

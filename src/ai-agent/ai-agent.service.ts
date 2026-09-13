@@ -17,6 +17,9 @@ import {
   AiEventName,
 } from './application/observability/ai-agent-observability.types';
 
+import { AiConversationService } from './application/ai-conversation.service';
+import { ConversationMessageRole } from '../generated/prisma/enums';
+
 export interface ConfirmationExecutionResult {
   success: boolean;
   message: string;
@@ -26,6 +29,7 @@ export interface ConfirmationExecutionResult {
 export interface RequestCorrelationOptions {
   requestId?: string;
   aiRequestId?: string;
+  conversationId?: string;
 }
 
 @Injectable()
@@ -39,6 +43,7 @@ export class AiAgentService {
     private readonly authorizationService: AgentToolAuthorizationService,
     private readonly metricsService: MetricsService,
     private readonly observability: AiAgentObservabilityService,
+    private readonly conversationService: AiConversationService,
   ) {}
 
   async sendMessage(
@@ -46,7 +51,74 @@ export class AiAgentService {
     message: string,
     options?: RequestCorrelationOptions,
   ): Promise<AgentResponse> {
-    return this.orchestrator.processUserMessage(userId, message, options);
+    let conversationId: string;
+
+    if (options?.conversationId) {
+      // Validate ownership & existence (throws NotFoundException if invalid/unauthorized)
+      await this.conversationService.getConversation(
+        options.conversationId,
+        userId,
+      );
+      conversationId = options.conversationId;
+    } else {
+      // Auto-create a conversation if none specified
+      const titleSnippet =
+        message.length > 50 ? `${message.slice(0, 47)}...` : message;
+      const newConv = await this.conversationService.createConversation(
+        userId,
+        titleSnippet,
+        options,
+      );
+      conversationId = newConv.id;
+    }
+
+    // Load bounded history (max 20 messages)
+    const rawHistory = await this.conversationService.getRecentHistory(
+      conversationId,
+      userId,
+      20,
+      options,
+    );
+
+    const history = rawHistory.map((h) => ({
+      role: h.role,
+      content: h.content,
+    }));
+
+    // Persist user message
+    await this.conversationService.appendMessage(
+      conversationId,
+      userId,
+      ConversationMessageRole.USER,
+      message,
+      options,
+    );
+
+    // Run orchestrator loop with historical context
+    const response = await this.orchestrator.processUserMessage(
+      userId,
+      message,
+      {
+        ...options,
+        history,
+      },
+    );
+
+    // Persist assistant message
+    await this.conversationService.appendMessage(
+      conversationId,
+      userId,
+      ConversationMessageRole.ASSISTANT,
+      response.message,
+      options,
+    );
+
+    return new AgentResponse(
+      response.message,
+      response.type,
+      response.confirmation,
+      conversationId,
+    );
   }
 
   async processMessage(
@@ -55,6 +127,44 @@ export class AiAgentService {
     options?: RequestCorrelationOptions,
   ): Promise<AgentResponse> {
     return this.sendMessage(userId, message, options);
+  }
+
+  async createConversation(
+    userId: string,
+    title?: string,
+    options?: RequestCorrelationOptions,
+  ) {
+    return this.conversationService.createConversation(userId, title, options);
+  }
+
+  async getConversation(id: string, userId: string) {
+    return this.conversationService.getConversation(id, userId);
+  }
+
+  async getUserConversations(userId: string, page?: number, limit?: number) {
+    return this.conversationService.getUserConversations(userId, page, limit);
+  }
+
+  async getConversationMessages(
+    id: string,
+    userId: string,
+    page?: number,
+    limit?: number,
+  ) {
+    return this.conversationService.getConversationMessages(
+      id,
+      userId,
+      page,
+      limit,
+    );
+  }
+
+  async deleteConversation(
+    id: string,
+    userId: string,
+    options?: RequestCorrelationOptions,
+  ) {
+    return this.conversationService.deleteConversation(id, userId, options);
   }
 
   async confirmAction(

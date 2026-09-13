@@ -353,6 +353,7 @@ describe('AiAgentController (e2e)', () => {
       expect(response.body).toEqual({
         type: 'response',
         message: 'Hello User A, your finances look balanced.',
+        conversationId: expect.any(String),
       });
     });
 
@@ -379,6 +380,7 @@ describe('AiAgentController (e2e)', () => {
       expect(response.body).toEqual({
         type: 'response',
         message: 'Hello User B, your finances look balanced.',
+        conversationId: expect.any(String),
       });
     });
   });
@@ -906,6 +908,7 @@ describe('AiAgentController (e2e)', () => {
       expect(response.body).toEqual({
         type: 'confirmation_required',
         message: expect.stringContaining('Confirmation required'),
+        conversationId: expect.any(String),
         confirmation: {
           confirmationId: expect.any(String),
           toolName: 'create_transaction',
@@ -1320,6 +1323,122 @@ describe('AiAgentController (e2e)', () => {
       expect(meta.argumentKeys).toEqual(
         expect.arrayContaining(['amount', 'description']),
       );
+    });
+  });
+
+  describe('11. Conversation Persistence & Multi-turn Sessions (Phase 15)', () => {
+    it('should create conversation, continue multi-turn messages, list messages, and enforce IDOR protection', async () => {
+      const userA = await createTestUser('conv-user-a');
+      const userB = await createTestUser('conv-user-b');
+
+      // 1. Create a new conversation explicitly
+      const createRes = await request(app.getHttpServer())
+        .post('/ai-agent/conversations')
+        .set('Authorization', `Bearer ${userA.token}`)
+        .send({ title: 'Multi-turn Financial Planning' })
+        .expect(201);
+
+      expect(createRes.body.id).toBeDefined();
+      expect(createRes.body.userId).toBe(userA.userId);
+      expect(createRes.body.title).toBe('Multi-turn Financial Planning');
+      const conversationId = createRes.body.id;
+
+      // 2. Send initial message attaching conversationId
+      mockOpenAiClient.createRawResponse.mockResolvedValueOnce({
+        id: 'resp-conv-1',
+        outputText: 'Hello! I can help you plan your monthly budget.',
+        functionCalls: [],
+      });
+
+      const msgRes1 = await request(app.getHttpServer())
+        .post('/ai-agent/messages')
+        .set('Authorization', `Bearer ${userA.token}`)
+        .send({ conversationId, message: 'I want to plan my budget' })
+        .expect(200);
+
+      expect(msgRes1.body.conversationId).toBe(conversationId);
+      expect(msgRes1.body.message).toBe(
+        'Hello! I can help you plan your monthly budget.',
+      );
+
+      // 3. Send follow-up message in same conversation
+      mockOpenAiClient.createRawResponse.mockResolvedValueOnce({
+        id: 'resp-conv-2',
+        outputText: 'Got it! Your income has been noted for budgeting.',
+        functionCalls: [],
+      });
+
+      const msgRes2 = await request(app.getHttpServer())
+        .post('/ai-agent/messages')
+        .set('Authorization', `Bearer ${userA.token}`)
+        .send({ conversationId, message: 'My monthly income is $5,000' })
+        .expect(200);
+
+      expect(msgRes2.body.conversationId).toBe(conversationId);
+
+      // 4. Fetch paginated messages for conversation
+      const listMsgsRes = await request(app.getHttpServer())
+        .get(
+          `/ai-agent/conversations/${conversationId}/messages?page=1&limit=10`,
+        )
+        .set('Authorization', `Bearer ${userA.token}`)
+        .expect(200);
+
+      expect(listMsgsRes.body.total).toBe(4); // 2 user + 2 assistant messages
+      expect(listMsgsRes.body.items).toHaveLength(4);
+      expect(listMsgsRes.body.items[0].sequenceNumber).toBe(1);
+      expect(listMsgsRes.body.items[0].role).toBe('USER');
+      expect(listMsgsRes.body.items[1].role).toBe('ASSISTANT');
+
+      // 5. Fetch single conversation details
+      const getConvRes = await request(app.getHttpServer())
+        .get(`/ai-agent/conversations/${conversationId}`)
+        .set('Authorization', `Bearer ${userA.token}`)
+        .expect(200);
+
+      expect(getConvRes.body.id).toBe(conversationId);
+      expect(getConvRes.body.title).toBe('Multi-turn Financial Planning');
+
+      // 6. List user's conversations
+      const listConvsRes = await request(app.getHttpServer())
+        .get('/ai-agent/conversations?page=1&limit=10')
+        .set('Authorization', `Bearer ${userA.token}`)
+        .expect(200);
+
+      expect(listConvsRes.body.total).toBeGreaterThanOrEqual(1);
+      expect(
+        listConvsRes.body.items.some((c: any) => c.id === conversationId),
+      ).toBe(true);
+
+      // 7. IDOR Protection: User B attempts to view User A's conversation metadata -> 404
+      await request(app.getHttpServer())
+        .get(`/ai-agent/conversations/${conversationId}`)
+        .set('Authorization', `Bearer ${userB.token}`)
+        .expect(404);
+
+      // 8. IDOR Protection: User B attempts to read User A's messages -> 404
+      await request(app.getHttpServer())
+        .get(`/ai-agent/conversations/${conversationId}/messages`)
+        .set('Authorization', `Bearer ${userB.token}`)
+        .expect(404);
+
+      // 9. IDOR Protection: User B attempts to delete User A's conversation -> 404
+      await request(app.getHttpServer())
+        .delete(`/ai-agent/conversations/${conversationId}`)
+        .set('Authorization', `Bearer ${userB.token}`)
+        .expect(404);
+
+      // 10. User A deletes conversation -> 200
+      await request(app.getHttpServer())
+        .delete(`/ai-agent/conversations/${conversationId}`)
+        .set('Authorization', `Bearer ${userA.token}`)
+        .expect(200);
+
+      // Verify conversation is gone -> 404
+      await request(app.getHttpServer())
+        .get(`/ai-agent/conversations/${conversationId}`)
+        .set('Authorization', `Bearer ${userA.token}`)
+        .expect(404);
     });
   });
 });

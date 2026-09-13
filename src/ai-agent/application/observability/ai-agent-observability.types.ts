@@ -34,6 +34,11 @@ export const AiEventName = {
   CONFIRMATION_CANCELLED: 'ai.confirmation.cancelled',
   CONFIRMATION_EXPIRED: 'ai.confirmation.expired',
   CONFIRMATION_REJECTED: 'ai.confirmation.rejected',
+
+  CONVERSATION_CREATED: 'ai.conversation.created',
+  CONVERSATION_MESSAGE_PERSISTED: 'ai.conversation.message.persisted',
+  CONVERSATION_HISTORY_LOADED: 'ai.conversation.history.loaded',
+  CONVERSATION_DELETED: 'ai.conversation.deleted',
 } as const;
 
 export const AiErrorCode = {

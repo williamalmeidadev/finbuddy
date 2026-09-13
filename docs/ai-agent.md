@@ -15,13 +15,14 @@ The FinBuddy AI Agent module (`src/ai-agent/`) provides a secure, modular, and r
    - Provides clean separation of static system instructions, dynamic user input, model configuration, and function tool definitions.
 
 3. **Strict Layered Separation of Concerns**:
-   - `AiAgentController` → `AiAgentService` → `AiAgentOrchestratorService` → `AgentToolArgumentValidatorService` → `AgentToolAuthorizationService` → `AgentToolRegistryService` → `Application Tool` → `Financial Service` → `Repository` → `PostgreSQL`.
+   - `AiAgentController` → `AiAgentService` → `AiConversationService` → `AiAgentOrchestratorService` → `AgentToolArgumentValidatorService` → `AgentToolAuthorizationService` → `AgentToolRegistryService` → `Application Tool` → `Financial Service` → `Repository` → `PostgreSQL`.
    - Application services remain completely agnostic of underlying LLM transport and protocol nuances.
 
 4. **Zero LLM Direct Database Access & Tenant Boundary**:
    - The LLM has zero direct access to Prisma repositories, raw SQL query executors, or database credentials.
    - Authenticated user identity (`userId`) originates solely from cryptographically verified JWT tokens.
    - The LLM cannot authorize requests or bypass domain ownership checks.
+   - Stateful conversation history is stored per user in `AiConversation` and `AiConversationMessage` tables (Phase 15).
 
 5. **Client-Safe Error Translation & Zero Secret Leakage**:
    - Upstream OpenAI rate limits, timeouts, service outages, tool errors, and iteration bounds are translated into standardized HTTP responses (`503 Service Unavailable`, `400 Bad Request`, `401 Unauthorized`).

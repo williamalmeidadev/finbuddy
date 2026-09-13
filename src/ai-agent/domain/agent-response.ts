@@ -10,5 +10,6 @@ export class AgentResponse {
     public readonly message: string,
     public readonly type: 'response' | 'confirmation_required' = 'response',
     public readonly confirmation?: AgentConfirmationDetail,
+    public readonly conversationId?: string,
   ) {}
 }

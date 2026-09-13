@@ -226,6 +226,21 @@ export class AiAgentObservabilityService {
           'ai_confirmation_executions_failure_total',
         );
         break;
+
+      case 'ai.conversation.created':
+        this.metricsService.increment('ai_conversations_created_total');
+        break;
+      case 'ai.conversation.message.persisted':
+        this.metricsService.increment(
+          'ai_conversation_messages_persisted_total',
+        );
+        break;
+      case 'ai.conversation.history.loaded':
+        this.metricsService.increment('ai_conversation_history_loaded_total');
+        break;
+      case 'ai.conversation.deleted':
+        this.metricsService.increment('ai_conversations_deleted_total');
+        break;
     }
   }
 

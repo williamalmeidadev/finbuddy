@@ -11,7 +11,8 @@ export type EvaluationCategory =
   | 'data-grounding'
   | 'write-tool-safety'
   | 'privacy'
-  | 'observability';
+  | 'observability'
+  | 'conversation-persistence';
 
 export interface ExpectedToolCall {
   toolName: string;

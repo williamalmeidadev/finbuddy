@@ -26,6 +26,7 @@ import {
 export interface ProcessUserMessageOptions {
   requestId?: string;
   aiRequestId?: string;
+  history?: Array<{ role: 'USER' | 'ASSISTANT'; content: string }>;
 }
 
 @Injectable()
@@ -66,6 +67,15 @@ export class AiAgentOrchestratorService {
     let iterations = 0;
     let totalToolCalls = 0;
     let currentInput: string | any[] = userMessage;
+    if (options?.history && options.history.length > 0) {
+      currentInput = [
+        ...options.history.map((h) => ({
+          role: h.role.toLowerCase(),
+          content: h.content,
+        })),
+        { role: 'user', content: userMessage },
+      ];
+    }
     let previousResponseId: string | undefined = undefined;
 
     while (iterations < this.MAX_TOOL_ITERATIONS) {
