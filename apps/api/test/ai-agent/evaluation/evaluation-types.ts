@@ -37,7 +37,43 @@ export type EvaluationCategory =
   | 'ADV-AUDIT'
   | 'ADV-OPENAI'
   | 'ADV-API'
-  | 'PROD-HARDENING';
+  | 'PROD-HARDENING'
+  | 'FINANCIAL-ANALYSIS'
+  | 'FINANCIAL-WRITE'
+  | 'CONFIRMATION-WORKFLOW'
+  | 'MULTI-TOOL'
+  | 'CONVERSATION-TURN'
+  | 'MEMORY-BEHAVIOR'
+  | 'TOKEN-ACCOUNTING'
+  | 'COST-BUDGET'
+  | 'FAILURE-RECOVERY'
+  | 'REGRESSION-TEST'
+  | (string & {});
+
+export type ScenarioFailureReason =
+  | 'TOOL_SELECTION'
+  | 'ARGUMENT_VALIDATION'
+  | 'AUTHORIZATION'
+  | 'CONFIRMATION'
+  | 'GROUNDING'
+  | 'CONVERSATION'
+  | 'MEMORY'
+  | 'TIMEOUT'
+  | 'MODEL_ERROR'
+  | 'TOOL_ERROR'
+  | 'ITERATION_LIMIT'
+  | 'COST_LIMIT'
+  | 'TOKEN_LIMIT'
+  | 'LATENCY_LIMIT'
+  | 'UNKNOWN';
+
+export interface ScenarioBudgetLimits {
+  maxModelCalls?: number;
+  maxToolCalls?: number;
+  maxTotalTokens?: number;
+  maxEstimatedCostUsd?: number;
+  maxDurationMs?: number;
+}
 
 export interface ExpectedToolCall {
   toolName: string;
@@ -53,6 +89,7 @@ export interface ExpectedBehavior {
   expectMaxIterationsReached?: boolean;
   expectServiceError?: boolean;
   expectConfirmationRequired?: boolean;
+  expectBudgetLimitExceeded?: boolean;
   expectObservabilityEvents?: string[];
   expectAuditPersisted?: boolean;
   expectRedactedKeys?: string[];
@@ -69,6 +106,14 @@ export interface MockModelCall {
   outputText?: string;
   shouldThrowError?: boolean;
   errorMessage?: string;
+  usage?: {
+    inputTokens?: number;
+    outputTokens?: number;
+    totalTokens?: number;
+    cachedTokens?: number;
+    reasoningTokens?: number;
+  };
+  model?: string;
 }
 
 export interface AgentEvaluationScenario {
@@ -78,6 +123,7 @@ export interface AgentEvaluationScenario {
   userMessage: string;
   authenticatedUserId: string;
   mockModelResponses?: MockModelCall[];
+  budgetLimits?: ScenarioBudgetLimits;
   serviceOverrides?: {
     accountsFailure?: boolean;
     transactionsFailure?: boolean;
@@ -104,29 +150,98 @@ export interface ObservedToolCall {
   error?: string;
 }
 
+export interface EvaluationTokenUsage {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  cachedTokens: number;
+  reasoningTokens: number;
+}
+
 export interface EvaluationResult {
   scenarioId: string;
   category: EvaluationCategory;
   description: string;
   passed: boolean;
+  failureReason?: ScenarioFailureReason;
   violations: EvaluationViolation[];
   observedToolCalls: ObservedToolCall[];
   finalResponse?: string;
   iterationCount: number;
   durationMs: number;
+  tokenUsage: EvaluationTokenUsage;
+  estimatedCostUsd?: number;
+  pricingAvailable: boolean;
+  modelCallsCount: number;
+  toolCallsCount: number;
 }
 
 export interface CategorySummary {
   total: number;
   passed: number;
   failed: number;
+  passRate: number;
+  totalTokens: number;
+  totalCostUsd: number;
 }
 
 export interface EvaluationReport {
+  timestamp: string;
   totalScenarios: number;
   passed: number;
   failed: number;
   passRate: number;
+  totalDurationMs: number;
+  totalTokens: EvaluationTokenUsage;
+  totalEstimatedCostUsd: number;
+  allPricingAvailable: boolean;
   results: EvaluationResult[];
   categorySummary: Record<string, CategorySummary>;
+}
+
+export interface RepeatedRunMetrics {
+  scenarioId: string;
+  runsCount: number;
+  passCount: number;
+  failCount: number;
+  passRate: number;
+  minDurationMs: number;
+  maxDurationMs: number;
+  avgDurationMs: number;
+  p50DurationMs: number;
+  p95DurationMs: number;
+  avgTokens: number;
+  avgCostUsd: number;
+}
+
+export interface RegressionComparisonReport {
+  timestamp: string;
+  baselinePassRate: number;
+  currentPassRate: number;
+  passRateDelta: number;
+  hasRegression: boolean;
+  regressedScenarios: Array<{
+    scenarioId: string;
+    category: EvaluationCategory;
+    description: string;
+    baselinePassed: boolean;
+    currentPassed: boolean;
+    failureReason?: ScenarioFailureReason;
+    violations: EvaluationViolation[];
+  }>;
+  improvedScenarios: Array<{
+    scenarioId: string;
+    category: EvaluationCategory;
+    description: string;
+  }>;
+  tokenUsageDelta: {
+    baselineTotalTokens: number;
+    currentTotalTokens: number;
+    delta: number;
+  };
+  costDeltaUsd: {
+    baselineTotalCost: number;
+    currentTotalCost: number;
+    delta: number;
+  };
 }

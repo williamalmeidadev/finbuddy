@@ -233,11 +233,7 @@ describe('AiAgentController', () => {
     it('should delete conversation', async () => {
       aiAgentService.deleteConversation.mockResolvedValue(true);
 
-      const res = await controller.deleteConversation(
-        mockUser,
-        'c-1',
-        mockReq,
-      );
+      const res = await controller.deleteConversation(mockUser, 'c-1', mockReq);
       expect(res).toEqual({
         success: true,
         message: 'Conversation deleted successfully',

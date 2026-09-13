@@ -34,6 +34,7 @@ import { UpdateTransferTool } from '../../../src/ai-agent/application/tools/impl
 import { DeleteTransferTool } from '../../../src/ai-agent/application/tools/impl/delete-transfer.tool';
 import { TransferService } from '../../../src/transfer/transfer.service';
 
+import { calculateModelCost } from '../../../src/ai-agent/application/evaluation/pricing/model-pricing.config';
 import {
   AgentEvaluationScenario,
   CategorySummary,
@@ -41,6 +42,9 @@ import {
   EvaluationResult,
   EvaluationViolation,
   ObservedToolCall,
+  RegressionComparisonReport,
+  RepeatedRunMetrics,
+  ScenarioFailureReason,
 } from './evaluation-types';
 import { MockOpenAIClientEvaluation } from './mocks/mock-openai.client';
 import {
@@ -634,20 +638,60 @@ export class AgentEvaluationRunner {
       }),
     };
 
-    const mockOpenAiClient = new MockOpenAIClientEvaluation(mockConfigService as any);
+    let modelCallsCount = 0;
+    let inputTokensSum = 0;
+    let outputTokensSum = 0;
+    let totalTokensSum = 0;
+    let cachedTokensSum = 0;
+    let reasoningTokensSum = 0;
+    let estimatedCostUsdSum = 0;
+    let pricingAvailable = true;
+
+    const mockOpenAiClient = new MockOpenAIClientEvaluation(
+      mockConfigService as any,
+    );
     mockOpenAiClient.setResponseQueue(scenario.mockModelResponses ?? []);
 
-    // Intercept model calls to record model-requested function calls
+    // Intercept model calls to record model-requested function calls & token accounting
     const originalCreateRawResponse =
       mockOpenAiClient.createRawResponse.bind(mockOpenAiClient);
     mockOpenAiClient.createRawResponse = async (params: any) => {
       const response = await originalCreateRawResponse(params);
+      modelCallsCount++;
       for (const fc of response.functionCalls) {
         observedModelCalls.push({
           toolName: fc.name,
           arguments: fc.arguments ?? {},
           callId: fc.callId,
         });
+      }
+      if (response.usage) {
+        const inp = response.usage.inputTokens ?? 0;
+        const out = response.usage.outputTokens ?? 0;
+        const tot = response.usage.totalTokens ?? inp + out;
+        const cac = response.usage.cachedTokens ?? 0;
+        const rea = response.usage.reasoningTokens ?? 0;
+
+        inputTokensSum += inp;
+        outputTokensSum += out;
+        totalTokensSum += tot;
+        cachedTokensSum += cac;
+        reasoningTokensSum += rea;
+
+        const costCalc = calculateModelCost(response.model ?? 'gpt-5.5', {
+          inputTokens: inp,
+          outputTokens: out,
+          cachedInputTokens: cac,
+        });
+
+        if (
+          costCalc.pricingAvailable &&
+          costCalc.estimatedTotalCost !== undefined
+        ) {
+          estimatedCostUsdSum += costCalc.estimatedTotalCost;
+        } else {
+          pricingAvailable = false;
+        }
       }
       return response;
     };
@@ -912,18 +956,136 @@ export class AgentEvaluationRunner {
       }
     }
 
+    // Budget Limits Assertions
+    const budgetViolations: EvaluationViolation[] = [];
+    if (scenario.budgetLimits) {
+      if (
+        scenario.budgetLimits.maxModelCalls !== undefined &&
+        modelCallsCount > scenario.budgetLimits.maxModelCalls
+      ) {
+        budgetViolations.push({
+          type: 'budget_limit_exceeded',
+          message: `Model calls limit exceeded: ${modelCallsCount} > ${scenario.budgetLimits.maxModelCalls}`,
+        });
+      }
+      if (
+        scenario.budgetLimits.maxToolCalls !== undefined &&
+        executedToolCalls.length > scenario.budgetLimits.maxToolCalls
+      ) {
+        budgetViolations.push({
+          type: 'budget_limit_exceeded',
+          message: `Tool calls limit exceeded: ${executedToolCalls.length} > ${scenario.budgetLimits.maxToolCalls}`,
+        });
+      }
+      if (
+        scenario.budgetLimits.maxTotalTokens !== undefined &&
+        totalTokensSum > scenario.budgetLimits.maxTotalTokens
+      ) {
+        budgetViolations.push({
+          type: 'budget_limit_exceeded',
+          message: `Total tokens limit exceeded: ${totalTokensSum} > ${scenario.budgetLimits.maxTotalTokens}`,
+        });
+      }
+      if (
+        scenario.budgetLimits.maxEstimatedCostUsd !== undefined &&
+        estimatedCostUsdSum > scenario.budgetLimits.maxEstimatedCostUsd
+      ) {
+        budgetViolations.push({
+          type: 'budget_limit_exceeded',
+          message: `Estimated cost limit exceeded: $${estimatedCostUsdSum.toFixed(6)} > $${scenario.budgetLimits.maxEstimatedCostUsd}`,
+        });
+      }
+      if (
+        scenario.budgetLimits.maxDurationMs !== undefined &&
+        durationMs > scenario.budgetLimits.maxDurationMs
+      ) {
+        budgetViolations.push({
+          type: 'budget_limit_exceeded',
+          message: `Duration limit exceeded: ${durationMs}ms > ${scenario.budgetLimits.maxDurationMs}ms`,
+        });
+      }
+    }
+
+    if (scenario.expectedBehavior.expectBudgetLimitExceeded) {
+      if (budgetViolations.length === 0) {
+        violations.push({
+          type: 'expected_budget_limit_not_exceeded',
+          message:
+            'Expected budget limit to be exceeded, but all budget bounds were met',
+        });
+      }
+    } else {
+      violations.push(...budgetViolations);
+    }
+
     const passed = violations.length === 0;
+
+    let failureReason: ScenarioFailureReason | undefined = undefined;
+    if (!passed) {
+      const types = violations.map((v) => v.type);
+      if (types.includes('max_iterations_failed')) {
+        failureReason = 'ITERATION_LIMIT';
+      } else if (types.some((t) => t.includes('budget_limit_exceeded'))) {
+        const bMsg =
+          violations.find((v) => v.type === 'budget_limit_exceeded')?.message ??
+          '';
+        if (bMsg.includes('tokens')) failureReason = 'TOKEN_LIMIT';
+        else if (bMsg.includes('cost')) failureReason = 'COST_LIMIT';
+        else if (bMsg.includes('duration')) failureReason = 'LATENCY_LIMIT';
+        else if (bMsg.includes('Model calls')) failureReason = 'MODEL_ERROR';
+        else failureReason = 'UNKNOWN';
+      } else if (
+        types.includes('missing_expected_tool_call') ||
+        types.includes('forbidden_tool_call_executed') ||
+        types.includes('incorrect_tool_sequence')
+      ) {
+        failureReason = 'TOOL_SELECTION';
+      } else if (types.includes('incorrect_tool_argument')) {
+        failureReason = 'ARGUMENT_VALIDATION';
+      } else if (types.includes('missing_expected_confirmation')) {
+        failureReason = 'CONFIRMATION';
+      } else if (
+        types.includes('missing_response_substring') ||
+        types.includes('prohibited_response_substring_observed')
+      ) {
+        failureReason = 'GROUNDING';
+      } else if (
+        scenario.category === 'memory-management' ||
+        scenario.category === 'MEMORY-BEHAVIOR'
+      ) {
+        failureReason = 'MEMORY';
+      } else if (
+        types.includes('expected_service_error_missing') ||
+        types.includes('unexpected_orchestrator_exception')
+      ) {
+        failureReason = 'MODEL_ERROR';
+      } else {
+        failureReason = 'UNKNOWN';
+      }
+    }
 
     return {
       scenarioId: scenario.id,
       category: scenario.category,
       description: scenario.description,
       passed,
+      failureReason,
       violations,
       observedToolCalls: observedModelCalls,
       finalResponse,
       iterationCount: observedModelCalls.length,
       durationMs,
+      tokenUsage: {
+        inputTokens: inputTokensSum,
+        outputTokens: outputTokensSum,
+        totalTokens: totalTokensSum,
+        cachedTokens: cachedTokensSum,
+        reasoningTokens: reasoningTokensSum,
+      },
+      estimatedCostUsd: parseFloat(estimatedCostUsdSum.toFixed(6)),
+      pricingAvailable,
+      modelCallsCount,
+      toolCallsCount: executedToolCalls.length,
     };
   }
 
@@ -933,20 +1095,55 @@ export class AgentEvaluationRunner {
     const results: EvaluationResult[] = [];
     const categorySummary: Record<string, CategorySummary> = {};
 
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+    let totalTokensAll = 0;
+    let totalCachedTokens = 0;
+    let totalReasoningTokens = 0;
+    let totalEstimatedCostUsd = 0;
+    let totalDurationMs = 0;
+    let allPricingAvailable = true;
+
     for (const scenario of scenarios) {
       const result = await this.runScenario(scenario);
       results.push(result);
 
-      const category = scenario.category as string;
+      totalInputTokens += result.tokenUsage.inputTokens;
+      totalOutputTokens += result.tokenUsage.outputTokens;
+      totalTokensAll += result.tokenUsage.totalTokens;
+      totalCachedTokens += result.tokenUsage.cachedTokens;
+      totalReasoningTokens += result.tokenUsage.reasoningTokens;
+      totalEstimatedCostUsd += result.estimatedCostUsd ?? 0;
+      totalDurationMs += result.durationMs;
+      if (!result.pricingAvailable) {
+        allPricingAvailable = false;
+      }
+
+      const category = scenario.category;
       if (!categorySummary[category]) {
-        categorySummary[category] = { total: 0, passed: 0, failed: 0 };
+        categorySummary[category] = {
+          total: 0,
+          passed: 0,
+          failed: 0,
+          passRate: 0,
+          totalTokens: 0,
+          totalCostUsd: 0,
+        };
       }
       categorySummary[category].total++;
+      categorySummary[category].totalTokens += result.tokenUsage.totalTokens;
+      categorySummary[category].totalCostUsd += result.estimatedCostUsd ?? 0;
       if (result.passed) {
         categorySummary[category].passed++;
       } else {
         categorySummary[category].failed++;
       }
+      categorySummary[category].passRate = parseFloat(
+        (
+          (categorySummary[category].passed / categorySummary[category].total) *
+          100
+        ).toFixed(2),
+      );
     }
 
     const totalScenarios = results.length;
@@ -958,12 +1155,151 @@ export class AgentEvaluationRunner {
         : 100;
 
     return {
+      timestamp: new Date().toISOString(),
       totalScenarios,
       passed,
       failed,
       passRate,
+      totalDurationMs,
+      totalTokens: {
+        inputTokens: totalInputTokens,
+        outputTokens: totalOutputTokens,
+        totalTokens: totalTokensAll,
+        cachedTokens: totalCachedTokens,
+        reasoningTokens: totalReasoningTokens,
+      },
+      totalEstimatedCostUsd: parseFloat(totalEstimatedCostUsd.toFixed(6)),
+      allPricingAvailable,
       results,
-      categorySummary: categorySummary,
+      categorySummary,
+    };
+  }
+
+  async runRepeated(
+    scenario: AgentEvaluationScenario,
+    iterationsCount: number = 5,
+  ): Promise<RepeatedRunMetrics> {
+    const durations: number[] = [];
+    let passCount = 0;
+    let failCount = 0;
+    let totalTokensSum = 0;
+    let totalCostSum = 0;
+
+    for (let i = 0; i < iterationsCount; i++) {
+      const res = await this.runScenario(scenario);
+      durations.push(res.durationMs);
+      totalTokensSum += res.tokenUsage.totalTokens;
+      totalCostSum += res.estimatedCostUsd ?? 0;
+      if (res.passed) passCount++;
+      else failCount++;
+    }
+
+    durations.sort((a, b) => a - b);
+    const minDurationMs = durations[0] ?? 0;
+    const maxDurationMs = durations[durations.length - 1] ?? 0;
+    const avgDurationMs =
+      durations.reduce((acc, d) => acc + d, 0) / (durations.length || 1);
+    const p50Index = Math.floor(durations.length * 0.5);
+    const p95Index = Math.min(
+      Math.floor(durations.length * 0.95),
+      durations.length - 1,
+    );
+
+    return {
+      scenarioId: scenario.id,
+      runsCount: iterationsCount,
+      passCount,
+      failCount,
+      passRate: parseFloat(((passCount / iterationsCount) * 100).toFixed(2)),
+      minDurationMs,
+      maxDurationMs,
+      avgDurationMs: parseFloat(avgDurationMs.toFixed(2)),
+      p50DurationMs: durations[p50Index] ?? 0,
+      p95DurationMs: durations[p95Index] ?? 0,
+      avgTokens: parseFloat((totalTokensSum / iterationsCount).toFixed(2)),
+      avgCostUsd: parseFloat((totalCostSum / iterationsCount).toFixed(6)),
+    };
+  }
+
+  compareRuns(
+    baselineReport: EvaluationReport,
+    currentReport: EvaluationReport,
+  ): RegressionComparisonReport {
+    const regressedScenarios: Array<{
+      scenarioId: string;
+      category: string;
+      description: string;
+      baselinePassed: boolean;
+      currentPassed: boolean;
+      failureReason?: ScenarioFailureReason;
+      violations: EvaluationViolation[];
+    }> = [];
+
+    const improvedScenarios: Array<{
+      scenarioId: string;
+      category: string;
+      description: string;
+    }> = [];
+
+    const baselineMap = new Map<string, EvaluationResult>();
+    for (const r of baselineReport.results) {
+      baselineMap.set(r.scenarioId, r);
+    }
+
+    for (const curr of currentReport.results) {
+      const base = baselineMap.get(curr.scenarioId);
+      if (base) {
+        if (base.passed && !curr.passed) {
+          regressedScenarios.push({
+            scenarioId: curr.scenarioId,
+            category: curr.category,
+            description: curr.description,
+            baselinePassed: true,
+            currentPassed: false,
+            failureReason: curr.failureReason,
+            violations: curr.violations,
+          });
+        } else if (!base.passed && curr.passed) {
+          improvedScenarios.push({
+            scenarioId: curr.scenarioId,
+            category: curr.category,
+            description: curr.description,
+          });
+        }
+      }
+    }
+
+    const passRateDelta = parseFloat(
+      (currentReport.passRate - baselineReport.passRate).toFixed(2),
+    );
+    const tokenDelta =
+      currentReport.totalTokens.totalTokens -
+      baselineReport.totalTokens.totalTokens;
+    const costDelta = parseFloat(
+      (
+        currentReport.totalEstimatedCostUsd -
+        baselineReport.totalEstimatedCostUsd
+      ).toFixed(6),
+    );
+
+    return {
+      timestamp: new Date().toISOString(),
+      baselinePassRate: baselineReport.passRate,
+      currentPassRate: currentReport.passRate,
+      passRateDelta,
+      hasRegression: regressedScenarios.length > 0 || passRateDelta < 0,
+      regressedScenarios,
+      improvedScenarios,
+      tokenUsageDelta: {
+        baselineTotalTokens: baselineReport.totalTokens.totalTokens,
+        currentTotalTokens: currentReport.totalTokens.totalTokens,
+        delta: tokenDelta,
+      },
+      costDeltaUsd: {
+        baselineTotalCost: baselineReport.totalEstimatedCostUsd,
+        currentTotalCost: currentReport.totalEstimatedCostUsd,
+        delta: costDelta,
+      },
     };
   }
 }

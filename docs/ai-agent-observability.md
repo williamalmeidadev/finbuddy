@@ -175,3 +175,14 @@ model AiAuditEvent {
 ### Append-Only Integrity
 - `AiAuditEvent` is strictly append-only.
 - No HTTP `GET`, `PATCH`, or `DELETE` endpoints expose or mutate audit logs to public API users.
+
+---
+
+## 5. Token Accounting & Cost Estimation Metrics (Phase 23)
+
+In addition to runtime observability, FinBuddy tracks token usage breakdown and estimated USD cost for model invocations:
+
+- **Token Metrics**: `inputTokens`, `outputTokens`, `totalTokens`, `cachedTokens`, `reasoningTokens` parsed from OpenAI Responses API.
+- **Cost Metrics**: Calculated dynamically via `MODEL_PRICING_TABLE` (`gpt-4o`, `gpt-4o-mini`, `gpt-5.5`).
+- **Evaluation Reports**: Evaluator outputs structured JSON summaries containing latency percentiles (p50/p95), category pass rates, total tokens consumed, and cost deltas across repeated runs.
+

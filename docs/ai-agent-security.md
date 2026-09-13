@@ -173,6 +173,7 @@ Observability, Telemetry & Sanitized Audit Persistence
 | **Circuit Breaker** | `AI_CIRCUIT_BREAKER_FAILURE_THRESHOLD`, `AI_CIRCUIT_BREAKER_RESET_TIMEOUT_MS` | `5` failures, `30000` ms | Transitions to `OPEN` on consecutive OpenAI failures. Fails fast without network calls until `HALF_OPEN` recovery. |
 | **User Concurrency** | `AI_MAX_CONCURRENT_REQUESTS_PER_USER` | `3` active reqs | Rejects concurrent request bursts from the same user identity (`503 Service Unavailable`). |
 | **Secret Redaction** | Application Logger & Telemetry | N/A | Strips API keys (`sk-`), JWT tokens, database connection URIs, and user credentials from logs, exceptions, and audit records. |
+| **Safety Cost & Token Budgets** | `ScenarioBudgetLimits` | Configurable | Enforces per-scenario limits on model calls, tool calls, total tokens, USD cost, and execution duration in AI evaluation harness (`Phase 23`). |
 
 ### 5.3 Distributed Deployment Limitations & Recommended Topology
 
