@@ -152,3 +152,26 @@ export class DeleteTransactionArgsDto {
   @IsNotEmpty()
   transactionId!: string;
 }
+
+export class CreateTransferArgsDto {
+  @IsUUID()
+  @IsNotEmpty()
+  fromAccountId!: string;
+
+  @IsUUID()
+  @IsNotEmpty()
+  toAccountId!: string;
+
+  @IsNumber()
+  @IsPositive({ message: 'amount must be a positive number' })
+  @Min(0.0001)
+  @Max(999999999999.9999)
+  amount!: number;
+
+  @IsISO8601(
+    {},
+    { message: 'transactionAt must be a valid ISO 8601 datetime string' },
+  )
+  @IsNotEmpty()
+  transactionAt!: string;
+}
