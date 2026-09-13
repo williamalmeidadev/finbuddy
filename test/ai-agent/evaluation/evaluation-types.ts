@@ -10,7 +10,8 @@ export type EvaluationCategory =
   | 'iteration-limit'
   | 'data-grounding'
   | 'write-tool-safety'
-  | 'privacy';
+  | 'privacy'
+  | 'observability';
 
 export interface ExpectedToolCall {
   toolName: string;
@@ -26,6 +27,9 @@ export interface ExpectedBehavior {
   expectMaxIterationsReached?: boolean;
   expectServiceError?: boolean;
   expectConfirmationRequired?: boolean;
+  expectObservabilityEvents?: string[];
+  expectAuditPersisted?: boolean;
+  expectRedactedKeys?: string[];
   responseMustContain?: string[];
   responseMustNotContain?: string[];
 }

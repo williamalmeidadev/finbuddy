@@ -134,11 +134,11 @@ Model tool arguments are parsed, validated, and normalized before reaching any a
 
 ## 4. Evaluation Harness & Security Regression Framework
 
-The evaluation harness (`test/ai-agent/evaluation/`) provides a deterministic, repeatable offline test suite covering 36 scenarios:
+The evaluation harness (`test/ai-agent/evaluation/`) provides a deterministic, repeatable offline test suite covering 46 scenarios:
 - **Offline Executions**: Uses `MockOpenAIClientEvaluation` to run scenarios without live OpenAI API network dependencies.
 - **Regression Suite**: Executes via `npm run ai:evaluate` or standard `npm test`.
-- **Security Matrix Coverage**: Validates IDOR prevention, prompt injection resistance, indirect injection safety, hallucination grounding, tool failure handling, iteration bounds, and write tool confirmation requirements (WT-01 through WT-10).
-- Full details documented in [`docs/ai-agent-evaluation.md`](file:///home/williamalmeida/github/finbuddy/docs/ai-agent-evaluation.md) and [`docs/ai-agent-write-tools.md`](file:///home/williamalmeida/github/finbuddy/docs/ai-agent-write-tools.md).
+- **Security & Observability Matrix Coverage**: Validates IDOR prevention, prompt injection resistance, indirect injection safety, hallucination grounding, tool failure handling, iteration bounds, write tool confirmation requirements (WT-01 through WT-10), and request observability/audit events (OBS-01 through OBS-10).
+- Full details documented in [`docs/ai-agent-evaluation.md`](file:///home/williamalmeida/github/finbuddy/docs/ai-agent-evaluation.md), [`docs/ai-agent-write-tools.md`](file:///home/williamalmeida/github/finbuddy/docs/ai-agent-write-tools.md), and [`docs/ai-agent-observability.md`](file:///home/williamalmeida/github/finbuddy/docs/ai-agent-observability.md).
 
 ---
 
@@ -146,8 +146,8 @@ The evaluation harness (`test/ai-agent/evaluation/`) provides a deterministic, r
 
 ### Current Limitations
 - **Limited Write Scope**: Only transaction creation (`create_transaction`) is exposed. Updates, deletes, recurring transactions, and transfers are not exposed.
-- **No Conversation Persistence**: Endpoint is stateless for now; conversation history is not saved in a database across HTTP requests.
-- **No Memory / RAG**: No vector embeddings, RAG, long-term memory, or Redis memory persistence.
+- **No Conversation Memory**: Endpoint is stateless per request run; multi-turn conversation memory is not persisted across HTTP requests.
+- **No RAG / Vector Search**: No vector embeddings, RAG, or Redis memory persistence.
 
 ### Phase Roadmap
 
@@ -158,5 +158,6 @@ The evaluation harness (`test/ai-agent/evaluation/`) provides a deterministic, r
 | **Phase 3** | **Agent Guardrails & Tool Authorization** | **Completed** |
 | **Phase 4** | **Agent Evaluation Harness** | **Completed** |
 | **Phase 13** | **Financial Write Tools & Confirmation** | **Completed** |
-| **Phase 14** | **Conversational Memory & State** | Planned |
+| **Phase 14** | **AI Agent Observability & Auditability** | **Completed** |
+| **Phase 15** | **Conversational Memory & State** | Planned |
 

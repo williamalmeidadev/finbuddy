@@ -13,6 +13,7 @@ import { TransactionService } from '../../../src/transaction/transaction.service
 import { FinancialSummaryService } from '../../../src/financial-summary/financial-summary.service';
 import { BudgetService } from '../../../src/budget/budget.service';
 import { DatabaseService } from '../../../src/database/database.service';
+import { AiAgentObservabilityService } from '../../../src/ai-agent/application/observability/ai-agent-observability.service';
 import { GetAccountsTool } from '../../../src/ai-agent/application/tools/impl/get-accounts.tool';
 import { GetTransactionsTool } from '../../../src/ai-agent/application/tools/impl/get-transactions.tool';
 import { GetFinancialSummaryTool } from '../../../src/ai-agent/application/tools/impl/get-financial-summary.tool';
@@ -46,6 +47,7 @@ export class AgentEvaluationRunner {
     const executedToolCalls: ObservedToolCall[] = [];
     const violations: EvaluationViolation[] = [];
     const confirmationsMap = new Map<string, any>();
+    const auditsList: any[] = [];
 
     // Mocks for domain financial services
     const mockAccountService = {
@@ -208,6 +210,17 @@ export class AgentEvaluationRunner {
           return rec;
         }),
       },
+      aiAuditEvent: {
+        create: jest.fn().mockImplementation(({ data }: any) => {
+          const rec = {
+            id: `audit-${Date.now()}`,
+            createdAt: new Date(),
+            ...data,
+          };
+          auditsList.push(rec);
+          return Promise.resolve(rec);
+        }),
+      },
     };
 
     const mockMetricsService = {
@@ -239,6 +252,7 @@ export class AgentEvaluationRunner {
     const moduleRef: TestingModule = await Test.createTestingModule({
       providers: [
         AiAgentOrchestratorService,
+        AiAgentObservabilityService,
         AgentToolRegistryService,
         AgentToolAuthorizationService,
         AgentToolArgumentValidatorService,
@@ -278,6 +292,17 @@ export class AgentEvaluationRunner {
         return await originalExecute(context, input);
       };
     }
+
+    const recordedEvents: any[] = [];
+    const observabilityService = moduleRef.get<AiAgentObservabilityService>(
+      AiAgentObservabilityService,
+    );
+    const originalRecordEvent =
+      observabilityService.recordEvent.bind(observabilityService);
+    observabilityService.recordEvent = async (event: any) => {
+      recordedEvents.push(event);
+      return await originalRecordEvent(event);
+    };
 
     const orchestrator = moduleRef.get<AiAgentOrchestratorService>(
       AiAgentOrchestratorService,
@@ -400,7 +425,46 @@ export class AgentEvaluationRunner {
       }
     }
 
-    // 6. Response Text Assertions
+    // 6. Observability Event Assertions
+    if (scenario.expectedBehavior.expectObservabilityEvents) {
+      for (const evtName of scenario.expectedBehavior
+        .expectObservabilityEvents) {
+        const found = recordedEvents.some((e) => e.event === evtName);
+        if (!found) {
+          violations.push({
+            type: 'missing_observability_event',
+            message: `Expected observability event '${evtName}' was not emitted`,
+          });
+        }
+      }
+    }
+
+    if (scenario.expectedBehavior.expectAuditPersisted) {
+      if (auditsList.length === 0) {
+        violations.push({
+          type: 'missing_audit_event',
+          message:
+            'Expected financial audit log persistence, but none was recorded in DB',
+        });
+      }
+    }
+
+    if (scenario.expectedBehavior.expectRedactedKeys) {
+      for (const key of scenario.expectedBehavior.expectRedactedKeys) {
+        const hasUnredactedInAudits = auditsList.some((audit) => {
+          const meta = audit.metadata;
+          return meta && meta[key] && meta[key] !== '[REDACTED]';
+        });
+        if (hasUnredactedInAudits) {
+          violations.push({
+            type: 'unredacted_key_in_audit',
+            message: `Key '${key}' was found unredacted in database audit event metadata`,
+          });
+        }
+      }
+    }
+
+    // 7. Response Text Assertions
     if (finalResponse) {
       if (scenario.expectedBehavior.responseMustContain) {
         for (const substring of scenario.expectedBehavior.responseMustContain) {

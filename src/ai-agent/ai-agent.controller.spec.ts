@@ -58,6 +58,7 @@ describe('AiAgentController', () => {
       expect(aiAgentService.sendMessage).toHaveBeenCalledWith(
         mockUser.id,
         dto.message,
+        { requestId: undefined, aiRequestId: undefined },
       );
       expect(result).toBeInstanceOf(AgentResponseDto);
       expect(result.message).toBe('You spent $150.00 this month.');
@@ -71,12 +72,13 @@ describe('AiAgentController', () => {
         new Error('Service unavailable'),
       );
 
-      await expect(controller.sendMessage(mockUser, dto)).rejects.toThrow(
-        'Service unavailable',
-      );
+      await expect(
+        controller.sendMessage(mockUser, dto, undefined),
+      ).rejects.toThrow('Service unavailable');
       expect(aiAgentService.sendMessage).toHaveBeenCalledWith(
         mockUser.id,
         dto.message,
+        { requestId: undefined, aiRequestId: undefined },
       );
     });
   });
@@ -91,11 +93,16 @@ describe('AiAgentController', () => {
       };
       aiAgentService.confirmAction.mockResolvedValue(mockExecutionResult);
 
-      const result = await controller.confirmAction(mockUser, confirmationId);
+      const result = await controller.confirmAction(
+        mockUser,
+        confirmationId,
+        undefined,
+      );
 
       expect(aiAgentService.confirmAction).toHaveBeenCalledWith(
         mockUser.id,
         confirmationId,
+        { requestId: undefined, aiRequestId: undefined },
       );
       expect(result).toBe(mockExecutionResult);
     });
@@ -110,11 +117,16 @@ describe('AiAgentController', () => {
       };
       aiAgentService.cancelAction.mockResolvedValue(mockCancelResult);
 
-      const result = await controller.cancelAction(mockUser, confirmationId);
+      const result = await controller.cancelAction(
+        mockUser,
+        confirmationId,
+        undefined,
+      );
 
       expect(aiAgentService.cancelAction).toHaveBeenCalledWith(
         mockUser.id,
         confirmationId,
+        { requestId: undefined, aiRequestId: undefined },
       );
       expect(result).toBe(mockCancelResult);
     });

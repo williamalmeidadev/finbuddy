@@ -171,14 +171,14 @@ describe('AiAgentController (e2e)', () => {
     jest.clearAllMocks();
 
     await prisma.$executeRawUnsafe(
-      `TRUNCATE TABLE "users", "user_profiles", "user_identities", "refresh_tokens", "accounts", "categories", "transactions", "budgets", "ai_confirmations" CASCADE;`,
+      `TRUNCATE TABLE "users", "user_profiles", "user_identities", "refresh_tokens", "accounts", "categories", "transactions", "budgets", "ai_confirmations", "ai_audit_events" CASCADE;`,
     );
   });
 
   afterAll(async () => {
     if (prisma) {
       await prisma.$executeRawUnsafe(
-        `TRUNCATE TABLE "users", "user_profiles", "user_identities", "refresh_tokens", "accounts", "categories", "transactions", "budgets" CASCADE;`,
+        `TRUNCATE TABLE "users", "user_profiles", "user_identities", "refresh_tokens", "accounts", "categories", "transactions", "budgets", "ai_confirmations", "ai_audit_events" CASCADE;`,
       );
       await prisma.$disconnect();
     }
@@ -345,7 +345,11 @@ describe('AiAgentController (e2e)', () => {
         .send({ message: 'Hello AI' })
         .expect(200);
 
-      expect(sendMessageSpy).toHaveBeenCalledWith(userA.userId, 'Hello AI');
+      expect(sendMessageSpy).toHaveBeenCalledWith(
+        userA.userId,
+        'Hello AI',
+        expect.objectContaining({ requestId: expect.any(String) }),
+      );
       expect(response.body).toEqual({
         type: 'response',
         message: 'Hello User A, your finances look balanced.',
@@ -370,6 +374,7 @@ describe('AiAgentController (e2e)', () => {
       expect(sendMessageSpy).toHaveBeenCalledWith(
         userB.userId,
         'Hello AI from B',
+        expect.objectContaining({ requestId: expect.any(String) }),
       );
       expect(response.body).toEqual({
         type: 'response',
@@ -1180,6 +1185,141 @@ describe('AiAgentController (e2e)', () => {
         where: { accountId: accountA.id },
       });
       expect(count).toBe(0);
+    });
+  });
+
+  describe('10. Observability & Auditability (Phase 14)', () => {
+    it('should propagate correlation headers (x-request-id) and persist audit events for write tools', async () => {
+      const userA = await createTestUser('obs-e2e-1');
+      const account = await prisma.account.create({
+        data: {
+          userId: userA.userId,
+          name: 'Obs Checking',
+          type: AccountType.CHECKING,
+          balance: 1000,
+          currency: 'BRL',
+          color: '#000000',
+        },
+      });
+
+      mockOpenAiClient.createRawResponse.mockResolvedValueOnce({
+        id: 'resp-obs-1',
+        outputText: '',
+        functionCalls: [
+          {
+            callId: 'call-obs-create',
+            name: 'create_transaction',
+            arguments: {
+              accountId: account.id,
+              type: 'EXPENSE',
+              amount: 88.5,
+              description: 'Audit Test Expense',
+              transactionAt: '2026-09-13T12:00:00.000Z',
+            },
+          },
+        ],
+      });
+
+      const customRequestId = 'test-req-id-12345';
+
+      const messageRes = await request(app.getHttpServer())
+        .post('/ai-agent/messages')
+        .set('Authorization', `Bearer ${userA.token}`)
+        .set('x-request-id', customRequestId)
+        .send({ message: 'Create audit transaction' })
+        .expect(200);
+
+      expect(messageRes.headers['x-request-id']).toBe(customRequestId);
+      const confirmationId = messageRes.body.confirmation.confirmationId;
+
+      const createdAudit = await prisma.aiAuditEvent.findFirst({
+        where: {
+          userId: userA.userId,
+          eventType: 'ai.confirmation.created',
+          confirmationId,
+        },
+      });
+
+      expect(createdAudit).toBeDefined();
+      expect(createdAudit?.requestId).toBe(customRequestId);
+      expect(createdAudit?.aiRequestId).toBeDefined();
+
+      const confirmRes = await request(app.getHttpServer())
+        .post(`/ai-agent/confirmations/${confirmationId}`)
+        .set('Authorization', `Bearer ${userA.token}`)
+        .set('x-request-id', customRequestId)
+        .send({})
+        .expect(200);
+
+      expect(confirmRes.headers['x-request-id']).toBe(customRequestId);
+
+      const confirmedAudit = await prisma.aiAuditEvent.findFirst({
+        where: {
+          userId: userA.userId,
+          eventType: 'ai.confirmation.confirmed',
+          confirmationId,
+        },
+      });
+
+      expect(confirmedAudit).toBeDefined();
+      expect(confirmedAudit?.requestId).toBe(customRequestId);
+      expect(confirmedAudit?.status).toBe('SUCCESS');
+    });
+
+    it('should redact sensitive keys (amount, description, balance, apiKey) in database audit metadata', async () => {
+      const userA = await createTestUser('obs-e2e-2');
+      const account = await prisma.account.create({
+        data: {
+          userId: userA.userId,
+          name: 'Obs Redact Account',
+          type: AccountType.CHECKING,
+          balance: 5000,
+          currency: 'BRL',
+          color: '#000000',
+        },
+      });
+
+      mockOpenAiClient.createRawResponse.mockResolvedValueOnce({
+        id: 'resp-obs-2',
+        outputText: '',
+        functionCalls: [
+          {
+            callId: 'call-obs-redact',
+            name: 'create_transaction',
+            arguments: {
+              accountId: account.id,
+              type: 'EXPENSE',
+              amount: 250.0,
+              description: 'Confidential Payment',
+              transactionAt: '2026-09-13T12:00:00.000Z',
+            },
+          },
+        ],
+      });
+
+      const messageRes = await request(app.getHttpServer())
+        .post('/ai-agent/messages')
+        .set('Authorization', `Bearer ${userA.token}`)
+        .send({ message: 'Create secret payment' })
+        .expect(200);
+
+      const confirmationId = messageRes.body.confirmation.confirmationId;
+
+      const auditRecord = await prisma.aiAuditEvent.findFirst({
+        where: {
+          userId: userA.userId,
+          confirmationId,
+        },
+      });
+
+      expect(auditRecord).toBeDefined();
+      const meta = auditRecord?.metadata as Record<string, unknown>;
+      expect(meta).toBeDefined();
+      expect(meta.amount).toBeUndefined();
+      expect(meta.description).toBeUndefined();
+      expect(meta.argumentKeys).toEqual(
+        expect.arrayContaining(['amount', 'description']),
+      );
     });
   });
 });

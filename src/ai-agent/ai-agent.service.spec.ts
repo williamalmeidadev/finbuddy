@@ -1,11 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { Logger } from '@nestjs/common';
 import { AiAgentService } from './ai-agent.service';
 import { AiAgentOrchestratorService } from './application/ai-agent-orchestrator.service';
 import { AiConfirmationService } from './application/ai-confirmation.service';
 import { AgentToolRegistryService } from './application/tools/agent-tool-registry.service';
 import { AgentToolAuthorizationService } from './application/authorization/agent-tool-authorization.service';
 import { MetricsService } from '../common/metrics/metrics.service';
+import { AiAgentObservabilityService } from './application/observability/ai-agent-observability.service';
 import { AgentResponse } from './domain/agent-response';
 
 describe('AiAgentService', () => {
@@ -26,7 +26,9 @@ describe('AiAgentService', () => {
   let mockMetricsService: {
     increment: jest.Mock;
   };
-  let loggerLogSpy: jest.SpyInstance;
+  let mockObservability: {
+    recordEvent: jest.Mock;
+  };
 
   beforeEach(async () => {
     mockOrchestrator = {
@@ -45,10 +47,9 @@ describe('AiAgentService', () => {
     mockMetricsService = {
       increment: jest.fn(),
     };
-
-    loggerLogSpy = jest
-      .spyOn(Logger.prototype, 'log')
-      .mockImplementation(() => {});
+    mockObservability = {
+      recordEvent: jest.fn().mockResolvedValue(undefined),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -73,6 +74,10 @@ describe('AiAgentService', () => {
           provide: MetricsService,
           useValue: mockMetricsService,
         },
+        {
+          provide: AiAgentObservabilityService,
+          useValue: mockObservability,
+        },
       ],
     }).compile();
 
@@ -88,50 +93,31 @@ describe('AiAgentService', () => {
   });
 
   describe('sendMessage', () => {
-    it('should process user message successfully, record metrics and log duration', async () => {
+    it('should process user message successfully', async () => {
       const mockResponse = new AgentResponse('Financial advice response');
       mockOrchestrator.processUserMessage.mockResolvedValue(mockResponse);
 
       const result = await service.sendMessage(
         'user-1',
         'How much did I spend?',
+        { requestId: 'req-1', aiRequestId: 'ai-req-1' },
       );
 
-      expect(mockMetricsService.increment).toHaveBeenCalledWith(
-        'ai_agent_requests_total',
-      );
       expect(mockOrchestrator.processUserMessage).toHaveBeenCalledWith(
         'user-1',
         'How much did I spend?',
-      );
-      expect(mockMetricsService.increment).toHaveBeenCalledWith(
-        'ai_agent_requests_success_total',
-      );
-      expect(loggerLogSpy).toHaveBeenCalledWith(
-        expect.stringMatching(
-          /\[user:user-1\] AI Agent message processed in \d+ms/,
-        ),
+        { requestId: 'req-1', aiRequestId: 'ai-req-1' },
       );
       expect(result).toBe(mockResponse);
     });
 
-    it('should record failure metric and rethrow error when orchestrator fails', async () => {
+    it('should rethrow error when orchestrator fails', async () => {
       const testError = new Error('Orchestrator failure');
       mockOrchestrator.processUserMessage.mockRejectedValue(testError);
 
       await expect(
         service.sendMessage('user-1', 'Give me advice'),
       ).rejects.toThrow('Orchestrator failure');
-
-      expect(mockMetricsService.increment).toHaveBeenCalledWith(
-        'ai_agent_requests_total',
-      );
-      expect(mockMetricsService.increment).toHaveBeenCalledWith(
-        'ai_agent_requests_failure_total',
-      );
-      expect(mockMetricsService.increment).not.toHaveBeenCalledWith(
-        'ai_agent_requests_success_total',
-      );
     });
   });
 
@@ -148,15 +134,19 @@ describe('AiAgentService', () => {
         userId: 'user-1',
         toolName: 'create_transaction',
         argumentsJson: { amount: 50 },
+        aiRequestId: 'ai-req-1',
       });
       mockToolRegistry.getTool.mockReturnValue(mockTool);
       mockAuthorizationService.authorize.mockReturnValue({ authorized: true });
 
-      const result = await service.confirmAction('user-1', 'conf-1');
+      const result = await service.confirmAction('user-1', 'conf-1', {
+        requestId: 'req-1',
+      });
 
       expect(mockConfirmationService.consumeConfirmation).toHaveBeenCalledWith(
         'conf-1',
         'user-1',
+        { requestId: 'req-1' },
       );
       expect(mockToolRegistry.getTool).toHaveBeenCalledWith(
         'create_transaction',
@@ -166,7 +156,7 @@ describe('AiAgentService', () => {
         mockTool,
       );
       expect(mockTool.execute).toHaveBeenCalledWith(
-        { userId: 'user-1' },
+        { userId: 'user-1', requestId: 'req-1', aiRequestId: 'ai-req-1' },
         { amount: 50 },
       );
       expect(result).toEqual({
@@ -184,11 +174,14 @@ describe('AiAgentService', () => {
         status: 'CANCELLED',
       });
 
-      const result = await service.cancelAction('user-1', 'conf-1');
+      const result = await service.cancelAction('user-1', 'conf-1', {
+        requestId: 'req-1',
+      });
 
       expect(mockConfirmationService.cancelConfirmation).toHaveBeenCalledWith(
         'conf-1',
         'user-1',
+        { requestId: 'req-1' },
       );
       expect(result).toEqual({
         success: true,

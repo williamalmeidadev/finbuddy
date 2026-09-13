@@ -9,6 +9,8 @@ export enum AgentToolRiskLevel {
 
 export interface AgentToolContext {
   userId: string;
+  requestId?: string;
+  aiRequestId?: string;
 }
 
 export interface AgentToolResult<T = any> {

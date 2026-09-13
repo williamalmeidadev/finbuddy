@@ -11,11 +11,21 @@ import { AgentToolRegistryService } from './application/tools/agent-tool-registr
 import { AgentToolAuthorizationService } from './application/authorization/agent-tool-authorization.service';
 import { AgentResponse } from './domain/agent-response';
 import { MetricsService } from '../common/metrics/metrics.service';
+import { AiAgentObservabilityService } from './application/observability/ai-agent-observability.service';
+import {
+  AiErrorCode,
+  AiEventName,
+} from './application/observability/ai-agent-observability.types';
 
 export interface ConfirmationExecutionResult {
   success: boolean;
   message: string;
   data?: unknown;
+}
+
+export interface RequestCorrelationOptions {
+  requestId?: string;
+  aiRequestId?: string;
 }
 
 @Injectable()
@@ -28,40 +38,33 @@ export class AiAgentService {
     private readonly toolRegistry: AgentToolRegistryService,
     private readonly authorizationService: AgentToolAuthorizationService,
     private readonly metricsService: MetricsService,
+    private readonly observability: AiAgentObservabilityService,
   ) {}
 
-  async sendMessage(userId: string, message: string): Promise<AgentResponse> {
-    const startTime = Date.now();
-    this.metricsService.increment('ai_agent_requests_total');
-
-    try {
-      const response = await this.orchestrator.processUserMessage(
-        userId,
-        message,
-      );
-      const durationMs = Date.now() - startTime;
-      this.metricsService.increment('ai_agent_requests_success_total');
-      this.logger.log(
-        `[user:${userId}] AI Agent message processed in ${durationMs}ms`,
-      );
-      return response;
-    } catch (error) {
-      this.metricsService.increment('ai_agent_requests_failure_total');
-      throw error;
-    }
+  async sendMessage(
+    userId: string,
+    message: string,
+    options?: RequestCorrelationOptions,
+  ): Promise<AgentResponse> {
+    return this.orchestrator.processUserMessage(userId, message, options);
   }
 
   async processMessage(
     userId: string,
     message: string,
+    options?: RequestCorrelationOptions,
   ): Promise<AgentResponse> {
-    return this.sendMessage(userId, message);
+    return this.sendMessage(userId, message, options);
   }
 
   async confirmAction(
     userId: string,
     confirmationId: string,
+    options?: RequestCorrelationOptions,
   ): Promise<ConfirmationExecutionResult> {
+    const startTime = Date.now();
+    const reqId = options?.requestId || 'N/A';
+
     this.logger.log(
       `Executing confirmation action: id=${confirmationId}, user=${userId}`,
     );
@@ -70,7 +73,10 @@ export class AiAgentService {
     const confirmation = await this.confirmationService.consumeConfirmation(
       confirmationId,
       userId,
+      options,
     );
+
+    const aiReqId = confirmation.aiRequestId || undefined;
 
     // 2. Look up registered tool
     const tool = this.toolRegistry.getTool(confirmation.toolName);
@@ -78,6 +84,16 @@ export class AiAgentService {
       this.logger.error(
         `Tool not found for confirmation: toolName=${confirmation.toolName}`,
       );
+      await this.observability.recordEvent({
+        event: AiEventName.TOOL_FAILED,
+        requestId: reqId,
+        aiRequestId: aiReqId,
+        userId,
+        toolName: confirmation.toolName,
+        confirmationId,
+        success: false,
+        errorCode: AiErrorCode.TOOL_NOT_FOUND,
+      });
       throw new NotFoundException(
         `Tool '${confirmation.toolName}' is not registered`,
       );
@@ -89,6 +105,17 @@ export class AiAgentService {
       this.logger.warn(
         `Authorization denied during confirmation execution: user=${userId}, tool=${tool.name}, reason=${authDecision.reason}`,
       );
+      await this.observability.recordEvent({
+        event: AiEventName.TOOL_AUTHORIZATION_DENIED,
+        requestId: reqId,
+        aiRequestId: aiReqId,
+        userId,
+        toolName: tool.name,
+        confirmationId,
+        success: false,
+        errorCode: AiErrorCode.AUTHORIZATION_ERROR,
+        meta: { reasonCode: authDecision.reason },
+      });
       throw new ForbiddenException(
         `Tool execution unauthorized: ${authDecision.reason}`,
       );
@@ -96,12 +123,28 @@ export class AiAgentService {
 
     // 4. Direct application execution without LLM
     try {
-      const result = await tool.execute({ userId }, confirmation.argumentsJson);
+      const result = await tool.execute(
+        { userId, requestId: reqId, aiRequestId: aiReqId },
+        confirmation.argumentsJson,
+      );
+
+      const durationMs = Date.now() - startTime;
 
       if (!result.success) {
         this.logger.warn(
           `Confirmation action execution failed in domain service: ${result.error}`,
         );
+        await this.observability.recordEvent({
+          event: AiEventName.TOOL_FAILED,
+          requestId: reqId,
+          aiRequestId: aiReqId,
+          userId,
+          toolName: tool.name,
+          confirmationId,
+          durationMs,
+          success: false,
+          errorCode: AiErrorCode.TOOL_EXECUTION_ERROR,
+        });
         throw new BadRequestException(
           result.error ?? 'Execution of financial action failed',
         );
@@ -110,7 +153,17 @@ export class AiAgentService {
       this.logger.log(
         `Confirmation action executed successfully: id=${confirmationId}, tool=${tool.name}, user=${userId}`,
       );
-      this.metricsService.increment('ai_confirmation_executions_success_total');
+
+      await this.observability.recordEvent({
+        event: AiEventName.TOOL_COMPLETED,
+        requestId: reqId,
+        aiRequestId: aiReqId,
+        userId,
+        toolName: tool.name,
+        confirmationId,
+        durationMs,
+        success: true,
+      });
 
       return {
         success: true,
@@ -118,7 +171,6 @@ export class AiAgentService {
         data: result.data as Record<string, unknown>,
       };
     } catch (error) {
-      this.metricsService.increment('ai_confirmation_executions_failure_total');
       if (
         error instanceof BadRequestException ||
         error instanceof ForbiddenException ||
@@ -129,6 +181,17 @@ export class AiAgentService {
       this.logger.error(
         `Unexpected error executing confirmation action: ${error instanceof Error ? error.stack : String(error)}`,
       );
+      await this.observability.recordEvent({
+        event: AiEventName.TOOL_FAILED,
+        requestId: reqId,
+        aiRequestId: aiReqId,
+        userId,
+        toolName: tool.name,
+        confirmationId,
+        durationMs: Date.now() - startTime,
+        success: false,
+        errorCode: AiErrorCode.TOOL_EXECUTION_ERROR,
+      });
       throw new BadRequestException(
         error instanceof Error
           ? error.message
@@ -140,9 +203,13 @@ export class AiAgentService {
   async cancelAction(
     userId: string,
     confirmationId: string,
+    options?: RequestCorrelationOptions,
   ): Promise<{ success: boolean; message: string }> {
-    await this.confirmationService.cancelConfirmation(confirmationId, userId);
-    this.metricsService.increment('ai_confirmations_cancelled_total');
+    await this.confirmationService.cancelConfirmation(
+      confirmationId,
+      userId,
+      options,
+    );
     return {
       success: true,
       message: 'Confirmation request cancelled',
