@@ -28,6 +28,7 @@ import { AiMemoryPolicyService } from '../../../src/ai-agent/application/memory/
 import { AiMemoryService } from '../../../src/ai-agent/application/memory/ai-memory.service';
 import { SaveMemoryTool } from '../../../src/ai-agent/application/tools/impl/save-memory.tool';
 import { UpdateTransactionTool } from '../../../src/ai-agent/application/tools/impl/update-transaction.tool';
+import { DeleteTransactionTool } from '../../../src/ai-agent/application/tools/impl/delete-transaction.tool';
 
 import {
   AgentEvaluationScenario,
@@ -503,6 +504,7 @@ export class AgentEvaluationRunner {
         CreateTransactionTool,
         SaveMemoryTool,
         UpdateTransactionTool,
+        DeleteTransactionTool,
         { provide: OpenAIClient, useValue: mockOpenAiClient },
         { provide: MetricsService, useValue: mockMetricsService },
         { provide: AccountService, useValue: mockAccountService },
