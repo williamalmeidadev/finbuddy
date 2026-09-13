@@ -111,14 +111,78 @@ FinBuddy AI Agent defends against the following threat vectors:
 
 ---
 
-## 4. Security Guarantees
+---
 
-FinBuddy provides the following explicit architectural guarantees:
+## 5. Production Hardening Architecture (Phase 19)
 
-1. **Zero LLM Authorization Power**: The model cannot make authorization decisions or elevate user permissions.
-2. **Zero Direct LLM Inline Mutations**: Write operations (`create_transaction`) cannot write to the database inline during model tool execution without human confirmation via `POST /ai-agent/confirmations/:confirmationId`.
-3. **Single-Use Replay Protection**: Confirmations use atomic state transitions, preventing duplicate or replayed executions.
-4. **Strict Tenant Isolation**: All financial queries and confirmation actions are scoped strictly to `context.userId` derived from the request JWT. Cross-tenant access attempts return `404 Not Found`.
-5. **Mandatory Schema Validation**: Every model argument object is parsed, validated against DTO schemas, normalized, and checked for whitelisted properties before tool invocation.
-6. **Private Operational Logging**: Operational logs contain `requestId`, `userId`, `toolName`, `durationMs`, and `success/failure` status, never logging API keys, JWTs, or raw financial amounts.
+Phase 19 establishes **Production-Level Hardening & Operational Safety Controls** across the entire AI assistant runtime pipeline.
+
+### 5.1 Defense-in-Depth Request Pipeline
+
+```text
+HTTP Request
+     │
+     ▼
+Authentication (JWT Auth Guard)
+     │
+     ▼
+Payload Size Limits (Max Input Chars, DTO Body Validation)
+     │
+     ▼
+Rate Limiting & Abuse Protection (AI Throttler Guard, userId + Client IP)
+     │
+     ▼
+AI User Concurrency Limit (Active Requests per User Budget)
+     │
+     ▼
+Agent Orchestration & Bounded Context Assembly
+     │
+     ▼
+LLM Timeout & Circuit Breaker Protection (Bounded Timeout, Failing Fast when OPEN)
+     │
+     ▼
+Tool Argument Validation (forbidNonWhitelisted Schema Enforcement)
+     │
+     ▼
+Tool Authorization & Risk Tier Assessment (READ / LOW / MEDIUM / HIGH)
+     │
+     ▼
+Human Action Confirmation (AiConfirmationService for Write Tools)
+     │
+     ▼
+Financial Application Domain Service Execution
+     │
+     ▼
+PostgreSQL Database Store (Cascading Delete Constraints & Audit Log Trail)
+     │
+     ▼
+Observability, Telemetry & Sanitized Audit Persistence
+```
+
+### 5.2 Implemented Production Controls
+
+| Category | Environment Variable / Control | Default Value | Production Behavior |
+|---|---|---|---|
+| **AI Rate Limiting** | `AI_THROTTLE_TTL`, `AI_THROTTLE_LIMIT` | `60000` ms, `20` reqs | Bounded per `userId + IP`. Requests exceeding limit return `429 Too Many Requests` without invoking OpenAI, tool executions, or message persistence. |
+| **Input Payload Size** | `AI_MAX_INPUT_CHARS` | `2000` chars | Reject oversized prompts before LLM call or conversation storage. |
+| **Context Budget** | `AI_MAX_CONTEXT_CHARS` | `15000` chars | Truncates historical messages deterministically when context limit is approached. |
+| **Memory Budget** | `AI_MAX_MEMORY_CONTEXT_CHARS` | `2000` chars | Caps total formatted `<user_memory>` block size before injection into LLM context. |
+| **Token Budget** | `OPENAI_MAX_OUTPUT_TOKENS` | `1000` tokens | Restricts max response tokens emitted per model request. |
+| **Model Call Budget** | `OPENAI_MAX_MODEL_CALLS` | `10` calls | Limits model roundtrips per single agent request to prevent infinite loops. |
+| **Tool Iterations** | `OPENAI_MAX_TOOL_ITERATIONS` | `5` steps | Enforces termination if max tool execution steps are exceeded. |
+| **Circuit Breaker** | `AI_CIRCUIT_BREAKER_FAILURE_THRESHOLD`, `AI_CIRCUIT_BREAKER_RESET_TIMEOUT_MS` | `5` failures, `30000` ms | Transitions to `OPEN` on consecutive OpenAI failures. Fails fast without network calls until `HALF_OPEN` recovery. |
+| **User Concurrency** | `AI_MAX_CONCURRENT_REQUESTS_PER_USER` | `3` active reqs | Rejects concurrent request bursts from the same user identity (`503 Service Unavailable`). |
+| **Secret Redaction** | Application Logger & Telemetry | N/A | Strips API keys (`sk-`), JWT tokens, database connection URIs, and user credentials from logs, exceptions, and audit records. |
+
+### 5.3 Distributed Deployment Limitations & Recommended Topology
+
+> [!NOTE]
+> **Implemented vs Future Hardening**:
+> The in-memory rate limiting, circuit breaker, and concurrency controls are **IMPLEMENTED** and sufficient for single-instance deployments.
+> For multi-instance distributed deployments, the following are **RECOMMENDED FUTURE HARDENINGS**:
+> - **Redis-Backed Throttling**: Shared state for distributed IP and user rate limiters.
+> - **Distributed Circuit Breaker**: Shared state in Redis to synchronize OpenAI failure circuit status across app nodes.
+> - **PgBouncer**: Dedicated connection pooler for managing database connection spikes during AI traffic bursts.
+> - **Cloudflare / Edge WAF**: Edge TLS termination, DDoS mitigation, and IP reputation filtering.
+
 

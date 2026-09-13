@@ -248,3 +248,19 @@ When the model calls `create_transaction`, the endpoint returns HTTP 200 with `c
 
 - **Database Model**: `AiConfirmation` in `prisma/schema.prisma` with fields `id`, `userId`, `toolName`, `parameters`, `riskLevel`, `status`, `expiresAt`, `createdAt`, `consumedAt`.
 - **Environment Variable**: `AI_CONFIRMATION_TTL_SECONDS` (Default: `300`).
+
+---
+
+## 6. Production Hardening Integration for Write Tools (Phase 19)
+
+Financial write tools benefit from Phase 19 production hardening controls:
+
+1. **Fail-Safe Isolation on LLM/Upstream Failure**:
+   - If OpenAI returns an error, times out, or trips the circuit breaker (`AI_CIRCUIT_BREAKER_FAILURE_THRESHOLD`), no write tool parameters are generated, no confirmation record is created, and zero database mutations occur.
+2. **Circuit Breaker Fast-Failure**:
+   - If the downstream OpenAI client trips to `OPEN`, attempt to create or execute financial actions via AI fast-fails with `503 Service Unavailable`, preventing financial domain operations from executing in an degraded or unreliable downstream model state.
+3. **Runaway Loop Protection**:
+   - Write actions require explicit human confirmation. The LLM tool-calling loop is bounded by `OPENAI_MAX_TOOL_ITERATIONS` (default: 5) and `OPENAI_MAX_MODEL_CALLS` (default: 10), preventing looping write generation attempts.
+4. **Audit Traceability under Rate Limiting**:
+   - Requests throttled by `AI_THROTTLE_LIMIT` (20 req/min) do not enter the tool loop or confirmation pipeline, ensuring write state cannot be spammed.
+

@@ -180,7 +180,30 @@ Phase 18 validates that all 11 registered tools are fully specified in `AgentToo
 
 ---
 
-## 6. Execution & CLI Commands
+## 6. Production Hardening Evaluation Framework (Phase 19)
+
+Phase 19 expands the FinBuddy AI Agent Evaluation Suite with **71 production-hardening scenarios** (`PROD-332` through `PROD-402`), bringing the total evaluation scenario suite to **403 scenarios**.
+
+### Production Hardening Matrix (`PROD-332` to `PROD-402`)
+
+| Category | Description | Scenario Range |
+|---|---|---|
+| **AI Rate Limiting** | Validates rate limit rejection (`429`) without calling OpenAI or executing tools | `PROD-332` to `PROD-334` |
+| **Input & Context Budget** | Validates prompt input length limits (`2000` chars) and bounded context trimming | `PROD-335`, `PROD-336`, `PROD-347`, `PROD-348`, `PROD-399` |
+| **Token & Model Call Budget** | Validates model-call budget limits (`10` calls) and max tool iteration bounds (`5` steps) | `PROD-337`, `PROD-338`, `PROD-389`, `PROD-390` |
+| **Timeout & OpenAI Errors** | Verifies 429, 500, and timeout response mapping to safe 503 errors | `PROD-339` to `PROD-343`, `PROD-391` |
+| **Circuit Breaker** | Verifies failure threshold, `OPEN` state fast failure, and `HALF_OPEN` recovery | `PROD-344` to `PROD-346`, `PROD-401` |
+| **Confirmation Safety** | Verifies expiration, replay protection, and concurrency handling on confirmations | `PROD-349` to `PROD-351`, `PROD-358`, `PROD-359`, `PROD-361`, `PROD-392` |
+| **User Concurrency** | Enforces per-user active request limits (`3` active requests per user) | `PROD-352`, `PROD-353` |
+| **Financial Integrity** | Asserts zero database mutations on LLM failure, validation error, or auth denial | `PROD-354` to `PROD-360`, `PROD-393` |
+| **Secret & Log Redaction** | Asserts `sk-` API keys, JWT tokens, refresh tokens, and DB URIs are redacted | `PROD-362` to `PROD-366`, `PROD-382`, `PROD-383`, `PROD-395` |
+| **Bounded Telemetry** | Verifies metric label dimensions omit `userId`, `transactionId`, and `conversationId` | `PROD-367` to `PROD-371` |
+| **API & Isolation Safety** | Verifies 401 unauthenticated access, CORS, global validation, and IDOR isolation | `PROD-372` to `PROD-381`, `PROD-384` to `PROD-388` |
+| **Audit & Governance** | Verifies append-only database audit logs and startup configuration validation | `PROD-394`, `PROD-396` to `PROD-398`, `PROD-400`, `PROD-402` |
+
+---
+
+## 7. Execution & CLI Commands
 
 ### Run Evaluation Suite Separately
 
@@ -196,9 +219,10 @@ npm test
 
 ---
 
-## 7. Limitations
+## 8. Limitations
 
 - **Deterministic Offline Harness Only**: Scenarios rely on mock model responses to maintain deterministic, fast CI runs without API key dependencies.
 - **No LLM-as-a-Judge**: Model-based non-deterministic evaluators are not used in this phase.
+
 
 
