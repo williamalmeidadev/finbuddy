@@ -103,8 +103,7 @@ export class TransferService {
       throw new NotFoundException('Transfer not found');
     }
 
-    const effectiveFromAccountId =
-      dto.fromAccountId ?? current.fromAccountId;
+    const effectiveFromAccountId = dto.fromAccountId ?? current.fromAccountId;
     const effectiveToAccountId = dto.toAccountId ?? current.toAccountId;
 
     if (effectiveFromAccountId === effectiveToAccountId) {
@@ -141,16 +140,17 @@ export class TransferService {
       }
     }
 
-    const transfer = await this.transferRepository.updateWithAtomicBalanceUpdate(
-      transferId,
-      userId,
-      {
-        amount: dto.amount,
-        transactionAt: dto.transactionAt,
-        fromAccountId: dto.fromAccountId,
-        toAccountId: dto.toAccountId,
-      },
-    );
+    const transfer =
+      await this.transferRepository.updateWithAtomicBalanceUpdate(
+        transferId,
+        userId,
+        {
+          amount: dto.amount,
+          transactionAt: dto.transactionAt,
+          fromAccountId: dto.fromAccountId,
+          toAccountId: dto.toAccountId,
+        },
+      );
 
     return new TransferResponseDto(transfer);
   }

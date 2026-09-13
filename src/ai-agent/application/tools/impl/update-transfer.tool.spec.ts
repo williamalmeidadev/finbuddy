@@ -61,11 +61,9 @@ describe('UpdateTransferTool', () => {
       },
     );
 
-    expect(transferService.update).toHaveBeenCalledWith(
-      TRANSFER_ID,
-      USER_ID,
-      { amount: 150.0 },
-    );
+    expect(transferService.update).toHaveBeenCalledWith(TRANSFER_ID, USER_ID, {
+      amount: 150.0,
+    });
     expect(result).toEqual({ success: true, data: mockTransfer });
   });
 
@@ -88,11 +86,9 @@ describe('UpdateTransferTool', () => {
       { transferId: TRANSFER_ID, transactionAt: newDate },
     );
 
-    expect(transferService.update).toHaveBeenCalledWith(
-      TRANSFER_ID,
-      USER_ID,
-      { transactionAt: new Date(newDate) },
-    );
+    expect(transferService.update).toHaveBeenCalledWith(TRANSFER_ID, USER_ID, {
+      transactionAt: new Date(newDate),
+    });
     expect(result.success).toBe(true);
   });
 
@@ -118,11 +114,10 @@ describe('UpdateTransferTool', () => {
       },
     );
 
-    expect(transferService.update).toHaveBeenCalledWith(
-      TRANSFER_ID,
-      USER_ID,
-      { fromAccountId: ACCOUNT_A2, toAccountId: ACCOUNT_A1 },
-    );
+    expect(transferService.update).toHaveBeenCalledWith(TRANSFER_ID, USER_ID, {
+      fromAccountId: ACCOUNT_A2,
+      toAccountId: ACCOUNT_A1,
+    });
     expect(result.success).toBe(true);
   });
 
