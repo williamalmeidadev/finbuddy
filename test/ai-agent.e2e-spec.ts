@@ -2676,5 +2676,314 @@ describe('AiAgentController (e2e)', () => {
         expect(msgRes.body.type).toBe('response');
       });
     });
+
+    describe('delete_transfer write tool', () => {
+      it('should execute full delete_transfer workflow safely with confirmation, atomic balance reversal, SYSTEM tx removal, audit, and replay protection', async () => {
+        const userA = await createTestUser('delete-transfer-flow');
+
+        const accountA = await prisma.account.create({
+          data: {
+            userId: userA.userId,
+            name: 'Checking Account',
+            type: AccountType.CHECKING,
+            balance: 800.0,
+            currency: 'BRL',
+            color: '#0055FF',
+            isActive: true,
+          },
+        });
+
+        const accountB = await prisma.account.create({
+          data: {
+            userId: userA.userId,
+            name: 'Savings Account',
+            type: AccountType.SAVINGS,
+            balance: 700.0,
+            currency: 'BRL',
+            color: '#00FF55',
+            isActive: true,
+          },
+        });
+
+        // 1. Create an existing transfer of 200 from A to B
+        const transfer = await prisma.transfer.create({
+          data: {
+            fromAccountId: accountA.id,
+            toAccountId: accountB.id,
+            amount: 200.0,
+            transactionAt: new Date('2026-09-10T12:00:00Z'),
+          },
+        });
+        await prisma.transaction.createMany({
+          data: [
+            {
+              accountId: accountA.id,
+              transferId: transfer.id,
+              type: TransactionType.EXPENSE,
+              amount: 200.0,
+              description: 'Transfer to Savings Account',
+              source: TransactionSource.SYSTEM,
+              transactionAt: new Date('2026-09-10T12:00:00Z'),
+            },
+            {
+              accountId: accountB.id,
+              transferId: transfer.id,
+              type: TransactionType.INCOME,
+              amount: 200.0,
+              description: 'Transfer from Checking Account',
+              source: TransactionSource.SYSTEM,
+              transactionAt: new Date('2026-09-10T12:00:00Z'),
+            },
+          ],
+        });
+
+        // 2. User requests delete_transfer
+        mockOpenAiClient.createRawResponse.mockResolvedValueOnce({
+          id: 'resp-del-tr-1',
+          outputText: '',
+          functionCalls: [
+            {
+              callId: 'call-del-tr-1',
+              name: 'delete_transfer',
+              arguments: {
+                transferId: transfer.id,
+              },
+            },
+          ],
+          tokens: { inputTokens: 10, outputTokens: 20, totalTokens: 30 },
+        });
+
+        const msgRes = await request(app.getHttpServer())
+          .post('/ai-agent/messages')
+          .set('Authorization', `Bearer ${userA.token}`)
+          .send({ message: `Delete transfer ${transfer.id}` })
+          .expect(200);
+
+        expect(msgRes.body.type).toBe('confirmation_required');
+        const confirmationId = msgRes.body.confirmation.confirmationId;
+        expect(confirmationId).toBeDefined();
+
+        // 3. Verify state has NOT changed before confirmation
+        const accABefore = await prisma.account.findUnique({
+          where: { id: accountA.id },
+        });
+        const accBBefore = await prisma.account.findUnique({
+          where: { id: accountB.id },
+        });
+        expect(accABefore?.balance.toNumber()).toBe(800.0);
+        expect(accBBefore?.balance.toNumber()).toBe(700.0);
+        const trBefore = await prisma.transfer.findUnique({
+          where: { id: transfer.id },
+        });
+        expect(trBefore).toBeDefined();
+
+        // 4. User confirms deletion
+        const confirmRes = await request(app.getHttpServer())
+          .post(`/ai-agent/confirmations/${confirmationId}`)
+          .set('Authorization', `Bearer ${userA.token}`)
+          .send({})
+          .expect(200);
+
+        expect(confirmRes.body.success).toBe(true);
+
+        // 5. Verify restored balances: A: 800 + 200 = 1000, B: 700 - 200 = 500
+        const accAAfter = await prisma.account.findUnique({
+          where: { id: accountA.id },
+        });
+        const accBAfter = await prisma.account.findUnique({
+          where: { id: accountB.id },
+        });
+        expect(accAAfter?.balance.toNumber()).toBe(1000.0);
+        expect(accBAfter?.balance.toNumber()).toBe(500.0);
+
+        // 6. Verify Transfer record removed
+        const trAfter = await prisma.transfer.findUnique({
+          where: { id: transfer.id },
+        });
+        expect(trAfter).toBeNull();
+
+        // 7. Verify SYSTEM transactions removed
+        const systemTxsAfter = await prisma.transaction.findMany({
+          where: { transferId: transfer.id },
+        });
+        expect(systemTxsAfter).toHaveLength(0);
+
+        // 8. Verify audit event persisted
+        const audit = await prisma.aiAuditEvent.findFirst({
+          where: {
+            userId: userA.userId,
+            toolName: 'delete_transfer',
+            eventType: 'ai.confirmation.confirmed',
+          },
+        });
+        expect(audit).toBeDefined();
+
+        // 9. Replay attempt fails
+        const replayRes = await request(app.getHttpServer())
+          .post(`/ai-agent/confirmations/${confirmationId}`)
+          .set('Authorization', `Bearer ${userA.token}`)
+          .send({});
+        expect(replayRes.status).toBe(400);
+      });
+
+      it('should reject IDOR attempt when user attempts to delete another user transfer', async () => {
+        const userA = await createTestUser('del-tr-idor-a');
+        const userB = await createTestUser('del-tr-idor-b');
+
+        const accountB1 = await prisma.account.create({
+          data: {
+            userId: userB.userId,
+            name: 'User B Checking',
+            type: AccountType.CHECKING,
+            balance: 1000.0,
+            currency: 'BRL',
+            color: '#0055FF',
+            isActive: true,
+          },
+        });
+        const accountB2 = await prisma.account.create({
+          data: {
+            userId: userB.userId,
+            name: 'User B Savings',
+            type: AccountType.SAVINGS,
+            balance: 500.0,
+            currency: 'BRL',
+            color: '#00FF55',
+            isActive: true,
+          },
+        });
+
+        const transferB = await prisma.transfer.create({
+          data: {
+            fromAccountId: accountB1.id,
+            toAccountId: accountB2.id,
+            amount: 150.0,
+            transactionAt: new Date(),
+          },
+        });
+
+        // User A attempts to delete User B's transfer
+        mockOpenAiClient.createRawResponse.mockResolvedValueOnce({
+          id: 'resp-del-tr-idor',
+          outputText: '',
+          functionCalls: [
+            {
+              callId: 'call-del-tr-idor',
+              name: 'delete_transfer',
+              arguments: {
+                transferId: transferB.id,
+              },
+            },
+          ],
+          tokens: { inputTokens: 10, outputTokens: 20, totalTokens: 30 },
+        });
+
+        const msgRes = await request(app.getHttpServer())
+          .post('/ai-agent/messages')
+          .set('Authorization', `Bearer ${userA.token}`)
+          .send({ message: `Delete transfer ${transferB.id}` })
+          .expect(200);
+
+        const confirmationId = msgRes.body.confirmation.confirmationId;
+
+        const confirmRes = await request(app.getHttpServer())
+          .post(`/ai-agent/confirmations/${confirmationId}`)
+          .set('Authorization', `Bearer ${userA.token}`)
+          .send({});
+
+        expect(confirmRes.status).toBe(400);
+
+        // Verify Transfer B was NOT deleted
+        const trBAfter = await prisma.transfer.findUnique({
+          where: { id: transferB.id },
+        });
+        expect(trBAfter).toBeDefined();
+      });
+
+      it('should block direct delete_transaction against a transfer-linked SYSTEM transaction', async () => {
+        const userA = await createTestUser('del-sys-tx-blocked');
+
+        const accountA = await prisma.account.create({
+          data: {
+            userId: userA.userId,
+            name: 'Checking Account',
+            type: AccountType.CHECKING,
+            balance: 1000.0,
+            currency: 'BRL',
+            color: '#0055FF',
+            isActive: true,
+          },
+        });
+        const accountB = await prisma.account.create({
+          data: {
+            userId: userA.userId,
+            name: 'Savings Account',
+            type: AccountType.SAVINGS,
+            balance: 500.0,
+            currency: 'BRL',
+            color: '#00FF55',
+            isActive: true,
+          },
+        });
+
+        const transfer = await prisma.transfer.create({
+          data: {
+            fromAccountId: accountA.id,
+            toAccountId: accountB.id,
+            amount: 100.0,
+            transactionAt: new Date(),
+          },
+        });
+
+        const systemTx = await prisma.transaction.create({
+          data: {
+            accountId: accountA.id,
+            transferId: transfer.id,
+            type: TransactionType.EXPENSE,
+            amount: 100.0,
+            description: 'Transfer to Savings',
+            source: TransactionSource.SYSTEM,
+            transactionAt: new Date(),
+          },
+        });
+
+        mockOpenAiClient.createRawResponse.mockResolvedValueOnce({
+          id: 'resp-del-sys-tx',
+          outputText: '',
+          functionCalls: [
+            {
+              callId: 'call-del-sys-tx',
+              name: 'delete_transaction',
+              arguments: {
+                transactionId: systemTx.id,
+              },
+            },
+          ],
+          tokens: { inputTokens: 10, outputTokens: 20, totalTokens: 30 },
+        });
+
+        const msgRes = await request(app.getHttpServer())
+          .post('/ai-agent/messages')
+          .set('Authorization', `Bearer ${userA.token}`)
+          .send({ message: `Delete transaction ${systemTx.id}` })
+          .expect(200);
+
+        const confirmationId = msgRes.body.confirmation.confirmationId;
+
+        const confirmRes = await request(app.getHttpServer())
+          .post(`/ai-agent/confirmations/${confirmationId}`)
+          .set('Authorization', `Bearer ${userA.token}`)
+          .send({});
+
+        expect(confirmRes.status).toBe(400);
+
+        // Verify transaction still exists
+        const txAfter = await prisma.transaction.findUnique({
+          where: { id: systemTx.id },
+        });
+        expect(txAfter).toBeDefined();
+      });
+    });
   });
 });
+
