@@ -277,6 +277,15 @@ export class TransactionService {
       throw new NotFoundException('Transaction not found');
     }
 
+    if (
+      transaction.source === TransactionSource.SYSTEM ||
+      Boolean(transaction.transferId)
+    ) {
+      throw new BadRequestException(
+        'Cannot delete transfer-linked or system transactions',
+      );
+    }
+
     const account = await this.accountRepository.findByIdAndUserId(
       transaction.accountId,
       userId,
