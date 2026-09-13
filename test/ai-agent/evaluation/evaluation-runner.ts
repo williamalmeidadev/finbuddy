@@ -262,46 +262,44 @@ export class AgentEvaluationRunner {
     };
 
     const mockTransferService = {
-      create: jest
-        .fn()
-        .mockImplementation(async (userId: string, dto: any) => {
-          if (dto.fromAccountId === dto.toAccountId) {
-            const { BadRequestException } = await import('@nestjs/common');
-            throw new BadRequestException(
-              'Source and destination accounts must be different',
-            );
+      create: jest.fn().mockImplementation(async (userId: string, dto: any) => {
+        if (dto.fromAccountId === dto.toAccountId) {
+          const { BadRequestException } = await import('@nestjs/common');
+          throw new BadRequestException(
+            'Source and destination accounts must be different',
+          );
+        }
+        if (
+          dto.fromAccountId === EVAL_ACCOUNTS.ACCOUNT_B1.id ||
+          dto.toAccountId === EVAL_ACCOUNTS.ACCOUNT_B1.id
+        ) {
+          if (userId === EVAL_USERS.USER_A) {
+            const { NotFoundException } = await import('@nestjs/common');
+            throw new NotFoundException('Account not found');
           }
-          if (
-            dto.fromAccountId === EVAL_ACCOUNTS.ACCOUNT_B1.id ||
-            dto.toAccountId === EVAL_ACCOUNTS.ACCOUNT_B1.id
-          ) {
-            if (userId === EVAL_USERS.USER_A) {
-              const { NotFoundException } = await import('@nestjs/common');
-              throw new NotFoundException('Account not found');
-            }
-          }
-          if (
-            dto.fromAccountId === EVAL_ACCOUNTS.ACCOUNT_INACTIVE.id ||
-            dto.toAccountId === EVAL_ACCOUNTS.ACCOUNT_INACTIVE.id
-          ) {
-            const { BadRequestException } = await import('@nestjs/common');
-            throw new BadRequestException(
-              'Cannot perform transfer with an inactive account',
-            );
-          }
-          if (dto.amount > 99999) {
-            const { BadRequestException } = await import('@nestjs/common');
-            throw new BadRequestException('Insufficient balance for transfer');
-          }
-          return {
-            id: 'tr-eval-1111-1111-1111',
-            fromAccountId: dto.fromAccountId,
-            toAccountId: dto.toAccountId,
-            amount: dto.amount,
-            transactionAt: dto.transactionAt,
-            createdAt: new Date(),
-          };
-        }),
+        }
+        if (
+          dto.fromAccountId === EVAL_ACCOUNTS.ACCOUNT_INACTIVE.id ||
+          dto.toAccountId === EVAL_ACCOUNTS.ACCOUNT_INACTIVE.id
+        ) {
+          const { BadRequestException } = await import('@nestjs/common');
+          throw new BadRequestException(
+            'Cannot perform transfer with an inactive account',
+          );
+        }
+        if (dto.amount > 99999) {
+          const { BadRequestException } = await import('@nestjs/common');
+          throw new BadRequestException('Insufficient balance for transfer');
+        }
+        return {
+          id: 'tr-eval-1111-1111-1111',
+          fromAccountId: dto.fromAccountId,
+          toAccountId: dto.toAccountId,
+          amount: dto.amount,
+          transactionAt: dto.transactionAt,
+          createdAt: new Date(),
+        };
+      }),
     };
 
     const conversationsMap = new Map<string, any>();

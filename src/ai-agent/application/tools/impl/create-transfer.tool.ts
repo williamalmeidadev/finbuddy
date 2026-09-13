@@ -69,9 +69,7 @@ export class CreateTransferTool implements AgentTool {
       return {
         success: false,
         error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to create transfer',
+          error instanceof Error ? error.message : 'Failed to create transfer',
       };
     }
   }
