@@ -167,10 +167,32 @@ export class OpenAIClient {
       this.failureCount = 0;
       this.metricsService?.increment('ai_llm_calls_total');
 
+      const usageRaw = response?.usage;
+      const inputTokens = usageRaw?.input_tokens ?? usageRaw?.prompt_tokens;
+      const outputTokens =
+        usageRaw?.output_tokens ?? usageRaw?.completion_tokens;
+      const totalTokens =
+        usageRaw?.total_tokens ??
+        (inputTokens !== undefined && outputTokens !== undefined
+          ? inputTokens + outputTokens
+          : undefined);
+
+      const usage = usageRaw
+        ? {
+            inputTokens,
+            outputTokens,
+            totalTokens,
+            cachedInputTokens: usageRaw.input_token_details?.cached_tokens,
+            reasoningTokens: usageRaw.output_token_details?.reasoning_tokens,
+          }
+        : undefined;
+
       return {
         id: response.id || '',
         outputText,
         functionCalls,
+        usage,
+        model: response.model || model,
       };
     } catch (error) {
       this.failureCount++;

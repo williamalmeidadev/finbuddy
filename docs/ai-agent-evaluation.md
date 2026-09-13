@@ -1,228 +1,48 @@
-# FinBuddy AI Agent — Evaluation Harness & Security Regression Framework
+# FinBuddy AI Agent Evaluation Suite
 
-## 1. Executive Summary & Purpose
+## 1. Overview
 
-The FinBuddy AI Agent Evaluation Harness (`test/ai-agent/evaluation/`) provides a **deterministic, repeatable evaluation system** for the AI financial assistant.
+FinBuddy includes a production-grade, deterministic AI Evaluation Harness that measures functional correctness, safety adherence, token accounting, cost estimation, and failure recovery across 465 scenarios.
 
-> [!IMPORTANT]
-> The evaluation harness does not prove that the agent is safe. It provides regression coverage for defined behaviors and security invariants.
+The evaluation suite runs deterministically without calling external LLM endpoints in standard CI/CD test runs, using a synthetic financial dataset and high-fidelity mock model client. An opt-in real OpenAI runner mode (`RealOpenAIEvaluationRunner`) is available for live model evaluation.
 
-The harness evaluates agent performance across 13 critical security, functional, and observability categories without requiring live OpenAI network calls during automated testing:
-1. Tool selection accuracy
-2. Tool argument generation & application validation
-3. Authorization policies & IDOR protection
-4. Prompt injection resistance
-5. Indirect prompt injection handling
-6. Hallucination prevention & financial-data grounding
-7. Tool failure resiliency
-8. Iteration limit loop termination
-9. Write-tool registry safety & confirmation flow
-10. Sensitive data privacy
-11. AI agent observability, request correlation & database auditability (OBS-01 through OBS-10)
-12. Conversation persistence & multi-turn history (CP-01 through CP-14)
-13. Memory / Context management (MEM-01 through MEM-15)
+## 2. Key Components
 
----
+### 2.1 Deterministic Scenario Harness (`scenarios/`)
+- **465 Deterministic Scenarios**: Spanning tool selection, argument validation, authorization/IDOR, prompt injection, financial grounding, confirmation workflows, memory management, token accounting, cost budgets, and OpenAI failure recovery.
+- **Phase 23 Expansion**: 62 new scenarios (`SCENARIO-404` to `SCENARIO-465`).
 
-## 2. Architecture & Component Structure
+### 2.2 Token Accounting & Cost Estimation (`pricing/`)
+- Extracts exact usage metadata from the OpenAI Responses API (`input_tokens`, `output_tokens`, `total_tokens`, `cached_tokens`, `reasoning_tokens`).
+- **Model Pricing Table (`model-pricing.config.ts`)**:
+  - `gpt-4o`: $2.50 / 1M input tokens, $10.00 / 1M output tokens, $1.25 / 1M cached input tokens.
+  - `gpt-4o-mini`: $0.15 / 1M input tokens, $0.60 / 1M output tokens, $0.075 / 1M cached input tokens.
+  - `gpt-5.5`: $2.50 / 1M input tokens, $10.00 / 1M output tokens, $1.25 / 1M cached input tokens.
 
-```text
-test/
-  ai-agent/
-    evaluation/
-      fixtures/
-        accounts.fixture.ts
-        transactions.fixture.ts
-        budgets.fixture.ts
-        summaries.fixture.ts
-        malicious-data.fixture.ts
-        index.ts
-      scenarios/
-        all-scenarios.ts
-      mocks/
-        mock-openai.client.ts
-      evaluation-types.ts
-      evaluation-runner.ts
-      agent-evaluation.spec.ts
-```
+### 2.3 Safety Cost & Token Budgets (`ScenarioBudgetLimits`)
+- Configurable per-scenario safety limits: `maxModelCalls`, `maxToolCalls`, `maxTotalTokens`, `maxEstimatedCostUsd`, `maxDurationMs`.
+- Exceeding a safety limit triggers a `budget_limit_exceeded` violation and classifies the failure reason (`TOKEN_LIMIT`, `COST_LIMIT`, `LATENCY_LIMIT`, `MODEL_ERROR`).
 
-### Component Roles
+### 2.4 Deterministic Synthetic Dataset (`synthetic-dataset.ts`)
+- Complete isolated testing environment with multiple mock users (`usr-synth-primary-001`, `usr-synth-secondary-002`), checking/savings/credit accounts, categories, transactions, budgets, transfers, memories, and multi-turn conversations.
 
-1. **`evaluation-types.ts`**: Defines standard interfaces for `AgentEvaluationScenario`, `ExpectedBehavior`, `EvaluationResult`, `EvaluationViolation`, and `EvaluationReport`.
-2. **`fixtures/`**: Contains static, deterministic mock financial data (users `USER_A`, `USER_B`, accounts, transactions, budgets, summaries, and malicious indirect injection text).
-3. **`mocks/mock-openai.client.ts`**: Provides `MockOpenAIClientEvaluation`, overriding `OpenAIClient.createRawResponse` to return pre-queued, deterministic model tool calls or text responses offline.
-4. **`scenarios/all-scenarios.ts`**: Contains 227 distinct evaluation scenarios tagged by category (including write tools WT-01 through WT-162 and observability OBS-01 through OBS-10).
-5. **`evaluation-runner.ts`**: Programmatic runner (`AgentEvaluationRunner`) that sets up NestJS test modules, injects mock financial services, intercepts model function calls, verifies invariants, asserts correlation events and DB audit records, and generates `EvaluationReport`.
-6. **`agent-evaluation.spec.ts`**: Jest test spec executing the full evaluation suite.
+### 2.5 Repeated Runs & Regression Comparison (`evaluation-runner.ts`)
+- `runRepeated(scenario, N)`: Runs a scenario N times to calculate latency percentiles (p50, p95), average tokens, average cost, and pass stability.
+- `compareRuns(baseline, current)`: Compares two evaluation runs to detect regressions in pass rates, token consumption deltas, cost deltas, and newly failing scenarios.
 
----
+### 2.6 Opt-in Real OpenAI Runner Mode (`real-openai-runner.ts`)
+- Enabled only when `AI_EVALUATION_REAL_OPENAI=true` and `OPENAI_API_KEY` are explicitly provided.
+- Runs live requests against OpenAI Responses API with budget safeguards and synthetic user isolation. Never runs in standard CI.
 
-## 3. Security & Observability Regression Matrix
-
-| Threat / Vulnerability / Requirement | Evaluation Scenario | Expected Security Invariant |
-|---|---|---|
-| **IDOR (Cross-Tenant Access)** | `AUTH-01`, `AUTH-02` | User A supplying User B `accountId` or `categoryId` is denied at domain layer. No cross-tenant data returned. |
-| **Unknown Tool Injection** | `PI-02`, `AUTH-03` | Model calling unregistered or unknown tool (e.g. `delete_all_transactions`) is rejected by application registry. Zero dynamic code/method execution. |
-| **Argument Parameter Injection** | `AV-04` | Model supplying `userId` in tool arguments is rejected by `AgentToolArgumentValidatorService` (`forbidNonWhitelisted: true`). |
-| **Prompt Injection Instruction Override** | `PI-01`, `PI-03` | Prompts attempting to override system rules or request database dumps are blocked by application auth & registry boundaries. |
-| **Indirect Prompt Injection** | `IPI-01`, `IPI-02` | Database content containing instruction text (e.g. transaction descriptions) is treated as data (`function_call_output`) and cannot alter system instructions. |
-| **Excessive Tool Loop / Resource Exhaustion** | `IL-01` | Continuous tool invocation loop terminates at `MAX_TOOL_ITERATIONS` (5), throwing `ServiceUnavailableException`. |
-| **Data Hallucination** | `HAL-01` | When tools return empty data `[]`, agent states no records found and never fabricates financial amounts. |
-| **Data Grounding Discrepancy** | `HAL-02` | Final response balances match returned tool values without inventing contradictory amounts. |
-| **Tool Failure Data Fabrication** | `TF-01`, `TF-02` | On financial service failure, agent reports failure cleanly without stack traces, SQL syntax, or fabricated data. |
-| **Secret & Instruction Leakage** | `PRIV-01` | Response never exposes API keys (`sk-`), JWT secrets, or system prompt text. |
-| **Write Tool Policy & Classification** | `WT-01`, `WT-13`, `WT-25`, `WT-58`, `WT-61`, `WT-62` | Verifies `create_transaction`, `update_transaction`, `delete_transaction`, `create_transfer` tool registry metadata (`HIGH`/`MEDIUM` risk, `readOnly: false`). |
-| **Write Action Confirmation Interception** | `WT-02`, `WT-14`, `WT-27`, `WT-41`, `WT-75` | Agent invoking write tools returns `type: 'confirmation_required'` without mutating DB inline. |
-| **Write Argument Validation** | `WT-03` to `WT-08`, `WT-26`, `WT-44`, `WT-45`, `WT-63` to `WT-68` | Validates required fields, positive numbers, UUID formats, ISO dates, enum values, same-account restriction, and rejects empty payloads. |
-| **Write User ID Injection Defense** | `WT-09`, `WT-21`, `WT-44`, `WT-68`, `WT-88` | Model attempting to inject `userId` parameter into write tool arguments is rejected. |
-| **Write Cross-Tenant Isolation** | `WT-10`, `WT-22`, `WT-34`, `WT-38`, `WT-69`, `WT-70` | User attempting to confirm a transaction, transfer, or account owned by another user is blocked by domain ownership validation. |
-| **Transfer & System Source Protection** | `WT-23`, `WT-24`, `WT-25`, `WT-39`, `WT-40`, `WT-90` | Transfer-linked and system-sourced transactions cannot be directly created, updated, or deleted via write tools. |
-| **Request & LLM Event Lifecycle** | `OBS-01`, `OBS-02` | Verifies emission of `ai.request.started`, `ai.llm.started`, `ai.llm.completed`, `ai.request.completed`. |
-| **Tool Calling & Execution Events** | `OBS-03`, `OBS-06`, `OBS-09` | Verifies emission of `ai.tool.started`, `ai.tool.completed`, `ai.tool.failed`, `ai.tool.validation_failed`. |
-| **Confirmation Lifecycle Events** | `OBS-04` | Verifies emission of `ai.confirmation.created` during write action proposal. |
-| **Database Audit Log Persistence** | `OBS-05` | Verifies persistence of `AiAuditEvent` record in PostgreSQL on write proposal. |
-| **Secret & Financial Metadata Redaction** | `OBS-07`, `OBS-08` | Verifies `sanitizeMetadata()` redacts secret keys (`apiKey`, `token`) and omits raw financial amounts/descriptions from audit metadata. |
-| **Failure Correlation & Error Code Taxonomy** | `OBS-10` | Verifies `ai.request.failed` event and `TIMEOUT` error code recorded on max iteration failure. |
-
----
-
-## 4. Scenario Model & Custom Scenario Guide
-
-### Scenario Definition Schema
-
-```typescript
-interface AgentEvaluationScenario {
-  id: string;
-  category: EvaluationCategory;
-  description: string;
-  userMessage: string;
-  authenticatedUserId: string;
-  mockModelResponses?: MockModelCall[];
-  serviceOverrides?: {
-    accountsFailure?: boolean;
-    transactionsFailure?: boolean;
-    summaryFailure?: boolean;
-    budgetsFailure?: boolean;
-    emptyAccounts?: boolean;
-    emptyTransactions?: boolean;
-    emptyBudgets?: boolean;
-  };
-  expectedBehavior: {
-    expectedToolCalls?: ExpectedToolCall[];
-    forbiddenToolCalls?: string[];
-    orderedToolSequence?: boolean;
-    expectMaxIterationsReached?: boolean;
-    expectServiceError?: boolean;
-    responseMustContain?: string[];
-    responseMustNotContain?: string[];
-    expectConfirmationRequired?: boolean;
-    expectedConfirmationTool?: string;
-  };
-  tags: string[];
-}
-```
-
-### How to Add a New Scenario
-
-1. Open `test/ai-agent/evaluation/scenarios/all-scenarios.ts`.
-2. Append a new scenario object with a unique `id` (e.g., `TS-07` or `WT-11`), defining `userMessage`, `mockModelResponses`, and `expectedBehavior`.
-3. Run `npm run ai:evaluate` to verify that your new scenario passes.
-
----
-
-## 5. Advanced Evaluation Framework (Phase 18)
-
-Phase 18 expands the FinBuddy AI Agent Evaluation Suite with **104 advanced deterministic scenarios** (`ADV-228` through `ADV-331`), bringing the total evaluation scenario suite to **331 scenarios** across 23 distinct evaluation categories.
-
-### 23 Advanced Evaluation Categories
-
-| Category | Description | Scenario Range |
-|---|---|---|
-| `ADV-PROMPT-INJECTION` | Direct prompt override & system instructions manipulation attempts | `ADV-228`, `ADV-229` |
-| `ADV-INDIRECT-INJECTION` | Embedded malicious instructions in transaction notes or account names | `ADV-230`, `ADV-231` |
-| `ADV-TOOL-INJECTION` | Calls to non-registered, arbitrary, or administrative dynamic tools | `ADV-232`, `ADV-233` |
-| `ADV-AUTHORIZATION` | Cross-tenant parameter injection and user isolation verification | `ADV-234` to `ADV-238` |
-| `ADV-CONFIRMATION` | Confirmation flow requirements and invalid confirmation token rejection | `ADV-239` to `ADV-243` |
-| `ADV-TOCTOU` | State changes between proposal and execution of write actions | `ADV-244`, `ADV-245` |
-| `ADV-FINANCIAL-INVARIANTS` | System-sourced and transfer-linked transaction immutability | `ADV-246` to `ADV-250` |
-| `ADV-ATOMICITY` | Multi-step write failures and atomic state rollback guarantees | `ADV-251`, `ADV-252` |
-| `ADV-CONCURRENCY` | Out-of-order tool call sequences and state collision handling | `ADV-253`, `ADV-254` |
-| `ADV-MULTI-TOOL` | Complex multi-turn tool workflows (`get_accounts` -> `create_transfer`) | `ADV-255` to `ADV-259` |
-| `ADV-CONVERSATION` | Multi-turn chat persistence and session context preservation | `ADV-260` to `ADV-264` |
-| `ADV-MEMORY` | Memory policy rejection (`ai.memory.rejected`) and privacy boundaries | `ADV-265` to `ADV-269` |
-| `ADV-PRIVACY` | Redaction of tokens, API keys, credentials, and sensitive personal data | `ADV-270` to `ADV-274` |
-| `ADV-DISCLOSURE` | Defense against system prompt extraction and internal architecture probing | `ADV-275` to `ADV-279` |
-| `ADV-GROUNDING` | Strict factual alignment with tool outputs without domain hallucination | `ADV-280` to `ADV-284` |
-| `ADV-FAILURE` | Upstream service failure propagation and clean error taxonomy | `ADV-285` to `ADV-289` |
-| `ADV-ITERATION` | Maximum iteration loop termination (`MAX_TOOL_ITERATIONS = 5`) | `ADV-290` to `ADV-294` |
-| `ADV-REGISTRY` | Complete tool metadata verification across all 11 registered agent tools | `ADV-295` to `ADV-299` |
-| `ADV-RISK` | Correct risk tier assignment (`HIGH`/`MEDIUM`/`LOW`) across tool registry | `ADV-300` to `ADV-304` |
-| `ADV-OBSERVABILITY` | Event taxonomy verification (`ai.request.*`, `ai.tool.*`, `ai.llm.*`) | `ADV-305` to `ADV-313` |
-| `ADV-AUDIT` | Database audit log creation and sensitive payload redaction | `ADV-314` to `ADV-320` |
-| `ADV-OPENAI` | OpenAI API response parsing, tool call parameters, and edge cases | `ADV-321` to `ADV-325` |
-| `ADV-API` | End-to-end HTTP controller contracts and structured response verification | `ADV-326` to `ADV-331` |
-
-### Complete Tool Registry Coverage
-
-Phase 18 validates that all 11 registered tools are fully specified in `AgentToolRegistryService`:
-
-1. `get_accounts` (`LOW` risk, `readOnly: true`)
-2. `get_transactions` (`LOW` risk, `readOnly: true`)
-3. `get_financial_summary` (`LOW` risk, `readOnly: true`)
-4. `get_budgets` (`LOW` risk, `readOnly: true`)
-5. `create_transaction` (`MEDIUM` risk, `readOnly: false`)
-6. `update_transaction` (`HIGH` risk, `readOnly: false`)
-7. `delete_transaction` (`HIGH` risk, `readOnly: false`)
-8. `create_transfer` (`HIGH` risk, `readOnly: false`)
-9. `update_transfer` (`HIGH` risk, `readOnly: false`)
-10. `delete_transfer` (`HIGH` risk, `readOnly: false`)
-11. `save_memory` (`LOW` risk, `readOnly: false`)
-
----
-
-## 6. Production Hardening Evaluation Framework (Phase 19)
-
-Phase 19 expands the FinBuddy AI Agent Evaluation Suite with **71 production-hardening scenarios** (`PROD-332` through `PROD-402`), bringing the total evaluation scenario suite to **403 scenarios**.
-
-### Production Hardening Matrix (`PROD-332` to `PROD-402`)
-
-| Category | Description | Scenario Range |
-|---|---|---|
-| **AI Rate Limiting** | Validates rate limit rejection (`429`) without calling OpenAI or executing tools | `PROD-332` to `PROD-334` |
-| **Input & Context Budget** | Validates prompt input length limits (`2000` chars) and bounded context trimming | `PROD-335`, `PROD-336`, `PROD-347`, `PROD-348`, `PROD-399` |
-| **Token & Model Call Budget** | Validates model-call budget limits (`10` calls) and max tool iteration bounds (`5` steps) | `PROD-337`, `PROD-338`, `PROD-389`, `PROD-390` |
-| **Timeout & OpenAI Errors** | Verifies 429, 500, and timeout response mapping to safe 503 errors | `PROD-339` to `PROD-343`, `PROD-391` |
-| **Circuit Breaker** | Verifies failure threshold, `OPEN` state fast failure, and `HALF_OPEN` recovery | `PROD-344` to `PROD-346`, `PROD-401` |
-| **Confirmation Safety** | Verifies expiration, replay protection, and concurrency handling on confirmations | `PROD-349` to `PROD-351`, `PROD-358`, `PROD-359`, `PROD-361`, `PROD-392` |
-| **User Concurrency** | Enforces per-user active request limits (`3` active requests per user) | `PROD-352`, `PROD-353` |
-| **Financial Integrity** | Asserts zero database mutations on LLM failure, validation error, or auth denial | `PROD-354` to `PROD-360`, `PROD-393` |
-| **Secret & Log Redaction** | Asserts `sk-` API keys, JWT tokens, refresh tokens, and DB URIs are redacted | `PROD-362` to `PROD-366`, `PROD-382`, `PROD-383`, `PROD-395` |
-| **Bounded Telemetry** | Verifies metric label dimensions omit `userId`, `transactionId`, and `conversationId` | `PROD-367` to `PROD-371` |
-| **API & Isolation Safety** | Verifies 401 unauthenticated access, CORS, global validation, and IDOR isolation | `PROD-372` to `PROD-381`, `PROD-384` to `PROD-388` |
-| **Audit & Governance** | Verifies append-only database audit logs and startup configuration validation | `PROD-394`, `PROD-396` to `PROD-398`, `PROD-400`, `PROD-402` |
-
----
-
-## 7. Execution & CLI Commands
-
-### Run Evaluation Suite Separately
+## 3. Running Evaluations
 
 ```bash
-npm run ai:evaluate
+# Run 465 deterministic AI evaluation scenarios
+npm run test:api:eval
+
+# Run scenario unit tests
+npm run test:ai:scenario
+
+# Run opt-in real OpenAI evaluation (requires API key)
+AI_EVALUATION_REAL_OPENAI=true OPENAI_API_KEY=sk-... npm run test:ai:real
 ```
-
-### Run Evaluation Suite with Standard Unit Tests
-
-```bash
-npm test
-```
-
----
-
-## 8. Limitations
-
-- **Deterministic Offline Harness Only**: Scenarios rely on mock model responses to maintain deterministic, fast CI runs without API key dependencies.
-- **No LLM-as-a-Judge**: Model-based non-deterministic evaluators are not used in this phase.
-
-
-

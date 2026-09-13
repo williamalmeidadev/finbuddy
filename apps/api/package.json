@@ -18,6 +18,8 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json --runInBand",
     "ai:evaluate": "jest --config ./test/jest-evaluation.json",
+    "test:ai:evaluation": "jest --config ./test/jest-evaluation.json",
+    "test:ai:scenario": "jest test/ai-agent/evaluation/agent-evaluation.spec.ts",
     "prisma:generate": "prisma generate",
     "prisma:validate": "prisma validate",
     "prisma:migrate": "prisma migrate dev"

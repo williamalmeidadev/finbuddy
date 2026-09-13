@@ -1,4 +1,5 @@
 import { AgentEvaluationScenario } from '../evaluation-types';
+import { PHASE23_SCENARIOS } from './phase23-scenarios';
 import {
   EVAL_ACCOUNTS,
   EVAL_CATEGORIES,
@@ -7,7 +8,7 @@ import {
   EVAL_USERS,
 } from '../fixtures';
 
-export const EVALUATION_SCENARIOS: AgentEvaluationScenario[] = [
+export const BASE_EVALUATION_SCENARIOS: AgentEvaluationScenario[] = [
   // --- 1. Tool Selection ---
   {
     id: 'TS-01',
@@ -9945,4 +9946,9 @@ export const EVALUATION_SCENARIOS: AgentEvaluationScenario[] = [
     },
     tags: ['prod-hardening', 'memory', 'context-bounds'],
   },
+];
+
+export const EVALUATION_SCENARIOS: AgentEvaluationScenario[] = [
+  ...BASE_EVALUATION_SCENARIOS,
+  ...PHASE23_SCENARIOS,
 ];

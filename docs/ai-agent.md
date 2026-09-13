@@ -203,9 +203,27 @@ Phase 19 equips the FinBuddy AI Agent with explicit, deterministic production sa
 | **User Concurrency** | `AI_MAX_CONCURRENT_REQUESTS_PER_USER` | `3 active requests` | `AiAgentService` | Prevents a single user from overwhelming system capacity with parallel requests. |
 | **Secret Sanitization** | `redactSecrets(text)` | Regex replacement | `OpenAIClient` / Logger | Replaces API keys (`sk-***`), JWT tokens, and connection strings with masked placeholders. |
 
-### 6.2 Implementation Topology vs Distributed Recommendation
 
-> [!NOTE]
-> Currently, stateful controls such as the Circuit Breaker (`CircuitBreakerState`), User Concurrency map (`activeRequestsPerUser`), and Rate Limiter use in-memory structures appropriate for single-instance NestJS node deployment. For multi-node distributed production environments, these counters should be backed by a centralized Redis cluster.
+---
+
+## 7. AI Evaluation & Token/Cost Suite (Phase 23)
+
+FinBuddy incorporates a comprehensive 465-scenario evaluation suite (`apps/api/test/ai-agent/evaluation/`):
+
+1. **Token Accounting & Model Pricing**:
+   - Parses OpenAI Responses API usage metadata (`input_tokens`, `output_tokens`, `total_tokens`, `cached_tokens`, `reasoning_tokens`).
+   - Configurable model pricing table (`gpt-4o`, `gpt-4o-mini`, `gpt-5.5`).
+2. **Safety Cost & Token Budgets**:
+   - `ScenarioBudgetLimits` enforces thresholds on model calls, tool calls, total tokens, estimated USD cost, and execution duration.
+3. **Synthetic Dataset & Deterministic Runner**:
+   - `SYNTHETIC_DATASET` provides multi-user, multi-account financial test data for offline evaluation with zero external network requests.
+4. **Repeated Runs & Regression Comparison**:
+   - `runRepeated(scenario, N)` calculates latency percentiles (p50/p95) and token/cost averages.
+   - `compareRuns(baseline, current)` detects pass rate regressions, token consumption deltas, and cost deltas.
+5. **Opt-in Real OpenAI Evaluation**:
+   - `RealOpenAIEvaluationRunner` permits live evaluation against real OpenAI API endpoints when `AI_EVALUATION_REAL_OPENAI=true` and `OPENAI_API_KEY` are provided.
+
+For detailed documentation, see [docs/ai-agent-evaluation.md](file:///home/williamalmeida/github/finbuddy/docs/ai-agent-evaluation.md).
+
 
 
