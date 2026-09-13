@@ -1,5 +1,3 @@
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -28,7 +26,7 @@
     --accent-foreground: oklch(0.205 0 0);
 
     --destructive: oklch(0.577 0.245 27.325);
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: oklch(0.982 0.018 155.826);
 
     --border: oklch(0.922 0 0);
     --input: oklch(0.922 0 0);
@@ -36,19 +34,21 @@
 
     --radius: 0.625rem;
 
-    /* Financial Semantic Tokens */
-    --financial-positive: 160 84% 39%;
-    --financial-positive-foreground: 0 0% 100%;
-    --financial-negative: 343 87% 56%;
-    --financial-negative-foreground: 0 0% 100%;
-    --financial-warning: 38 92% 50%;
-    --financial-warning-foreground: 0 0% 100%;
-    --financial-neutral: 215 16% 47%;
+    /* Financial Semantic Tokens (OKLCH) */
+    --financial-positive: oklch(0.627 0.194 149.214);
+    --financial-positive-foreground: oklch(0.982 0.018 155.826);
+    --financial-negative: oklch(0.577 0.245 27.325);
+    --financial-negative-foreground: oklch(0.982 0.018 155.826);
+    --financial-warning: oklch(0.75 0.18 75);
+    --financial-warning-foreground: oklch(0.145 0 0);
+    --financial-neutral: oklch(0.556 0 0);
+
     --chart-1: oklch(0.871 0.15 154.449);
     --chart-2: oklch(0.723 0.219 149.579);
     --chart-3: oklch(0.627 0.194 149.214);
     --chart-4: oklch(0.527 0.154 150.069);
     --chart-5: oklch(0.448 0.119 151.328);
+
     --sidebar: oklch(0.985 0 0);
     --sidebar-foreground: oklch(0.145 0 0);
     --sidebar-primary: oklch(0.627 0.194 149.214);
@@ -82,25 +82,27 @@
     --accent-foreground: oklch(0.985 0 0);
 
     --destructive: oklch(0.704 0.191 22.216);
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: oklch(0.982 0.018 155.826);
 
     --border: oklch(1 0 0 / 10%);
     --input: oklch(1 0 0 / 15%);
     --ring: oklch(0.556 0 0);
 
-    /* Financial Semantic Tokens for Dark Mode */
-    --financial-positive: 158 64% 45%;
-    --financial-positive-foreground: 0 0% 100%;
-    --financial-negative: 345 82% 62%;
-    --financial-negative-foreground: 0 0% 100%;
-    --financial-warning: 38 92% 50%;
-    --financial-warning-foreground: 0 0% 100%;
-    --financial-neutral: 215 20% 65%;
+    /* Financial Semantic Tokens for Dark Mode (OKLCH) */
+    --financial-positive: oklch(0.65 0.18 150);
+    --financial-positive-foreground: oklch(0.982 0.018 155.826);
+    --financial-negative: oklch(0.65 0.22 25);
+    --financial-negative-foreground: oklch(0.982 0.018 155.826);
+    --financial-warning: oklch(0.75 0.18 75);
+    --financial-warning-foreground: oklch(0.145 0 0);
+    --financial-neutral: oklch(0.708 0 0);
+
     --chart-1: oklch(0.871 0.15 154.449);
     --chart-2: oklch(0.723 0.219 149.579);
     --chart-3: oklch(0.627 0.194 149.214);
     --chart-4: oklch(0.527 0.154 150.069);
     --chart-5: oklch(0.448 0.119 151.328);
+
     --sidebar: oklch(0.205 0 0);
     --sidebar-foreground: oklch(0.985 0 0);
     --sidebar-primary: oklch(0.723 0.219 149.579);
@@ -109,19 +111,6 @@
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.556 0 0);
-  }
-  .theme {
-    --font-heading: var(--font-sans);
-    --font-sans: var(--font-sans);
-  }
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-  html {
-    @apply font-sans;
   }
 }
 
