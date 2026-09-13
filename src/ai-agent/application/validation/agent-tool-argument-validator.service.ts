@@ -12,6 +12,7 @@ import {
   SaveMemoryArgsDto,
   UpdateTransactionArgsDto,
   UpdateTransferArgsDto,
+  DeleteTransferArgsDto,
 } from './tool-argument.dtos';
 
 export interface ToolValidationResult {
@@ -35,6 +36,7 @@ export class AgentToolArgumentValidatorService {
     update_transaction: UpdateTransactionArgsDto,
     delete_transaction: DeleteTransactionArgsDto,
     update_transfer: UpdateTransferArgsDto,
+    delete_transfer: DeleteTransferArgsDto,
   };
 
   async validate(
