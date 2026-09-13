@@ -3,6 +3,7 @@ import {
   Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
 import { OpenAIClient } from '../infrastructure/openai/openai.client';
 import { OpenAIResponseOutput } from '../infrastructure/openai/openai.types';
@@ -33,7 +34,6 @@ export interface ProcessUserMessageOptions {
 @Injectable()
 export class AiAgentOrchestratorService {
   private readonly logger = new Logger(AiAgentOrchestratorService.name);
-  private readonly MAX_TOOL_ITERATIONS = 5;
 
   constructor(
     private readonly openAiClient: OpenAIClient,
@@ -43,6 +43,7 @@ export class AiAgentOrchestratorService {
     private readonly confirmationService: AiConfirmationService,
     private readonly metricsService: MetricsService,
     private readonly observability: AiAgentObservabilityService,
+    private readonly configService: ConfigService,
   ) {}
 
   async processUserMessage(
@@ -65,7 +66,13 @@ export class AiAgentOrchestratorService {
     const tools = this.toolRegistry.getToolDefinitions();
     const context: AgentToolContext = { userId, requestId, aiRequestId };
 
+    const maxToolIterations =
+      this.configService.get<number>('OPENAI_MAX_TOOL_ITERATIONS') ?? 5;
+    const maxModelCalls =
+      this.configService.get<number>('OPENAI_MAX_MODEL_CALLS') ?? 10;
+
     let iterations = 0;
+    let modelCalls = 0;
     let totalToolCalls = 0;
     let currentInput: string | any[] = userMessage;
 
@@ -89,8 +96,31 @@ export class AiAgentOrchestratorService {
     }
     let previousResponseId: string | undefined = undefined;
 
-    while (iterations < this.MAX_TOOL_ITERATIONS) {
+    while (iterations < maxToolIterations) {
+      if (modelCalls >= maxModelCalls) {
+        const totalDurationMs = Date.now() - startTime;
+        this.logger.error(
+          `Maximum model calls (${maxModelCalls}) reached for request`,
+        );
+
+        await this.observability.recordEvent({
+          event: AiEventName.REQUEST_FAILED,
+          requestId,
+          aiRequestId,
+          userId,
+          durationMs: totalDurationMs,
+          success: false,
+          errorCode: AiErrorCode.TIMEOUT,
+        });
+
+        throw new ServiceUnavailableException(
+          'AI agent exceeded maximum allowed model calls',
+        );
+      }
+
       iterations++;
+      modelCalls++;
+      this.metricsService.increment('ai_tool_iterations');
       const llmStart = Date.now();
 
       await this.observability.recordEvent({
@@ -152,6 +182,7 @@ export class AiAgentOrchestratorService {
       const toolOutputs: Array<Record<string, unknown>> = [];
 
       for (const call of response.functionCalls) {
+        this.metricsService.increment('ai_tool_calls_total');
         totalToolCalls++;
         const toolStart = Date.now();
         const tool = this.toolRegistry.getTool(call.name);
@@ -248,6 +279,7 @@ export class AiAgentOrchestratorService {
               (tool.requiresConfirmation ?? tool.name === 'create_transaction')
             ) {
               // 3. Write tool detected: create confirmation & halt tool execution loop
+              this.metricsService.increment('ai_confirmation_total');
               const confirmation =
                 await this.confirmationService.createConfirmation(
                   context.userId,
@@ -346,7 +378,7 @@ export class AiAgentOrchestratorService {
 
     const totalDurationMs = Date.now() - startTime;
     this.logger.error(
-      `Maximum tool iterations (${this.MAX_TOOL_ITERATIONS}) reached for request`,
+      `Maximum tool iterations (${maxToolIterations}) reached for request`,
     );
 
     await this.observability.recordEvent({

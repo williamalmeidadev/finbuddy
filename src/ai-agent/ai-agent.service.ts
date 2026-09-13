@@ -4,6 +4,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { AiAgentOrchestratorService } from './application/ai-agent-orchestrator.service';
 import { AiConfirmationService } from './application/ai-confirmation.service';
@@ -26,6 +27,8 @@ import {
   UpdateMemoryDto,
 } from './dto/memory.dtos';
 
+import { ConfigService } from '@nestjs/config';
+
 export interface ConfirmationExecutionResult {
   success: boolean;
   message: string;
@@ -41,6 +44,7 @@ export interface RequestCorrelationOptions {
 @Injectable()
 export class AiAgentService {
   private readonly logger = new Logger(AiAgentService.name);
+  private readonly activeUserRequests = new Map<string, number>();
 
   constructor(
     private readonly orchestrator: AiAgentOrchestratorService,
@@ -51,6 +55,7 @@ export class AiAgentService {
     private readonly observability: AiAgentObservabilityService,
     private readonly conversationService: AiConversationService,
     private readonly memoryService: AiMemoryService,
+    private readonly configService: ConfigService,
   ) {}
 
   async sendMessage(
@@ -58,84 +63,141 @@ export class AiAgentService {
     message: string,
     options?: RequestCorrelationOptions,
   ): Promise<AgentResponse> {
-    let conversationId: string;
-
-    if (options?.conversationId) {
-      // Validate ownership & existence (throws NotFoundException if invalid/unauthorized)
-      await this.conversationService.getConversation(
-        options.conversationId,
-        userId,
+    // 0. Input size check
+    const maxInputChars =
+      this.configService.get<number>('AI_MAX_INPUT_CHARS') ?? 2000;
+    if (message && message.length > maxInputChars) {
+      this.metricsService.increment('ai_requests_failed_total');
+      throw new BadRequestException(
+        `User message exceeds maximum allowed length of ${maxInputChars} characters`,
       );
-      conversationId = options.conversationId;
-    } else {
-      // Auto-create a conversation if none specified
-      const titleSnippet =
-        message.length > 50 ? `${message.slice(0, 47)}...` : message;
-      const newConv = await this.conversationService.createConversation(
-        userId,
-        titleSnippet,
-        options,
-      );
-      conversationId = newConv.id;
     }
 
-    // Load bounded history (max 20 messages)
-    const rawHistory = await this.conversationService.getRecentHistory(
-      conversationId,
-      userId,
-      20,
-      options,
-    );
+    // 1. Per-user concurrency limit check
+    const maxConcurrent =
+      this.configService.get<number>('AI_MAX_CONCURRENT_REQUESTS_PER_USER') ??
+      3;
+    const currentActive = this.activeUserRequests.get(userId) || 0;
+    if (currentActive >= maxConcurrent) {
+      this.metricsService.increment('ai_rate_limited_total');
+      this.metricsService.increment('ai_requests_failed_total');
+      throw new ServiceUnavailableException(
+        `Too many concurrent AI requests from user (max ${maxConcurrent})`,
+      );
+    }
 
-    const history = rawHistory.map((h) => ({
-      role: h.role,
-      content: h.content,
-    }));
+    this.activeUserRequests.set(userId, currentActive + 1);
+    this.metricsService.increment('ai_requests_total');
 
-    // Load user memories for context injection
-    const userMemories = await this.memoryService.getUserMemories(
-      userId,
-      undefined,
-      options,
-    );
-    const memoryContext =
-      this.memoryService.formatMemoriesForModelContext(userMemories);
+    try {
+      let conversationId: string;
 
-    // Persist user message
-    await this.conversationService.appendMessage(
-      conversationId,
-      userId,
-      ConversationMessageRole.USER,
-      message,
-      options,
-    );
+      if (options?.conversationId) {
+        // Validate ownership & existence (throws NotFoundException if invalid/unauthorized)
+        await this.conversationService.getConversation(
+          options.conversationId,
+          userId,
+        );
+        conversationId = options.conversationId;
+      } else {
+        // Auto-create a conversation if none specified
+        const titleSnippet =
+          message.length > 50 ? `${message.slice(0, 47)}...` : message;
+        const newConv = await this.conversationService.createConversation(
+          userId,
+          titleSnippet,
+          options,
+        );
+        conversationId = newConv.id;
+      }
 
-    // Run orchestrator loop with historical & memory context
-    const response = await this.orchestrator.processUserMessage(
-      userId,
-      message,
-      {
-        ...options,
-        history,
-        memoryContext: memoryContext || undefined,
-      },
-    );
+      // Load bounded history (max 20 messages)
+      const rawHistory = await this.conversationService.getRecentHistory(
+        conversationId,
+        userId,
+        20,
+        options,
+      );
 
-    // Persist assistant message
-    await this.conversationService.appendMessage(
-      conversationId,
-      userId,
-      ConversationMessageRole.ASSISTANT,
-      response.message,
-      options,
-    );
+      const history = rawHistory.map((h) => ({
+        role: h.role,
+        content: h.content,
+      }));
 
-    return new AgentResponse(
-      response.message,
-      response.type,
-      response.confirmation,
-      conversationId,
-    );
+      // 2. Conversation context budget enforcement
+      const maxContextChars =
+        this.configService.get<number>('AI_MAX_CONTEXT_CHARS') ?? 15000;
+      let totalChars =
+        history.reduce((sum, h) => sum + h.content.length, 0) + message.length;
+      while (totalChars > maxContextChars && history.length > 1) {
+        history.shift();
+        totalChars =
+          history.reduce((sum, h) => sum + h.content.length, 0) +
+          message.length;
+      }
+
+      // 3. Load user memories for context injection & memory context budget check
+      const userMemories = await this.memoryService.getUserMemories(
+        userId,
+        undefined,
+        options,
+      );
+      let memoryContext =
+        this.memoryService.formatMemoriesForModelContext(userMemories);
+
+      const maxMemoryChars =
+        this.configService.get<number>('AI_MAX_MEMORY_CONTEXT_CHARS') ?? 2000;
+      if (memoryContext && memoryContext.length > maxMemoryChars) {
+        memoryContext =
+          memoryContext.slice(0, maxMemoryChars) + '\n</user_memory>';
+      }
+
+      // Persist user message
+      await this.conversationService.appendMessage(
+        conversationId,
+        userId,
+        ConversationMessageRole.USER,
+        message,
+        options,
+      );
+
+      // Run orchestrator loop with historical & memory context
+      const response = await this.orchestrator.processUserMessage(
+        userId,
+        message,
+        {
+          ...options,
+          history,
+          memoryContext: memoryContext || undefined,
+        },
+      );
+
+      // Persist assistant message
+      await this.conversationService.appendMessage(
+        conversationId,
+        userId,
+        ConversationMessageRole.ASSISTANT,
+        response.message,
+        options,
+      );
+
+      return new AgentResponse(
+        response.message,
+        response.type,
+        response.confirmation,
+        conversationId,
+      );
+    } catch (err) {
+      this.metricsService.increment('ai_requests_failed_total');
+      throw err;
+    } finally {
+      const remaining = (this.activeUserRequests.get(userId) || 1) - 1;
+      if (remaining <= 0) {
+        this.activeUserRequests.delete(userId);
+      } else {
+        this.activeUserRequests.set(userId, remaining);
+      }
+    }
   }
 
   async processMessage(
