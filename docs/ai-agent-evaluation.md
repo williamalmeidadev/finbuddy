@@ -51,7 +51,7 @@ test/
 1. **`evaluation-types.ts`**: Defines standard interfaces for `AgentEvaluationScenario`, `ExpectedBehavior`, `EvaluationResult`, `EvaluationViolation`, and `EvaluationReport`.
 2. **`fixtures/`**: Contains static, deterministic mock financial data (users `USER_A`, `USER_B`, accounts, transactions, budgets, summaries, and malicious indirect injection text).
 3. **`mocks/mock-openai.client.ts`**: Provides `MockOpenAIClientEvaluation`, overriding `OpenAIClient.createRawResponse` to return pre-queued, deterministic model tool calls or text responses offline.
-4. **`scenarios/all-scenarios.ts`**: Contains 99 distinct evaluation scenarios tagged by category (including write tools WT-01 through WT-60 and observability OBS-01 through OBS-10).
+4. **`scenarios/all-scenarios.ts`**: Contains 133 distinct evaluation scenarios tagged by category (including write tools WT-01 through WT-94 and observability OBS-01 through OBS-10).
 5. **`evaluation-runner.ts`**: Programmatic runner (`AgentEvaluationRunner`) that sets up NestJS test modules, injects mock financial services, intercepts model function calls, verifies invariants, asserts correlation events and DB audit records, and generates `EvaluationReport`.
 6. **`agent-evaluation.spec.ts`**: Jest test spec executing the full evaluation suite.
 
@@ -71,12 +71,12 @@ test/
 | **Data Grounding Discrepancy** | `HAL-02` | Final response balances match returned tool values without inventing contradictory amounts. |
 | **Tool Failure Data Fabrication** | `TF-01`, `TF-02` | On financial service failure, agent reports failure cleanly without stack traces, SQL syntax, or fabricated data. |
 | **Secret & Instruction Leakage** | `PRIV-01` | Response never exposes API keys (`sk-`), JWT secrets, or system prompt text. |
-| **Write Tool Policy & Classification** | `WT-01`, `WT-13`, `WT-25`, `WT-58` | Verifies `create_transaction`, `update_transaction`, `delete_transaction` tool registry metadata (`HIGH`/`MEDIUM` risk, `readOnly: false`). |
-| **Write Action Confirmation Interception** | `WT-02`, `WT-14`, `WT-27`, `WT-41` | Agent invoking `create_transaction`, `update_transaction`, or `delete_transaction` returns `type: 'confirmation_required'` without mutating DB inline. |
-| **Write Argument Validation** | `WT-03` to `WT-08`, `WT-26`, `WT-44`, `WT-45` | Validates required fields, positive numbers, UUID formats, ISO dates, enum values, and rejects empty payloads. |
-| **Write User ID Injection Defense** | `WT-09`, `WT-21`, `WT-44` | Model attempting to inject `userId` parameter into write tool arguments is rejected. |
-| **Write Cross-Tenant Isolation** | `WT-10`, `WT-22`, `WT-34`, `WT-38` | User attempting to confirm a transaction or account owned by another user is blocked by domain ownership validation. |
-| **Transfer & System Source Protection** | `WT-23`, `WT-24`, `WT-25`, `WT-39`, `WT-40` | Transfer-linked and system-sourced transactions cannot be updated or deleted via write tools. |
+| **Write Tool Policy & Classification** | `WT-01`, `WT-13`, `WT-25`, `WT-58`, `WT-61`, `WT-62` | Verifies `create_transaction`, `update_transaction`, `delete_transaction`, `create_transfer` tool registry metadata (`HIGH`/`MEDIUM` risk, `readOnly: false`). |
+| **Write Action Confirmation Interception** | `WT-02`, `WT-14`, `WT-27`, `WT-41`, `WT-75` | Agent invoking write tools returns `type: 'confirmation_required'` without mutating DB inline. |
+| **Write Argument Validation** | `WT-03` to `WT-08`, `WT-26`, `WT-44`, `WT-45`, `WT-63` to `WT-68` | Validates required fields, positive numbers, UUID formats, ISO dates, enum values, same-account restriction, and rejects empty payloads. |
+| **Write User ID Injection Defense** | `WT-09`, `WT-21`, `WT-44`, `WT-68`, `WT-88` | Model attempting to inject `userId` parameter into write tool arguments is rejected. |
+| **Write Cross-Tenant Isolation** | `WT-10`, `WT-22`, `WT-34`, `WT-38`, `WT-69`, `WT-70` | User attempting to confirm a transaction, transfer, or account owned by another user is blocked by domain ownership validation. |
+| **Transfer & System Source Protection** | `WT-23`, `WT-24`, `WT-25`, `WT-39`, `WT-40`, `WT-90` | Transfer-linked and system-sourced transactions cannot be directly created, updated, or deleted via write tools. |
 | **Request & LLM Event Lifecycle** | `OBS-01`, `OBS-02` | Verifies emission of `ai.request.started`, `ai.llm.started`, `ai.llm.completed`, `ai.request.completed`. |
 | **Tool Calling & Execution Events** | `OBS-03`, `OBS-06`, `OBS-09` | Verifies emission of `ai.tool.started`, `ai.tool.completed`, `ai.tool.failed`, `ai.tool.validation_failed`. |
 | **Confirmation Lifecycle Events** | `OBS-04` | Verifies emission of `ai.confirmation.created` during write action proposal. |

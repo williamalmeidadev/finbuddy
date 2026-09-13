@@ -128,6 +128,7 @@ Currently authorized capabilities:
 - `create_transaction` → `CREATE_TRANSACTION` (`readOnly: false`, `riskLevel: MEDIUM`)
 - `update_transaction` → `UPDATE_TRANSACTION` (`readOnly: false`, `riskLevel: MEDIUM`)
 - `delete_transaction` → `DELETE_TRANSACTION` (`readOnly: false`, `riskLevel: HIGH`)
+- `create_transfer` → `CREATE_TRANSFER` (`readOnly: false`, `riskLevel: HIGH`)
 - `save_memory` → `MANAGE_MEMORY` (`readOnly: false`, `riskLevel: LOW`, `requiresConfirmation: false`)
 
 ### 3.3 Application-Level Argument Validation
@@ -139,16 +140,17 @@ Model tool arguments are parsed, validated, and normalized before reaching any a
 - `create_transaction`: Validates `accountId` UUID, `type` enum (`INCOME` / `EXPENSE`), positive `amount`, `transactionAt` ISO date string, optional `description`, and optional `categoryId` UUID.
 - `update_transaction`: Validates `transactionId` UUID, requiring at least one optional update field (`amount`, `description`, `type`, `categoryId`, `accountId`, `transactionAt`).
 - `delete_transaction`: Validates `transactionId` UUID format.
+- `create_transfer`: Validates `fromAccountId` UUID, `toAccountId` UUID, enforces `fromAccountId !== toAccountId`, positive `amount`, and `transactionAt` ISO date string.
 - `save_memory`: Validates `type` enum (`PREFERENCE` / `FINANCIAL_GOAL` / `GENERAL_CONTEXT`), `key` string length (1-100), and `value` string length (1-1000).
 
 ---
 
 ## 4. Evaluation Harness & Security Regression Framework
 
-The evaluation harness (`test/ai-agent/evaluation/`) provides a deterministic, repeatable offline test suite covering 99 scenarios:
+The evaluation harness (`test/ai-agent/evaluation/`) provides a deterministic, repeatable offline test suite covering 133 scenarios:
 - **Offline Executions**: Uses `MockOpenAIClientEvaluation` to run scenarios without live OpenAI API network dependencies.
 - **Regression Suite**: Executes via `npm run ai:evaluate` or standard `npm test`.
-- **Security & Observability Matrix Coverage**: Validates IDOR prevention, prompt injection resistance, indirect injection safety, hallucination grounding, tool failure handling, iteration bounds, write tool confirmation requirements (WT-01 through WT-60), request observability/audit events (OBS-01 through OBS-10), conversation persistence (CP-01 through CP-14), and memory management (MEM-01 through MEM-15).
+- **Security & Observability Matrix Coverage**: Validates IDOR prevention, prompt injection resistance, indirect injection safety, hallucination grounding, tool failure handling, iteration bounds, write tool confirmation requirements (WT-01 through WT-94), request observability/audit events (OBS-01 through OBS-10), conversation persistence (CP-01 through CP-14), and memory management (MEM-01 through MEM-15).
 - Full details documented in [`docs/ai-agent-evaluation.md`](file:///home/williamalmeida/github/finbuddy/docs/ai-agent-evaluation.md), [`docs/ai-agent-memory.md`](file:///home/williamalmeida/github/finbuddy/docs/ai-agent-memory.md), [`docs/ai-agent-conversations.md`](file:///home/williamalmeida/github/finbuddy/docs/ai-agent-conversations.md), [`docs/ai-agent-write-tools.md`](file:///home/williamalmeida/github/finbuddy/docs/ai-agent-write-tools.md), and [`docs/ai-agent-observability.md`](file:///home/williamalmeida/github/finbuddy/docs/ai-agent-observability.md).
 
 ---
@@ -156,7 +158,7 @@ The evaluation harness (`test/ai-agent/evaluation/`) provides a deterministic, r
 ## 5. Current Limitations & Roadmap
 
 ### Current Limitations
-- **Limited Write Scope**: Transaction creation (`create_transaction`), updating (`update_transaction`), deletion (`delete_transaction`), and memory saving (`save_memory`) are exposed. Recurring transaction rules and transfers are not exposed via AI tools.
+- **Limited Write Scope**: Transaction creation (`create_transaction`), updating (`update_transaction`), deletion (`delete_transaction`), transfer creation (`create_transfer`), and memory saving (`save_memory`) are exposed. Transfer update/delete and recurring transaction write operations are not exposed via AI tools.
 - **No Vector Search / Semantic Memory**: Structured memory is key-value based (`AiMemory`). No vector embeddings, pgvector, or semantic search.
 
 ### Phase Roadmap
@@ -173,4 +175,5 @@ The evaluation harness (`test/ai-agent/evaluation/`) provides a deterministic, r
 | **Phase 16** | **AI Agent Memory / Context Management** | **Completed** |
 | **Phase 17A** | **AI Financial Write Tool: update_transaction** | **Completed** |
 | **Phase 17B** | **AI Financial Write Tool: delete_transaction** | **Completed** |
+| **Phase 17C** | **AI Financial Write Tool: create_transfer** | **Completed** |
 
