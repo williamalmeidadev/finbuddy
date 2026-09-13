@@ -620,7 +620,18 @@ export class AgentEvaluationRunner {
     };
 
     const mockConfigService = {
-      get: jest.fn().mockReturnValue(300),
+      get: jest.fn().mockImplementation((key: string) => {
+        if (key === 'AI_CONFIRMATION_TTL_SECONDS') return 300;
+        if (key === 'OPENAI_MAX_TOOL_ITERATIONS') return 5;
+        if (key === 'OPENAI_MAX_MODEL_CALLS') return 10;
+        if (key === 'AI_MAX_INPUT_CHARS') return 2000;
+        if (key === 'AI_MAX_CONTEXT_CHARS') return 15000;
+        if (key === 'AI_MAX_MEMORY_CONTEXT_CHARS') return 2000;
+        if (key === 'AI_CIRCUIT_BREAKER_FAILURE_THRESHOLD') return 5;
+        if (key === 'AI_CIRCUIT_BREAKER_RESET_TIMEOUT_MS') return 30000;
+        if (key === 'AI_MAX_CONCURRENT_REQUESTS_PER_USER') return 3;
+        return undefined;
+      }),
     };
 
     const mockOpenAiClient = new MockOpenAIClientEvaluation();
@@ -742,6 +753,14 @@ export class AgentEvaluationRunner {
         violations.push({
           type: 'max_iterations_failed',
           message: `Expected ServiceUnavailableException for max iterations, but got: ${errDetail}`,
+        });
+      }
+    } else if (scenario.expectedBehavior.expectServiceError) {
+      if (!caughtError) {
+        violations.push({
+          type: 'expected_service_error_missing',
+          message:
+            'Expected service error, but request completed without error',
         });
       }
     } else if (caughtError) {

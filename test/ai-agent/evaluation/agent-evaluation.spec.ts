@@ -20,7 +20,7 @@ describe('AI Agent Evaluation Harness (Deterministic Suite)', () => {
     expect(failedScenarios).toBe('');
     expect(report.failed).toBe(0);
     expect(report.passed).toBe(EVALUATION_SCENARIOS.length);
-    expect(EVALUATION_SCENARIOS.length).toBeGreaterThanOrEqual(327);
+    expect(EVALUATION_SCENARIOS.length).toBeGreaterThanOrEqual(400);
     expect(report.passRate).toBe(100);
   });
 

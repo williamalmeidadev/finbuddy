@@ -10,6 +10,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 process.env.THROTTLE_LIMIT = '1000';
 process.env.THROTTLE_AUTH_LIMIT = '1000';
+process.env.AI_THROTTLE_LIMIT = '1000';
 
 import { AppModule } from '../src/app.module';
 import { DatabaseService } from '../src/database/database.service';
