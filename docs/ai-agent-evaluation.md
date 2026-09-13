@@ -7,7 +7,7 @@ The FinBuddy AI Agent Evaluation Harness (`test/ai-agent/evaluation/`) provides 
 > [!IMPORTANT]
 > The evaluation harness does not prove that the agent is safe. It provides regression coverage for defined behaviors and security invariants.
 
-The harness evaluates agent performance across 11 critical security, functional, and observability categories without requiring live OpenAI network calls during automated testing:
+The harness evaluates agent performance across 13 critical security, functional, and observability categories without requiring live OpenAI network calls during automated testing:
 1. Tool selection accuracy
 2. Tool argument generation & application validation
 3. Authorization policies & IDOR protection
@@ -19,6 +19,8 @@ The harness evaluates agent performance across 11 critical security, functional,
 9. Write-tool registry safety & confirmation flow
 10. Sensitive data privacy
 11. AI agent observability, request correlation & database auditability (OBS-01 through OBS-10)
+12. Conversation persistence & multi-turn history (CP-01 through CP-14)
+13. Memory / Context management (MEM-01 through MEM-15)
 
 ---
 

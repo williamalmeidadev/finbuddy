@@ -67,6 +67,13 @@ AiAgentService / AiAgentOrchestratorService
   - `ai.confirmation.expired`: Confirmation request exceeded TTL and was rejected.
   - `ai.confirmation.rejected`: Confirmation execution attempt failed validation, authorization, or replay check.
 
+- **Memory Lifecycle**:
+  - `ai.memory.created`: Structured memory entry created.
+  - `ai.memory.updated`: Structured memory value updated.
+  - `ai.memory.deleted`: Single or bulk user memory deleted.
+  - `ai.memory.rejected`: Memory save rejected by key allowlist, length, format, or prompt injection policy.
+  - `ai.memory.loaded`: User memories retrieved for model context injection.
+
 ### Error Taxonomy (`AiErrorCode`)
 
 - `INVALID_ARGUMENTS`: Argument schema validation failure.
