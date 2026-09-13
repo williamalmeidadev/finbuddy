@@ -84,6 +84,13 @@ describe('AgentToolRegistryService', () => {
     execute: jest.fn(),
   } as unknown as UpdateTransferTool;
 
+  const mockDeleteTransferTool = {
+    name: 'delete_transfer',
+    description: 'Delete transfer',
+    inputSchema: { type: 'object', properties: {} },
+    execute: jest.fn(),
+  } as unknown as DeleteTransferTool;
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -101,6 +108,7 @@ describe('AgentToolRegistryService', () => {
         { provide: DeleteTransactionTool, useValue: mockDeleteTransactionTool },
         { provide: CreateTransferTool, useValue: mockCreateTransferTool },
         { provide: UpdateTransferTool, useValue: mockUpdateTransferTool },
+        { provide: DeleteTransferTool, useValue: mockDeleteTransferTool },
       ],
     }).compile();
 
@@ -112,10 +120,10 @@ describe('AgentToolRegistryService', () => {
   });
 
   describe('onModuleInit', () => {
-    it('should register all ten tools on initialization', () => {
+    it('should register all eleven tools on initialization', () => {
       service.onModuleInit();
       const tools = service.getTools();
-      expect(tools).toHaveLength(10);
+      expect(tools).toHaveLength(11);
       expect(service.getTool('get_accounts')).toBe(mockGetAccountsTool);
       expect(service.getTool('get_transactions')).toBe(mockGetTransactionsTool);
       expect(service.getTool('get_financial_summary')).toBe(
@@ -134,6 +142,7 @@ describe('AgentToolRegistryService', () => {
       );
       expect(service.getTool('create_transfer')).toBe(mockCreateTransferTool);
       expect(service.getTool('update_transfer')).toBe(mockUpdateTransferTool);
+      expect(service.getTool('delete_transfer')).toBe(mockDeleteTransferTool);
     });
   });
 
@@ -157,6 +166,7 @@ describe('AgentToolRegistryService', () => {
       );
       expect(service.getTool('create_transfer')).toBe(mockCreateTransferTool);
       expect(service.getTool('update_transfer')).toBe(mockUpdateTransferTool);
+      expect(service.getTool('delete_transfer')).toBe(mockDeleteTransferTool);
     });
   });
 
@@ -169,7 +179,7 @@ describe('AgentToolRegistryService', () => {
       service.onModuleInit();
 
       const definitions = service.getToolDefinitions();
-      expect(definitions).toHaveLength(10);
+      expect(definitions).toHaveLength(11);
       expect(definitions[0]).toEqual({
         type: 'function',
         name: 'get_accounts',
