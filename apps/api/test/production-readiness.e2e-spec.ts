@@ -86,12 +86,12 @@ interface CreateTestAppOptions {
 
 async function createTestApp(
   options: CreateTestAppOptions = {},
-): Promise<INestApplication<App>> {
+): Promise<INestApplication> {
   const moduleFixture: TestingModule = await Test.createTestingModule({
     imports: [AppModule],
   }).compile();
 
-  const app = moduleFixture.createNestApplication<App>();
+  const app = moduleFixture.createNestApplication();
 
   const nodeEnv = options.nodeEnv ?? process.env.NODE_ENV ?? 'development';
   const rawSwagger =

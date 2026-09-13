@@ -16,6 +16,7 @@
     "test:api:e2e": "npm run test:e2e --workspace=@finbuddy/api",
     "test:api:eval": "npm run ai:evaluate --workspace=@finbuddy/api",
     "test:web": "npm run test --workspace=@finbuddy/web",
+    "test:web:e2e": "npm run test:e2e --workspace=@finbuddy/web",
     "lint": "npm run lint --workspaces --if-present",
     "lint:api": "npm run lint --workspace=@finbuddy/api",
     "lint:web": "npm run lint --workspace=@finbuddy/web",

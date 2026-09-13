@@ -208,7 +208,7 @@ describe('AI Agent Evaluation Harness (Deterministic Suite)', () => {
         ],
       }).compile();
 
-      const registry = moduleRef.get<AgentToolRegistryService>(
+      const registry = moduleRef.get(
         AgentToolRegistryService,
       );
       registry.onModuleInit();

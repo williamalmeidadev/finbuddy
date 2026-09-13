@@ -29,6 +29,7 @@ describe('AiAgentController', () => {
     id: 'user-uuid-1234',
     email: 'test@finbuddy.dev',
   };
+  const mockReq = {} as any;
 
   beforeEach(async () => {
     aiAgentService = {
@@ -75,7 +76,7 @@ describe('AiAgentController', () => {
       );
       aiAgentService.sendMessage.mockResolvedValue(mockAgentResponse);
 
-      const result = await controller.sendMessage(mockUser, dto);
+      const result = await controller.sendMessage(mockUser, dto, mockReq);
 
       expect(aiAgentService.sendMessage).toHaveBeenCalledWith(
         mockUser.id,
@@ -95,7 +96,7 @@ describe('AiAgentController', () => {
       );
 
       await expect(
-        controller.sendMessage(mockUser, dto, undefined),
+        controller.sendMessage(mockUser, dto, mockReq),
       ).rejects.toThrow('Service unavailable');
       expect(aiAgentService.sendMessage).toHaveBeenCalledWith(
         mockUser.id,
@@ -118,7 +119,7 @@ describe('AiAgentController', () => {
       const result = await controller.confirmAction(
         mockUser,
         confirmationId,
-        undefined,
+        mockReq,
       );
 
       expect(aiAgentService.confirmAction).toHaveBeenCalledWith(
@@ -142,7 +143,7 @@ describe('AiAgentController', () => {
       const result = await controller.cancelAction(
         mockUser,
         confirmationId,
-        undefined,
+        mockReq,
       );
 
       expect(aiAgentService.cancelAction).toHaveBeenCalledWith(
@@ -162,7 +163,7 @@ describe('AiAgentController', () => {
       const res = await controller.createConversation(
         mockUser,
         { title: 'Budget Plan' },
-        undefined,
+        mockReq,
       );
       expect(res).toBe(mockConv);
       expect(aiAgentService.createConversation).toHaveBeenCalledWith(
@@ -235,7 +236,7 @@ describe('AiAgentController', () => {
       const res = await controller.deleteConversation(
         mockUser,
         'c-1',
-        undefined,
+        mockReq,
       );
       expect(res).toEqual({
         success: true,
