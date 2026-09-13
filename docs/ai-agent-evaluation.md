@@ -130,7 +130,57 @@ interface AgentEvaluationScenario {
 
 ---
 
-## 5. Execution & CLI Commands
+## 5. Advanced Evaluation Framework (Phase 18)
+
+Phase 18 expands the FinBuddy AI Agent Evaluation Suite with **104 advanced deterministic scenarios** (`ADV-228` through `ADV-331`), bringing the total evaluation scenario suite to **331 scenarios** across 23 distinct evaluation categories.
+
+### 23 Advanced Evaluation Categories
+
+| Category | Description | Scenario Range |
+|---|---|---|
+| `ADV-PROMPT-INJECTION` | Direct prompt override & system instructions manipulation attempts | `ADV-228`, `ADV-229` |
+| `ADV-INDIRECT-INJECTION` | Embedded malicious instructions in transaction notes or account names | `ADV-230`, `ADV-231` |
+| `ADV-TOOL-INJECTION` | Calls to non-registered, arbitrary, or administrative dynamic tools | `ADV-232`, `ADV-233` |
+| `ADV-AUTHORIZATION` | Cross-tenant parameter injection and user isolation verification | `ADV-234` to `ADV-238` |
+| `ADV-CONFIRMATION` | Confirmation flow requirements and invalid confirmation token rejection | `ADV-239` to `ADV-243` |
+| `ADV-TOCTOU` | State changes between proposal and execution of write actions | `ADV-244`, `ADV-245` |
+| `ADV-FINANCIAL-INVARIANTS` | System-sourced and transfer-linked transaction immutability | `ADV-246` to `ADV-250` |
+| `ADV-ATOMICITY` | Multi-step write failures and atomic state rollback guarantees | `ADV-251`, `ADV-252` |
+| `ADV-CONCURRENCY` | Out-of-order tool call sequences and state collision handling | `ADV-253`, `ADV-254` |
+| `ADV-MULTI-TOOL` | Complex multi-turn tool workflows (`get_accounts` -> `create_transfer`) | `ADV-255` to `ADV-259` |
+| `ADV-CONVERSATION` | Multi-turn chat persistence and session context preservation | `ADV-260` to `ADV-264` |
+| `ADV-MEMORY` | Memory policy rejection (`ai.memory.rejected`) and privacy boundaries | `ADV-265` to `ADV-269` |
+| `ADV-PRIVACY` | Redaction of tokens, API keys, credentials, and sensitive personal data | `ADV-270` to `ADV-274` |
+| `ADV-DISCLOSURE` | Defense against system prompt extraction and internal architecture probing | `ADV-275` to `ADV-279` |
+| `ADV-GROUNDING` | Strict factual alignment with tool outputs without domain hallucination | `ADV-280` to `ADV-284` |
+| `ADV-FAILURE` | Upstream service failure propagation and clean error taxonomy | `ADV-285` to `ADV-289` |
+| `ADV-ITERATION` | Maximum iteration loop termination (`MAX_TOOL_ITERATIONS = 5`) | `ADV-290` to `ADV-294` |
+| `ADV-REGISTRY` | Complete tool metadata verification across all 11 registered agent tools | `ADV-295` to `ADV-299` |
+| `ADV-RISK` | Correct risk tier assignment (`HIGH`/`MEDIUM`/`LOW`) across tool registry | `ADV-300` to `ADV-304` |
+| `ADV-OBSERVABILITY` | Event taxonomy verification (`ai.request.*`, `ai.tool.*`, `ai.llm.*`) | `ADV-305` to `ADV-313` |
+| `ADV-AUDIT` | Database audit log creation and sensitive payload redaction | `ADV-314` to `ADV-320` |
+| `ADV-OPENAI` | OpenAI API response parsing, tool call parameters, and edge cases | `ADV-321` to `ADV-325` |
+| `ADV-API` | End-to-end HTTP controller contracts and structured response verification | `ADV-326` to `ADV-331` |
+
+### Complete Tool Registry Coverage
+
+Phase 18 validates that all 11 registered tools are fully specified in `AgentToolRegistryService`:
+
+1. `get_accounts` (`LOW` risk, `readOnly: true`)
+2. `get_transactions` (`LOW` risk, `readOnly: true`)
+3. `get_financial_summary` (`LOW` risk, `readOnly: true`)
+4. `get_budgets` (`LOW` risk, `readOnly: true`)
+5. `create_transaction` (`MEDIUM` risk, `readOnly: false`)
+6. `update_transaction` (`HIGH` risk, `readOnly: false`)
+7. `delete_transaction` (`HIGH` risk, `readOnly: false`)
+8. `create_transfer` (`HIGH` risk, `readOnly: false`)
+9. `update_transfer` (`HIGH` risk, `readOnly: false`)
+10. `delete_transfer` (`HIGH` risk, `readOnly: false`)
+11. `save_memory` (`LOW` risk, `readOnly: false`)
+
+---
+
+## 6. Execution & CLI Commands
 
 ### Run Evaluation Suite Separately
 
@@ -146,8 +196,9 @@ npm test
 
 ---
 
-## 6. Limitations
+## 7. Limitations
 
 - **Deterministic Offline Harness Only**: Scenarios rely on mock model responses to maintain deterministic, fast CI runs without API key dependencies.
 - **No LLM-as-a-Judge**: Model-based non-deterministic evaluators are not used in this phase.
+
 
