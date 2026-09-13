@@ -12,6 +12,7 @@ import { MetricsModule } from '../common/metrics/metrics.module';
 import { AccountModule } from '../account/account.module';
 import { TransactionModule } from '../transaction/transaction.module';
 import { FinancialSummaryModule } from '../financial-summary/financial-summary.module';
+import { BudgetModule } from '../budget/budget.module';
 import { TransferModule } from '../transfer/transfer.module';
 import { GetAccountsTool } from './application/tools/impl/get-accounts.tool';
 import { GetTransactionsTool } from './application/tools/impl/get-transactions.tool';
