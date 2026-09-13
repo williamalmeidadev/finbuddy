@@ -13,7 +13,30 @@ export type EvaluationCategory =
   | 'privacy'
   | 'observability'
   | 'conversation-persistence'
-  | 'memory-management';
+  | 'memory-management'
+  | 'ADV-PROMPT-INJECTION'
+  | 'ADV-INDIRECT-INJECTION'
+  | 'ADV-TOOL-INJECTION'
+  | 'ADV-AUTHORIZATION'
+  | 'ADV-CONFIRMATION'
+  | 'ADV-TOCTOU'
+  | 'ADV-FINANCIAL-INVARIANTS'
+  | 'ADV-ATOMICITY'
+  | 'ADV-CONCURRENCY'
+  | 'ADV-MULTI-TOOL'
+  | 'ADV-CONVERSATION'
+  | 'ADV-MEMORY'
+  | 'ADV-PRIVACY'
+  | 'ADV-DISCLOSURE'
+  | 'ADV-GROUNDING'
+  | 'ADV-FAILURE'
+  | 'ADV-ITERATION'
+  | 'ADV-REGISTRY'
+  | 'ADV-RISK'
+  | 'ADV-OBSERVABILITY'
+  | 'ADV-AUDIT'
+  | 'ADV-OPENAI'
+  | 'ADV-API';
 
 export interface ExpectedToolCall {
   toolName: string;
