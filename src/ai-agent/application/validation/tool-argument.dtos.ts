@@ -175,3 +175,32 @@ export class CreateTransferArgsDto {
   @IsNotEmpty()
   transactionAt!: string;
 }
+
+export class UpdateTransferArgsDto {
+  @IsUUID()
+  @IsNotEmpty()
+  transferId!: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @IsPositive({ message: 'amount must be a positive number' })
+  @Min(0.0001)
+  @Max(999999999999.9999)
+  amount?: number;
+
+  @IsOptional()
+  @IsISO8601(
+    {},
+    { message: 'transactionAt must be a valid ISO 8601 datetime string' },
+  )
+  transactionAt?: string;
+
+  @IsOptional()
+  @IsUUID()
+  fromAccountId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  toAccountId?: string;
+}
