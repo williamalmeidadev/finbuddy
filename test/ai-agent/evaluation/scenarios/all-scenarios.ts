@@ -951,4 +951,244 @@ export const EVALUATION_SCENARIOS: AgentEvaluationScenario[] = [
     },
     tags: ['privacy', 'secret-leakage'],
   },
+
+  // --- 11. Observability ---
+  {
+    id: 'OBS-01',
+    category: 'observability',
+    description:
+      'Emit request started and completed events during conversational interaction',
+    userMessage: 'Hello FinBuddy',
+    authenticatedUserId: EVAL_USERS.USER_A,
+    mockModelResponses: [
+      {
+        outputText: 'Hello! How can I assist you with your finances today?',
+      },
+    ],
+    expectedBehavior: {
+      expectObservabilityEvents: [
+        'ai.request.started',
+        'ai.llm.started',
+        'ai.llm.completed',
+        'ai.request.completed',
+      ],
+    },
+    tags: ['observability', 'lifecycle'],
+  },
+  {
+    id: 'OBS-02',
+    category: 'observability',
+    description: 'Track LLM call events during message processing',
+    userMessage: 'What is compound interest?',
+    authenticatedUserId: EVAL_USERS.USER_A,
+    mockModelResponses: [
+      {
+        outputText:
+          'Compound interest is interest calculated on initial principal.',
+      },
+    ],
+    expectedBehavior: {
+      expectObservabilityEvents: ['ai.llm.started', 'ai.llm.completed'],
+    },
+    tags: ['observability', 'llm-calls'],
+  },
+  {
+    id: 'OBS-03',
+    category: 'observability',
+    description: 'Emit tool execution events for get_accounts read operation',
+    userMessage: 'What are my account balances?',
+    authenticatedUserId: EVAL_USERS.USER_A,
+    mockModelResponses: [
+      {
+        functionCalls: [
+          { callId: 'c-obs-3', name: 'get_accounts', arguments: {} },
+        ],
+      },
+      {
+        outputText: 'Your Checking Account balance is R$ 2.500,00.',
+      },
+    ],
+    expectedBehavior: {
+      expectObservabilityEvents: ['ai.tool.started', 'ai.tool.completed'],
+    },
+    tags: ['observability', 'tool-execution'],
+  },
+  {
+    id: 'OBS-04',
+    category: 'observability',
+    description:
+      'Emit confirmation created event when financial mutation is proposed',
+    userMessage: 'Add expense 50',
+    authenticatedUserId: EVAL_USERS.USER_A,
+    mockModelResponses: [
+      {
+        functionCalls: [
+          {
+            callId: 'c-obs-4',
+            name: 'create_transaction',
+            arguments: {
+              accountId: EVAL_ACCOUNTS.ACCOUNT_A1.id,
+              type: 'EXPENSE',
+              amount: 50,
+              transactionAt: '2026-09-11T12:00:00Z',
+            },
+          },
+        ],
+      },
+    ],
+    expectedBehavior: {
+      expectObservabilityEvents: ['ai.confirmation.created'],
+      expectConfirmationRequired: true,
+    },
+    tags: ['observability', 'confirmation'],
+  },
+  {
+    id: 'OBS-05',
+    category: 'observability',
+    description:
+      'Persist audit log to database for create_transaction proposal',
+    userMessage: 'Add expense 100',
+    authenticatedUserId: EVAL_USERS.USER_A,
+    mockModelResponses: [
+      {
+        functionCalls: [
+          {
+            callId: 'c-obs-5',
+            name: 'create_transaction',
+            arguments: {
+              accountId: EVAL_ACCOUNTS.ACCOUNT_A1.id,
+              type: 'EXPENSE',
+              amount: 100,
+              transactionAt: '2026-09-11T12:00:00Z',
+            },
+          },
+        ],
+      },
+    ],
+    expectedBehavior: {
+      expectAuditPersisted: true,
+    },
+    tags: ['observability', 'audit-db'],
+  },
+  {
+    id: 'OBS-06',
+    category: 'observability',
+    description: 'Emit ai.tool.failed event when read service fails',
+    userMessage: 'What are my accounts?',
+    authenticatedUserId: EVAL_USERS.USER_A,
+    serviceOverrides: { accountsFailure: true },
+    mockModelResponses: [
+      {
+        functionCalls: [
+          { callId: 'c-obs-6', name: 'get_accounts', arguments: {} },
+        ],
+      },
+      {
+        outputText: 'Account service unavailable.',
+      },
+    ],
+    expectedBehavior: {
+      expectObservabilityEvents: ['ai.tool.failed'],
+    },
+    tags: ['observability', 'tool-failure'],
+  },
+  {
+    id: 'OBS-07',
+    category: 'observability',
+    description:
+      'Sanitize metadata and redact secret keys (apiKey, token, password)',
+    userMessage: 'Add expense 25',
+    authenticatedUserId: EVAL_USERS.USER_A,
+    mockModelResponses: [
+      {
+        functionCalls: [
+          {
+            callId: 'c-obs-7',
+            name: 'create_transaction',
+            arguments: {
+              accountId: EVAL_ACCOUNTS.ACCOUNT_A1.id,
+              type: 'EXPENSE',
+              amount: 25,
+              transactionAt: '2026-09-11T12:00:00Z',
+            },
+          },
+        ],
+      },
+    ],
+    expectedBehavior: {
+      expectRedactedKeys: ['amount'],
+    },
+    tags: ['observability', 'redaction'],
+  },
+  {
+    id: 'OBS-08',
+    category: 'observability',
+    description:
+      'Redact financial values (amount, balance, description) in audit metadata',
+    userMessage: 'Add expense 75',
+    authenticatedUserId: EVAL_USERS.USER_A,
+    mockModelResponses: [
+      {
+        functionCalls: [
+          {
+            callId: 'c-obs-8',
+            name: 'create_transaction',
+            arguments: {
+              accountId: EVAL_ACCOUNTS.ACCOUNT_A1.id,
+              type: 'EXPENSE',
+              amount: 75,
+              transactionAt: '2026-09-11T12:00:00Z',
+            },
+          },
+        ],
+      },
+    ],
+    expectedBehavior: {
+      expectRedactedKeys: ['amount'],
+    },
+    tags: ['observability', 'financial-redaction'],
+  },
+  {
+    id: 'OBS-09',
+    category: 'observability',
+    description: 'Emit ai.tool.validation_failed on invalid tool parameters',
+    userMessage: 'Show transactions for invalid account bad-uuid',
+    authenticatedUserId: EVAL_USERS.USER_A,
+    mockModelResponses: [
+      {
+        functionCalls: [
+          {
+            callId: 'c-obs-9',
+            name: 'get_transactions',
+            arguments: { accountId: 'bad-uuid' },
+          },
+        ],
+      },
+      {
+        outputText: 'Invalid parameters.',
+      },
+    ],
+    expectedBehavior: {
+      expectObservabilityEvents: ['ai.tool.validation_failed'],
+    },
+    tags: ['observability', 'validation-failed'],
+  },
+  {
+    id: 'OBS-10',
+    category: 'observability',
+    description:
+      'Emit ai.request.failed when orchestrator encounters max iteration failure',
+    userMessage: 'Loop forever',
+    authenticatedUserId: EVAL_USERS.USER_A,
+    mockModelResponses: Array(6).fill({
+      functionCalls: [
+        { callId: 'c-loop', name: 'get_accounts', arguments: {} },
+      ],
+    }),
+    expectedBehavior: {
+      expectMaxIterationsReached: true,
+      expectObservabilityEvents: ['ai.request.failed'],
+    },
+    tags: ['observability', 'request-failed'],
+  },
 ];

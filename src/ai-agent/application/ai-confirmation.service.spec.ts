@@ -4,6 +4,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { AiConfirmationService } from './ai-confirmation.service';
 import { DatabaseService } from '../../database/database.service';
 import { AiConfirmationStatus } from '../../generated/prisma/enums';
+import { AiAgentObservabilityService } from './observability/ai-agent-observability.service';
 
 describe('AiConfirmationService', () => {
   let service: AiConfirmationService;
@@ -19,6 +20,10 @@ describe('AiConfirmationService', () => {
     get: jest.Mock;
   };
 
+  let mockObservability: {
+    recordEvent: jest.Mock;
+  };
+
   beforeEach(async () => {
     mockPrisma = {
       aiConfirmation: {
@@ -31,12 +36,16 @@ describe('AiConfirmationService', () => {
     mockConfigService = {
       get: jest.fn().mockReturnValue(300),
     };
+    mockObservability = {
+      recordEvent: jest.fn().mockResolvedValue(undefined),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AiConfirmationService,
         { provide: DatabaseService, useValue: mockPrisma },
         { provide: ConfigService, useValue: mockConfigService },
+        { provide: AiAgentObservabilityService, useValue: mockObservability },
       ],
     }).compile();
 

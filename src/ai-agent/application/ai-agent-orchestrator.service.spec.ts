@@ -12,6 +12,7 @@ import { AgentCapability } from './authorization/agent-capability.enum';
 import { AgentToolRiskLevel } from './tools/agent-tool.interface';
 
 import { AiConfirmationService } from './ai-confirmation.service';
+import { AiAgentObservabilityService } from './observability/ai-agent-observability.service';
 
 describe('AiAgentOrchestratorService', () => {
   let service: AiAgentOrchestratorService;
@@ -27,6 +28,9 @@ describe('AiAgentOrchestratorService', () => {
   };
   let mockAiConfirmationService: {
     createConfirmation: jest.Mock;
+  };
+  let mockObservability: {
+    recordEvent: jest.Mock;
   };
 
   beforeEach(async () => {
@@ -51,6 +55,9 @@ describe('AiAgentOrchestratorService', () => {
         expiresAt: new Date(Date.now() + 300000),
       }),
     };
+    mockObservability = {
+      recordEvent: jest.fn().mockResolvedValue(undefined),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -72,6 +79,10 @@ describe('AiAgentOrchestratorService', () => {
         {
           provide: MetricsService,
           useValue: mockMetricsService,
+        },
+        {
+          provide: AiAgentObservabilityService,
+          useValue: mockObservability,
         },
       ],
     }).compile();
@@ -152,7 +163,7 @@ describe('AiAgentOrchestratorService', () => {
       );
 
       expect(mockTool.execute).toHaveBeenCalledWith(
-        { userId: 'user-123' },
+        expect.objectContaining({ userId: 'user-123' }),
         expect.anything(),
       );
       expect(mockOpenAiClient.createRawResponse).toHaveBeenCalledTimes(2);

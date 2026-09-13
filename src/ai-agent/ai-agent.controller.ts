@@ -6,8 +6,10 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
+import { Request } from 'express';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -41,6 +43,23 @@ import {
 export class AiAgentController {
   constructor(private readonly aiAgentService: AiAgentService) {}
 
+  private getCorrelationOptions(req?: Request) {
+    if (!req) {
+      return { requestId: undefined, aiRequestId: undefined };
+    }
+    const requestId =
+      (req as Request & { requestId?: string }).requestId ||
+      (typeof req.header === 'function'
+        ? req.header('x-request-id')
+        : undefined) ||
+      undefined;
+    const aiRequestId =
+      typeof req.header === 'function'
+        ? req.header('x-ai-request-id')
+        : undefined;
+    return { requestId, aiRequestId };
+  }
+
   @ApiOperation({ summary: 'Send a message to the AI financial assistant' })
   @ApiResponse({
     status: 200,
@@ -53,8 +72,14 @@ export class AiAgentController {
   async sendMessage(
     @CurrentUser() user: AuthenticatedUserDto,
     @Body() dto: SendAgentMessageDto,
+    @Req() req: Request,
   ): Promise<AgentResponseDto> {
-    const result = await this.aiAgentService.sendMessage(user.id, dto.message);
+    const options = this.getCorrelationOptions(req);
+    const result = await this.aiAgentService.sendMessage(
+      user.id,
+      dto.message,
+      options,
+    );
     return new AgentResponseDto(
       result.message,
       result.type,
@@ -84,8 +109,10 @@ export class AiAgentController {
   async confirmAction(
     @CurrentUser() user: AuthenticatedUserDto,
     @Param('confirmationId', ParseUUIDPipe) confirmationId: string,
+    @Req() req: Request,
   ): Promise<ConfirmationExecutionResult> {
-    return this.aiAgentService.confirmAction(user.id, confirmationId);
+    const options = this.getCorrelationOptions(req);
+    return this.aiAgentService.confirmAction(user.id, confirmationId, options);
   }
 
   @ApiOperation({
@@ -106,7 +133,9 @@ export class AiAgentController {
   async cancelAction(
     @CurrentUser() user: AuthenticatedUserDto,
     @Param('confirmationId', ParseUUIDPipe) confirmationId: string,
+    @Req() req: Request,
   ): Promise<{ success: boolean; message: string }> {
-    return this.aiAgentService.cancelAction(user.id, confirmationId);
+    const options = this.getCorrelationOptions(req);
+    return this.aiAgentService.cancelAction(user.id, confirmationId, options);
   }
 }

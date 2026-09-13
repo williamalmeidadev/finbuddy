@@ -44,6 +44,7 @@ model User {
   budgets               Budget[]
   recurringTransactions RecurringTransaction[]
   aiConfirmations       AiConfirmation[]
+  aiAuditEvents         AiAuditEvent[]
 
   @@map("users")
 }
@@ -270,6 +271,8 @@ enum AiConfirmationStatus {
 model AiConfirmation {
   id            String               @id @default(uuid()) @db.Uuid
   userId        String               @map("user_id") @db.Uuid
+  requestId     String?              @map("request_id") @db.VarChar(64)
+  aiRequestId   String?              @map("ai_request_id") @db.VarChar(64)
   toolName      String               @map("tool_name") @db.VarChar(100)
   argumentsJson Json                 @map("arguments_json")
   status        AiConfirmationStatus @default(PENDING)
@@ -284,3 +287,26 @@ model AiConfirmation {
   @@index([status, expiresAt])
   @@map("ai_confirmations")
 }
+
+model AiAuditEvent {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  requestId      String   @map("request_id") @db.VarChar(64)
+  aiRequestId    String?  @map("ai_request_id") @db.VarChar(64)
+  eventType      String   @map("event_type") @db.VarChar(64)
+  toolName       String?  @map("tool_name") @db.VarChar(64)
+  confirmationId String?  @map("confirmation_id") @db.Uuid
+  status         String   @map("status") @db.VarChar(32)
+  riskLevel      String?  @map("risk_level") @db.VarChar(16)
+  metadata       Json?    @map("metadata")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([aiRequestId])
+  @@index([confirmationId])
+  @@index([createdAt])
+  @@map("ai_audit_events")
+}
+

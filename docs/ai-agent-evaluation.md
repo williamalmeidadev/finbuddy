@@ -7,17 +7,18 @@ The FinBuddy AI Agent Evaluation Harness (`test/ai-agent/evaluation/`) provides 
 > [!IMPORTANT]
 > The evaluation harness does not prove that the agent is safe. It provides regression coverage for defined behaviors and security invariants.
 
-The harness evaluates agent performance across 10 critical security and functional categories without requiring live OpenAI network calls during automated testing:
-- Tool selection accuracy
-- Tool argument generation & application validation
-- Authorization policies & IDOR protection
-- Prompt injection resistance
-- Indirect prompt injection handling
-- Hallucination prevention & financial-data grounding
-- Tool failure resiliency
-- Iteration limit loop termination
-- Write-tool registry safety
-- Sensitive data privacy
+The harness evaluates agent performance across 11 critical security, functional, and observability categories without requiring live OpenAI network calls during automated testing:
+1. Tool selection accuracy
+2. Tool argument generation & application validation
+3. Authorization policies & IDOR protection
+4. Prompt injection resistance
+5. Indirect prompt injection handling
+6. Hallucination prevention & financial-data grounding
+7. Tool failure resiliency
+8. Iteration limit loop termination
+9. Write-tool registry safety & confirmation flow
+10. Sensitive data privacy
+11. AI agent observability, request correlation & database auditability (OBS-01 through OBS-10)
 
 ---
 
@@ -48,15 +49,15 @@ test/
 1. **`evaluation-types.ts`**: Defines standard interfaces for `AgentEvaluationScenario`, `ExpectedBehavior`, `EvaluationResult`, `EvaluationViolation`, and `EvaluationReport`.
 2. **`fixtures/`**: Contains static, deterministic mock financial data (users `USER_A`, `USER_B`, accounts, transactions, budgets, summaries, and malicious indirect injection text).
 3. **`mocks/mock-openai.client.ts`**: Provides `MockOpenAIClientEvaluation`, overriding `OpenAIClient.createRawResponse` to return pre-queued, deterministic model tool calls or text responses offline.
-4. **`scenarios/all-scenarios.ts`**: Contains 36 distinct evaluation scenarios tagged by category (including write tools WT-01 through WT-10).
-5. **`evaluation-runner.ts`**: Programmatic runner (`AgentEvaluationRunner`) that sets up NestJS test modules, injects mock financial services, intercepts model function calls, executes scenarios, verifies invariants, and generates `EvaluationReport`.
+4. **`scenarios/all-scenarios.ts`**: Contains 46 distinct evaluation scenarios tagged by category (including write tools WT-01 through WT-10 and observability OBS-01 through OBS-10).
+5. **`evaluation-runner.ts`**: Programmatic runner (`AgentEvaluationRunner`) that sets up NestJS test modules, injects mock financial services, intercepts model function calls, verifies invariants, asserts correlation events and DB audit records, and generates `EvaluationReport`.
 6. **`agent-evaluation.spec.ts`**: Jest test spec executing the full evaluation suite.
 
 ---
 
-## 3. Security Regression Matrix
+## 3. Security & Observability Regression Matrix
 
-| Threat / Vulnerability | Evaluation Scenario | Expected Security Invariant |
+| Threat / Vulnerability / Requirement | Evaluation Scenario | Expected Security Invariant |
 |---|---|---|
 | **IDOR (Cross-Tenant Access)** | `AUTH-01`, `AUTH-02` | User A supplying User B `accountId` or `categoryId` is denied at domain layer. No cross-tenant data returned. |
 | **Unknown Tool Injection** | `PI-02`, `AUTH-03` | Model calling unregistered or unknown tool (e.g. `delete_all_transactions`) is rejected by application registry. Zero dynamic code/method execution. |
@@ -73,6 +74,12 @@ test/
 | **Write Argument Validation** | `WT-03` to `WT-08` | Validates required fields (`accountId`, `type`, `amount`, `transactionAt`), positive numbers, UUID formats, ISO dates, and enum values for `create_transaction`. |
 | **Write User ID Injection Defense** | `WT-09` | Model attempting to inject `userId` parameter into `create_transaction` arguments is rejected. |
 | **Write Cross-Tenant Isolation** | `WT-10` | User attempting to confirm a transaction for an account owned by another user is blocked by domain ownership validation. |
+| **Request & LLM Event Lifecycle** | `OBS-01`, `OBS-02` | Verifies emission of `ai.request.started`, `ai.llm.started`, `ai.llm.completed`, `ai.request.completed`. |
+| **Tool Calling & Execution Events** | `OBS-03`, `OBS-06`, `OBS-09` | Verifies emission of `ai.tool.started`, `ai.tool.completed`, `ai.tool.failed`, `ai.tool.validation_failed`. |
+| **Confirmation Lifecycle Events** | `OBS-04` | Verifies emission of `ai.confirmation.created` during write action proposal. |
+| **Database Audit Log Persistence** | `OBS-05` | Verifies persistence of `AiAuditEvent` record in PostgreSQL on write proposal. |
+| **Secret & Financial Metadata Redaction** | `OBS-07`, `OBS-08` | Verifies `sanitizeMetadata()` redacts secret keys (`apiKey`, `token`) and omits raw financial amounts/descriptions from audit metadata. |
+| **Failure Correlation & Error Code Taxonomy** | `OBS-10` | Verifies `ai.request.failed` event and `TIMEOUT` error code recorded on max iteration failure. |
 
 ---
 
