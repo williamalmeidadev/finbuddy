@@ -14,6 +14,10 @@ export default defineConfig({
   server: {
     port: 3003,
     host: true,
+    hmr: {
+      host: 'localhost',
+      port: 3003,
+    },
   },
   preview: {
     port: 3003,
