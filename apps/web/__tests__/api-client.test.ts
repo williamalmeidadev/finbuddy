@@ -1,4 +1,4 @@
-import { ApiError } from "../lib/api/errors";
+import { ApiError } from "../src/lib/api/errors";
 
 describe("API Client Error Normalization", () => {
   it("should normalize 401 Unauthorized status correctly", () => {

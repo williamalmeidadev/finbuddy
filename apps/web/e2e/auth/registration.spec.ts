@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { generateRandomEmail } from "../helpers/test-fixtures";
+import { generateRandomEmail, API_BASE_URL } from "../helpers/test-fixtures";
 
 test.describe("Authentication - Registration Flow E2E", () => {
   test("successful registration with valid credentials and automatic redirect", async ({ page }) => {
@@ -26,7 +26,7 @@ test.describe("Authentication - Registration Flow E2E", () => {
   test("duplicate email registration rejection", async ({ page, request }) => {
     const existingEmail = generateRandomEmail("existing-user");
     // Pre-register user
-    await request.post("http://localhost:3002/users", {
+    await request.post(`${API_BASE_URL}/users`, {
       data: { email: existingEmail, password: "Password123!" },
     });
 

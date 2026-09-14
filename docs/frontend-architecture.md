@@ -5,13 +5,12 @@
 Phase 20 established the monorepo foundation, and Phase 21 delivers the complete functional Web Application UI connected to the production-hardened NestJS API backend.
 
 The frontend includes:
-- **Framework**: Next.js 15 (App Router, Server Components & Client Components)
-- **Styling**: Tailwind CSS & CSS Variables with custom semantic design tokens
-- **Component Foundation**: shadcn/ui (Radix-inspired accessible primitive components, accessible Dialog modals)
+- **Framework**: Vite 6 + React 19 (React Router 7, Client-Side Application)
+- **Styling**: Tailwind CSS v4 & CSS Variables with custom semantic design tokens
+- **Component Foundation**: Lucide React & Tailwind-styled UI primitives
 - **Icons**: Lucide React
-- **Theme Support**: `next-themes` (Light mode, Dark mode, System preference)
-- **API Transport**: Centralized `apiClient` fetch wrapper with automatic 401 token refresh retry queuing and loop protection
-- **Authentication**: `tokenStorage` in-memory token management, `AuthProvider`, `useAuth` hook, and protected `/app/*` `AuthGuard`
+- **API Transport**: Centralized `client.ts` fetch wrapper with dynamic `VITE_API_URL` resolution, automatic 401 token refresh retry queuing, subscriber deduplication, and loop protection
+- **Authentication**: In-memory token management, `AuthProvider` (`auth-context.tsx`), `useAuth` hook, and protected `/app/*` (`AuthGuard` / `ProtectedRoute`)
 - **Financial Product Views**:
   - **Dashboard**: Net worth summary, monthly income/expense/savings breakdown, connected account grid, recent ledger entries, category budget health indicators, and quick action modals.
   - **Accounts**: Multi-account ledger overview (Checking, Savings, Credit Card, Investment, Cash), account creation modal, inline edit, and deactivation.
@@ -20,7 +19,7 @@ The frontend includes:
   - **Categories**: Income & Expense classification manager, color accent selector, icon assignment, system category protection.
   - **Budgets**: Category spending limit monitor, month/year selector, visual progress bars with health badges (`Healthy` <= 80%, `Warning` > 80% <= 100%, `Exceeded` > 100%).
   - **Recurring Transactions**: Subscriptions & scheduled automated entries, frequency controls (Daily, Weekly, Monthly, Yearly), active/paused status toggles.
-  - **Settings**: Authenticated user profile summary, role display, theme toggle, and API security status.
+  - **Settings**: Authenticated user profile summary, role display, and API security status.
 
 ---
 
@@ -36,12 +35,14 @@ finbuddy/
 │   │   ├── prisma/           # Prisma 7 Schema & PostgreSQL 17 Migrations
 │   │   └── test/             # Unit, E2E, & 403 AI Deterministic Evaluation Suites
 │   │
-│   └── web/                  # Next.js 15 Web Application
-│       ├── app/              # App Router Pages & Layouts
-│       ├── components/       # UI, Layout, Theme, Financial, & AI Components
-│       ├── lib/              # Utils, Formatters, API Client, Auth Strategy
-│       ├── hooks/            # Custom Hooks (useAuth)
-│       └── __tests__/        # Frontend Unit & Component Tests
+│   └── web/                  # Vite 6 + React 19 Web Application
+│       ├── src/              # React Pages, Components, Services, & Auth Context
+│       │   ├── components/   # UI, Layout, Financial, & AI Assistant Components
+│       │   ├── lib/          # Utils, Formatters, API Client, Services & Auth Context
+│       │   └── pages/        # Route Pages (Dashboard, Accounts, Transactions, etc.)
+│       ├── e2e/              # Playwright Browser E2E Test Suite (42 tests)
+│       ├── src/__tests__/    # Vitest Unit & Integration Tests
+│       └── vite.config.ts    # Vite Configuration
 │
 ├── docs/                     # Architecture & Domain Documentation
 ├── .github/workflows/ci.yml  # GitHub Actions Quality Gates

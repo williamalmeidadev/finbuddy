@@ -13,7 +13,7 @@ test.describe("Authentication - Logout & Session Clear E2E", () => {
     await page.waitForURL(/\/app\/dashboard/);
 
     // Click Sign Out
-    await page.click("button:has-text('Sign out'), button:has-text('Logout')");
+    await page.click("button:has-text('Sign out'), button:has-text('Logout'), button:has-text('Sair da Conta')");
     await expect(page).toHaveURL(/\/login/);
 
     // Verify protected route access is denied after logout

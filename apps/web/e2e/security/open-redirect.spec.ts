@@ -7,8 +7,8 @@ test.describe("Security - Open Redirect Prevention E2E", () => {
 
     // Attempt login with malicious external redirect parameter
     await page.goto("/login?redirect=https://evil.example.com/phishing");
-    await page.fill("#login-email", user.email);
-    await page.fill("#login-password", user.password);
+    await page.fill("#email, #login-email", user.email);
+    await page.fill("#password, #login-password", user.password);
     await page.click("button[type='submit']");
 
     // Must redirect to internal /app/dashboard and NOT evil.example.com

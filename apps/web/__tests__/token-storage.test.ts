@@ -1,4 +1,4 @@
-import { tokenStorage } from "../lib/auth/token-storage";
+import { tokenStorage } from "../src/lib/auth/token-storage";
 
 describe("Token Storage Unit Tests", () => {
   beforeEach(() => {

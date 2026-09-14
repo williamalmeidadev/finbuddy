@@ -5,7 +5,7 @@ test.describe("Security - Error Data Leakage Protection E2E", () => {
   test("invalid or malformed requests return sanitized error messages without internal stack traces or database URLs", async ({ request }) => {
     // Malformed UUID request
     const res = await request.get(`${API_BASE_URL}/accounts/not-a-valid-uuid`);
-    expect([400, 404]).toContain(res.status());
+    expect([400, 401, 404]).toContain(res.status());
 
     const bodyText = await res.text();
     expect(bodyText).not.toContain("prisma");

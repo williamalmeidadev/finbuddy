@@ -5,7 +5,7 @@ test.describe("Security - XSS Payload Shielding E2E", () => {
   const xssPayloads = [
     "<script>alert(1)</script>",
     "<img src=x onerror=alert(1)>",
-    '\"><script>alert("XSS")</script>',
+    '"><script>alert("XSS")</script>',
     "javascript:alert(1)",
   ];
 
@@ -21,8 +21,8 @@ test.describe("Security - XSS Payload Shielding E2E", () => {
 
       // Login
       await page.goto("/login");
-      await page.fill("#login-email", user.email);
-      await page.fill("#login-password", user.password);
+      await page.fill("#email, #login-email", user.email);
+      await page.fill("#password, #login-password", user.password);
       await page.click("button[type='submit']");
       await page.waitForURL(/\/app\/dashboard/);
 

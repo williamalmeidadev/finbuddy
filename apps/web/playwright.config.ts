@@ -14,15 +14,17 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: "DATABASE_URL='postgresql://finbuddy:senhaDB232%40@localhost:5432/finbuddy' JWT_SECRET='NdOQ65X2opk54iL5AR1wg00LMTdivXxJfexziGVg3Ow=' PORT=3002 npm run start:prod --workspace=@finbuddy/api",
-      url: "http://localhost:3002/docs",
-      reuseExistingServer: true,
+      command: `DATABASE_URL="${process.env.DATABASE_URL || 'postgresql://finbuddy:senhaDB232%40@localhost:5432/finbuddy'}" JWT_SECRET="${process.env.JWT_SECRET || 'NdOQ65X2opk54iL5AR1wg00LMTdivXxJfexziGVg3Ow='}" PORT=3000 CORS_ORIGIN="http://localhost:3003" DISABLE_RATE_LIMIT=true THROTTLE_LIMIT=10000 THROTTLE_AUTH_LIMIT=10000 node dist/main.js`,
+      cwd: "../api",
+      url: "http://localhost:3000/docs",
+      reuseExistingServer: false,
       timeout: 120000,
     },
     {
-      command: "PORT=3003 NEXT_PUBLIC_API_URL=http://localhost:3002 npm run start --workspace=@finbuddy/web",
+      command: "VITE_API_URL=http://localhost:3000 npx vite --port 3003",
+      cwd: ".",
       url: "http://localhost:3003",
-      reuseExistingServer: true,
+      reuseExistingServer: false,
       timeout: 120000,
     },
   ],

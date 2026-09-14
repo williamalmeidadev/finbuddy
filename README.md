@@ -1,6 +1,6 @@
 # FinBuddy — Personal Financial Management & AI Assistant
 
-FinBuddy is a production-grade, full-stack personal finance application with a Next.js 15 web application, NestJS 11 backend API, PostgreSQL 17 database, and a production-hardened AI Agent automation engine.
+FinBuddy is a production-grade, full-stack personal finance application with a Vite + React web application, NestJS 11 backend API, PostgreSQL 17 database, and a production-hardened AI Agent automation engine.
 
 ## 1. Monorepo Architecture
 
@@ -8,7 +8,7 @@ FinBuddy is a production-grade, full-stack personal finance application with a N
 finbuddy/
 ├── apps/
 │   ├── api/                  # NestJS 11 Backend API Service & AI Agent
-│   └── web/                  # Next.js 15 Web Application (App Router, Tailwind, shadcn/ui)
+│   └── web/                  # Vite 6 + React 19 Web Application (React Router 7, Tailwind v4, Lucide)
 ├── docs/                     # Full Technical & AI Architecture Documentation
 ├── .github/workflows/ci.yml  # GitHub Actions Quality Gates
 ├── package.json              # Monorepo Workspace Configuration

@@ -1,6 +1,6 @@
 import { request, APIRequestContext } from "@playwright/test";
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002";
+export const API_BASE_URL = process.env.VITE_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
 export interface TestUser {
   id?: string;
@@ -25,11 +25,11 @@ export async function registerTestUser(
     data: { email, password: customPassword },
   });
 
-  let userId: string | undefined;
-  if (regRes.ok()) {
-    const body = await regRes.json();
-    userId = body.id;
+  if (!regRes.ok()) {
+    throw new Error(`Failed to register test user (${regRes.status()}): ${await regRes.text()}`);
   }
+  const body = await regRes.json();
+  const userId = body.id;
 
   const loginRes = await apiContext.post(`${API_BASE_URL}/auth/login`, {
     data: { email, password: customPassword },
@@ -52,12 +52,13 @@ export async function registerTestUser(
 export async function createTestAccount(
   apiContext: APIRequestContext,
   token: string,
-  accountData: { name: string; type: string; balance: number; currency?: string }
+  accountData: { name: string; type: string; balance: number; currency?: string; color?: string }
 ) {
   const res = await apiContext.post(`${API_BASE_URL}/accounts`, {
     headers: { Authorization: `Bearer ${token}` },
     data: {
       currency: "BRL",
+      color: "#820AD1",
       ...accountData,
     },
   });

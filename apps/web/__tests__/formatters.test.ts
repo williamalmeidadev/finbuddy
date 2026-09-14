@@ -3,7 +3,7 @@ import {
   formatPercentage,
   formatDate,
   getFinancialVariant,
-} from "../lib/formatters";
+} from "../src/lib/formatters";
 
 describe("Financial Formatters", () => {
   it("should format positive currency correctly", () => {

@@ -21,7 +21,7 @@ test.describe("Authentication - Login Flow E2E", () => {
     await page.fill("#password", "WrongPassword123!");
     await page.click("button[type='submit']");
 
-    await expect(page.locator(".bg-destructive\\/10")).toBeVisible();
+    await expect(page.locator(".text-destructive")).toBeVisible();
     await expect(page).toHaveURL(/\/login/);
   });
 

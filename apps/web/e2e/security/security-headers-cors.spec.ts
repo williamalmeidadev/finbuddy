@@ -3,7 +3,7 @@ import { API_BASE_URL } from "../helpers/test-fixtures";
 
 test.describe("Security - Security Headers & CORS Enforcement E2E", () => {
   test("API HTTP responses contain required security headers from Helmet", async ({ request }) => {
-    const res = await request.get(`${API_BASE_URL}/health`);
+    const res = await request.get(`${API_BASE_URL}/health/live`);
     expect(res.ok()).toBe(true);
 
     const headers = res.headers();
@@ -12,7 +12,7 @@ test.describe("Security - Security Headers & CORS Enforcement E2E", () => {
   });
 
   test("disallowed origins do not receive permissive Access-Control-Allow-Origin: *", async ({ request }) => {
-    const res = await request.get(`${API_BASE_URL}/health`, {
+    const res = await request.get(`${API_BASE_URL}/health/live`, {
       headers: { Origin: "https://disallowed-malicious-domain.com" },
     });
 

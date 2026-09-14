@@ -7,8 +7,8 @@ This document details the Playwright browser End-to-End (E2E) testing infrastruc
 ## 1. Overview & Setup
 
 ### 1.1 Infrastructure
-- **Framework**: Playwright (`@playwright/test` v1.63.0) with Chromium browser engine.
-- **Config**: Located at `apps/web/playwright.config.ts`. Automatically manages background NestJS API server (Port 3002) and Next.js Web App (Port 3003).
+- **Framework**: Playwright (`@playwright/test` v1.51.0) with Chromium browser engine.
+- **Config**: Located at `apps/web/playwright.config.ts`. Automatically manages background NestJS API server (Port 3000) and Vite Web App (Port 3003).
 
 ### 1.2 Execution Commands
 ```bash

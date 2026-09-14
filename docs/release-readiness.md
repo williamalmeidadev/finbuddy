@@ -13,11 +13,11 @@ This document serves as the official **Phase 24 Final Production & Release Audit
 | Domain | Audit Scope | Status | Verification Evidence |
 | :--- | :--- | :--- | :--- |
 | **Backend API** | NestJS 11, TypeScript strict, DTO validation (`whitelist: true`, `forbidNonWhitelisted: true`), Exception filters, Rate limiting | **PASSED** | 65 test suites, 926 unit tests passing (`npm test`) |
-| **Frontend Web** | Next.js 15, React 19, TypeScript strict, responsive design, accessible UI components | **PASSED** | 3 test suites, 12 unit tests passing (`npm run test:web`), zero console errors |
+| **Frontend Web** | Vite 6, React 19, React Router 7, Tailwind v4, Lucide React, TypeScript strict, responsive design | **PASSED** | 3 test suites, 12 unit tests passing (`npm run test:web`), zero console errors |
 | **Database & Schema** | PostgreSQL 17, Prisma 7, 15 migrations, indexed queries, isolated test schema | **PASSED** | `npm run prisma:validate` green, 18 API E2E test suites (226 tests) passing |
 | **Authentication & AuthZ** | JWT authentication, Argon2 hashing, refresh token rotation, strict user ownership filters | **PASSED** | Security E2E & unit tests, zero cross-user data leakage |
 | **AI Financial Agent** | OpenAI Responses API, system prompts, authorization wrapper, 8 read/write tools, confirmation workflow, bounded memory, audit log | **PASSED** | 465 deterministic AI scenarios passing (`npm run test:api:eval`) |
-| **Browser E2E** | Playwright test suite covering auth, dashboard, accounts, transactions, transfers, budgets, AI chat | **PASSED** | 42 Playwright browser tests passing (`npm run test:web:e2e`) |
+| **Browser E2E** | Playwright test suite covering auth, dashboard, accounts, transactions, transfers, budgets, recurring, AI chat, security | **PASSED** | 42 Playwright browser tests passing (`npm run test:web:e2e`) |
 | **Security Hardening** | Secret scanning, OWASP top 10 protection, CORS whitelist, helmet headers, rate limiters | **PASSED** | Clean git history, zero exposed credentials, clean lint (`npm run lint`) |
 | **Disaster Recovery** | Backup strategy, RPO (1h), RTO (1h), retention rules, restoration workflow | **PASSED** | Documented in `docs/backup-recovery.md` with script verification |
 
@@ -35,7 +35,7 @@ This document serves as the official **Phase 24 Final Production & Release Audit
 | `REFRESH_TOKEN_EXPIRES_IN` | API | Optional | Refresh token lifetime (`7d`) |
 | `OPENAI_API_KEY` | API | Yes | OpenAI API key for financial assistant |
 | `CORS_ORIGIN` | API | Yes | Allowed web frontend origin (`http://localhost:3003` or domain) |
-| `NEXT_PUBLIC_API_URL` | Web | Yes | Public backend API URL baked at Next.js build time |
+| `VITE_API_URL` | Web | Yes | Public backend API URL resolved at Vite build time (`http://localhost:3000`) |
 | `THROTTLE_TTL` | API | Optional | Rate limiter time window in seconds (`60`) |
 | `THROTTLE_LIMIT` | API | Optional | General endpoints rate limit (`100`) |
 | `THROTTLE_AUTH_LIMIT` | API | Optional | Auth endpoints rate limit (`10`) |
@@ -44,7 +44,7 @@ This document serves as the official **Phase 24 Final Production & Release Audit
 
 ## 4. Release Verification Checklist
 
-- [x] **Prisma Schema Validation:** `npx prisma validate` returns 0 errors.
+- [x] **Prisma Schema Validation:** `npm run prisma:validate` returns 0 errors.
 - [x] **Backend Unit Suite:** `npm test -- --runInBand` passes 926/926 tests.
 - [x] **Frontend Unit Suite:** `npm run test:web` passes 12/12 tests.
 - [x] **Backend E2E Suite:** `npm run test:api:e2e` passes 226/226 tests against PostgreSQL test DB.

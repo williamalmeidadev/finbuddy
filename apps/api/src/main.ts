@@ -8,7 +8,6 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  const nodeEnv = process.env.NODE_ENV ?? 'development';
   const rawSwagger = process.env.SWAGGER_ENABLED?.trim().toLowerCase();
   const swaggerEnabled =
     rawSwagger !== undefined
@@ -17,9 +16,7 @@ async function bootstrap() {
   const corsOrigin = process.env.CORS_ORIGIN;
 
   app.enableCors({
-    origin: corsOrigin
-      ? corsOrigin.split(',').map((o) => o.trim())
-      : true,
+    origin: corsOrigin ? corsOrigin.split(',').map((o) => o.trim()) : true,
     credentials: true,
   });
   app.use(

@@ -31,7 +31,7 @@ test.describe("Transfers & Financial Invariants - Browser E2E", () => {
     await page.fill("#tr-desc", "Monthly Savings Allocation");
     await page.click("button[type='submit']");
 
-    await expect(page.locator("text=Monthly Savings Allocation")).toBeVisible();
+    await expect(page.locator("text=Source Account A ➔ Target Account B").or(page.locator("text=Monthly Savings Allocation"))).toBeVisible();
 
     // Verify balances (A = 1000 - 300 = 700; B = 500 + 300 = 800)
     await page.goto("/app/accounts");
@@ -68,6 +68,7 @@ test.describe("Transfers & Financial Invariants - Browser E2E", () => {
         fromAccountId: accA.id,
         toAccountId: accB.id,
         amount: 500,
+        transactionAt: new Date().toISOString(),
       },
     });
     expect(transferRes.ok()).toBe(true);

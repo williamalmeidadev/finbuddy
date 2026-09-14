@@ -13,7 +13,8 @@ export class RateLimitGuard extends ThrottlerGuard {
   protected async shouldSkip(context: ExecutionContext): Promise<boolean> {
     const isRateLimitDisabled =
       process.env.DISABLE_RATE_LIMIT === 'true' ||
-      (process.env.THROTTLE_LIMIT && Number(process.env.THROTTLE_LIMIT) >= 1000);
+      (process.env.THROTTLE_LIMIT &&
+        Number(process.env.THROTTLE_LIMIT) >= 1000);
     if (isRateLimitDisabled) {
       return true;
     }

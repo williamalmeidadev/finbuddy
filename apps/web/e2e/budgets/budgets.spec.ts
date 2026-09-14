@@ -17,16 +17,14 @@ test.describe("Budgets & Scenario C - Browser E2E", () => {
     });
     const category = await catRes.json();
 
-    // 2. Create budget limit of 500 for category
-    const currentMonth = new Date().getMonth() + 1;
-    const currentYear = new Date().getFullYear();
+    const now = new Date();
+    const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const bdgRes = await request.post(`${API_BASE_URL}/budgets`, {
       headers: { Authorization: `Bearer ${user.accessToken}` },
       data: {
         categoryId: category.id,
         amount: 500,
-        month: currentMonth,
-        year: currentYear,
+        month: currentMonthStr,
       },
     });
     expect(bdgRes.ok()).toBe(true);
