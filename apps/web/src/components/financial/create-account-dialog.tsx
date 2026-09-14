@@ -49,8 +49,8 @@ export function CreateAccountDialog({
       onOpenChange(false);
       setName("");
       setBalance("0");
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to create account.");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to create account.");
     } finally {
       setIsLoading(false);
     }

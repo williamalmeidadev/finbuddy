@@ -47,8 +47,8 @@ export function CreateCategoryDialog({
       onSuccess?.(category);
       onOpenChange(false);
       setName("");
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to create category.");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to create category.");
     } finally {
       setIsLoading(false);
     }

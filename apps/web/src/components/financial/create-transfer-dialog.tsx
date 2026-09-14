@@ -76,8 +76,8 @@ export function CreateTransferDialog({
       onSuccess?.(transfer);
       onOpenChange(false);
       setAmount("");
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to execute transfer.");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to execute transfer.");
     } finally {
       setIsLoading(false);
     }

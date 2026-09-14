@@ -64,8 +64,8 @@ export function EditTransferDialog({
 
       onSuccess?.(updated);
       onOpenChange(false);
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to update transfer.");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to update transfer.");
     } finally {
       setIsLoading(false);
     }

@@ -55,8 +55,8 @@ export function EditBudgetDialog({
 
       onSuccess?.(updated);
       onOpenChange(false);
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to update budget limit.");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to update budget limit.");
     } finally {
       setIsLoading(false);
     }

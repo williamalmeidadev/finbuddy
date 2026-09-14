@@ -73,8 +73,8 @@ export function CreateTransactionDialog({
       onOpenChange(false);
       setAmount("");
       setDescription("");
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to create transaction.");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to create transaction.");
     } finally {
       setIsLoading(false);
     }

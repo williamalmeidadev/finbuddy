@@ -55,8 +55,8 @@ export function EditCategoryDialog({
 
       onSuccess?.(updated);
       onOpenChange(false);
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to update category.");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to update category.");
     } finally {
       setIsLoading(false);
     }

@@ -63,8 +63,8 @@ export function CreateBudgetDialog({
       onSuccess?.(budget);
       onOpenChange(false);
       setAmount("");
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to create budget limit.");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to create budget limit.");
     } finally {
       setIsLoading(false);
     }

@@ -55,8 +55,8 @@ export function EditAccountDialog({
 
       onSuccess?.(updated);
       onOpenChange(false);
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to update account.");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to update account.");
     } finally {
       setIsLoading(false);
     }

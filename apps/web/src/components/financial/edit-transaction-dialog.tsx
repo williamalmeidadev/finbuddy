@@ -78,8 +78,8 @@ export function EditTransactionDialog({
 
       onSuccess?.(updated);
       onOpenChange(false);
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to update transaction.");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to update transaction.");
     } finally {
       setIsLoading(false);
     }
