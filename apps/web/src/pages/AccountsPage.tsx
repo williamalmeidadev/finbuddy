@@ -259,14 +259,20 @@ export const AccountsPage: React.FC = () => {
 
       {/* Summary Card */}
       <Card className="shadow-sm bg-primary/5 border-primary/20">
-        <CardContent className="pt-6 flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">Saldo Consolidado Total</p>
-            <h2 className="text-3xl font-extrabold text-foreground mt-1">
-              {formatCurrency(totalBalance)}
-            </h2>
+        <CardContent className="p-6 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="p-3.5 rounded-2xl bg-primary/10 text-primary shrink-0 flex items-center justify-center shadow-2xs">
+              <Wallet className="h-8 w-8 text-primary" />
+            </div>
+            <div className="flex flex-col justify-center">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Saldo Consolidado Total
+              </p>
+              <h2 className="text-3xl font-extrabold text-foreground tracking-tight mt-0.5">
+                {formatCurrency(totalBalance)}
+              </h2>
+            </div>
           </div>
-          <Wallet className="h-10 w-10 text-primary opacity-80" />
         </CardContent>
       </Card>
 
