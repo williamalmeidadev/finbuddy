@@ -127,6 +127,7 @@ export const ExpenseCategoryChart: React.FC<ExpenseCategoryChartProps> = ({
                 <PieChart>
                   <ChartTooltip
                     cursor={false}
+                    wrapperStyle={{ zIndex: 1000, outline: "none" }}
                     content={
                       <ChartTooltipContent
                         hideLabel
