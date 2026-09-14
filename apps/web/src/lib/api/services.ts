@@ -92,10 +92,7 @@ export const transactionService = {
   create: (dto: CreateTransactionDto): Promise<ApiTransaction> =>
     apiClient<ApiTransaction>("/transactions", {
       method: "POST",
-      body: JSON.stringify({
-        transactionAt: new Date().toISOString(),
-        ...dto,
-      }),
+      body: JSON.stringify(dto),
     }),
   update: (id: string, dto: UpdateTransactionDto): Promise<ApiTransaction> =>
     apiClient<ApiTransaction>(`/transactions/${id}`, {
@@ -188,12 +185,7 @@ export const recurringService = {
   create: (dto: CreateRecurringTransactionDto): Promise<ApiRecurringTransaction> =>
     apiClient<ApiRecurringTransaction>("/recurring-transactions", {
       method: "POST",
-      body: JSON.stringify({
-        frequency: "MONTHLY",
-        type: "EXPENSE",
-        startDate: new Date().toISOString().substring(0, 10),
-        ...dto,
-      }),
+      body: JSON.stringify(dto),
     }),
   update: (id: string, dto: UpdateRecurringTransactionDto): Promise<ApiRecurringTransaction> =>
     apiClient<ApiRecurringTransaction>(`/recurring-transactions/${id}`, {
@@ -236,8 +228,8 @@ export const aiService = {
       body: JSON.stringify({ message, conversationId }),
     }),
 
-  listConversations: (page = 1, limit = 20): Promise<{ data: ConversationItem[]; total: number }> =>
-    apiClient<{ data: ConversationItem[]; total: number }>(
+  listConversations: (page = 1, limit = 20): Promise<{ items: ConversationItem[]; data?: ConversationItem[]; total: number }> =>
+    apiClient<{ items: ConversationItem[]; data?: ConversationItem[]; total: number }>(
       `/ai-agent/conversations?page=${page}&limit=${limit}`
     ),
 
@@ -251,8 +243,8 @@ export const aiService = {
     conversationId: string,
     page = 1,
     limit = 50
-  ): Promise<{ data: ConversationMessage[]; total: number }> =>
-    apiClient<{ data: ConversationMessage[]; total: number }>(
+  ): Promise<{ items: ConversationMessage[]; data?: ConversationMessage[]; total: number }> =>
+    apiClient<{ items: ConversationMessage[]; data?: ConversationMessage[]; total: number }>(
       `/ai-agent/conversations/${conversationId}/messages?page=${page}&limit=${limit}`
     ),
 

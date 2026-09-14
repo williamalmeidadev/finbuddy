@@ -39,7 +39,8 @@ export const AiAssistantPage: React.FC = () => {
     setIsConversationsLoading(true);
     try {
       const res = await aiService.listConversations();
-      setConversations(res.data || []);
+      const list = res.items || res.data || [];
+      setConversations(list);
     } catch {
       // Non-blocking
     } finally {
@@ -56,9 +57,10 @@ export const AiAssistantPage: React.FC = () => {
     setError("");
     try {
       const res = await aiService.getConversationMessages(convId);
-      const items: LocalMessage[] = (res.data || []).map((m: ConversationMessage) => ({
+      const list = res.items || res.data || [];
+      const items: LocalMessage[] = list.map((m: ConversationMessage) => ({
         id: m.id,
-        role: m.role === "user" ? "user" : "assistant",
+        role: String(m.role).toLowerCase() === "user" ? "user" : "assistant",
         content: m.content,
         timestamp: new Date(m.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
       }));

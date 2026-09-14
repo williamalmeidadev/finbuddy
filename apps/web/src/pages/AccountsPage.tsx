@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import {
   Wallet,
   Landmark,
@@ -18,6 +19,7 @@ import {
   AlertTriangle,
   Edit2,
   RefreshCw,
+  Power,
 } from "lucide-react";
 
 type AccountTypeUI = "CHECKING" | "SAVINGS" | "CREDIT_CARD" | "INVESTMENT" | "CASH";
@@ -39,6 +41,7 @@ export const AccountsPage: React.FC = () => {
   const [editingAccount, setEditingAccount] = useState<ApiAccount | null>(null);
   const [editName, setEditName] = useState("");
   const [editType, setEditType] = useState<AccountTypeUI>("CHECKING");
+  const [editIsActive, setEditIsActive] = useState<boolean>(true);
 
   // Delete State
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -125,6 +128,7 @@ export const AccountsPage: React.FC = () => {
     setEditingAccount(acc);
     setEditName(acc.name);
     setEditType(acc.type as AccountTypeUI);
+    setEditIsActive(acc.isActive);
     setIsEditOpen(true);
   };
 
@@ -136,6 +140,7 @@ export const AccountsPage: React.FC = () => {
       await accountService.update(editingAccount.id, {
         name: editName,
         type: editType,
+        isActive: editIsActive,
       });
       setIsEditOpen(false);
       setEditingAccount(null);
@@ -154,6 +159,15 @@ export const AccountsPage: React.FC = () => {
       await loadAccounts();
     } catch (err: any) {
       alert(err?.message || "Erro ao desativar conta.");
+    }
+  };
+
+  const handleReactivate = async (id: string) => {
+    try {
+      await accountService.update(id, { isActive: true });
+      await loadAccounts();
+    } catch (err: any) {
+      alert(err?.message || "Erro ao reativar conta.");
     }
   };
 
@@ -257,11 +271,23 @@ export const AccountsPage: React.FC = () => {
               <CardHeader className="flex flex-row items-center justify-between pb-4">
                 <div>
                   <CardTitle className="text-lg font-bold">{acc.name}</CardTitle>
-                  <CardDescription className="text-xs font-semibold uppercase text-muted-foreground mt-0.5">
-                    {getAccountTypeName(acc.type)} {!acc.isActive && "(Inactive)"}
-                  </CardDescription>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <CardDescription className="text-xs font-semibold uppercase text-muted-foreground">
+                      {getAccountTypeName(acc.type)}
+                    </CardDescription>
+                    <Badge
+                      variant={acc.isActive ? "outline" : "destructive"}
+                      className={
+                        acc.isActive
+                          ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-bold text-[10px] px-2 py-0.5"
+                          : "bg-amber-500/10 text-amber-600 border-amber-500/20 font-bold text-[10px] px-2 py-0.5"
+                      }
+                    >
+                      {acc.isActive ? "Ativa" : "Desativada"}
+                    </Badge>
+                  </div>
                 </div>
-                <div className="p-2.5 rounded-xl bg-primary shadow-sm">
+                <div className={`p-2.5 rounded-xl ${acc.isActive ? "bg-primary" : "bg-muted-foreground/40"} shadow-sm`}>
                   {getAccountIcon(acc.type)}
                 </div>
               </CardHeader>
@@ -285,15 +311,27 @@ export const AccountsPage: React.FC = () => {
                   <Edit2 className="h-3.5 w-3.5" />
                   Edit / Editar
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs text-muted-foreground hover:text-destructive h-8 px-2 flex items-center gap-1.5"
-                  onClick={() => setDeleteConfirmId(acc.id)}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Deactivate / Desativar
-                </Button>
+                {acc.isActive ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs text-muted-foreground hover:text-destructive h-8 px-2 flex items-center gap-1.5"
+                    onClick={() => setDeleteConfirmId(acc.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Deactivate / Desativar
+                  </Button>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 h-8 px-2 flex items-center gap-1.5 font-semibold"
+                    onClick={() => handleReactivate(acc.id)}
+                  >
+                    <Power className="h-3.5 w-3.5" />
+                    Reactivate / Reativar
+                  </Button>
+                )}
               </CardFooter>
             </Card>
           ))}
@@ -332,6 +370,19 @@ export const AccountsPage: React.FC = () => {
                   <option value="CREDIT_CARD">Cartão de Crédito (CREDIT_CARD)</option>
                   <option value="CASH">Dinheiro (CASH)</option>
                   <option value="INVESTMENT">Investimentos (INVESTMENT)</option>
+                </select>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="edit-acc-status">Status da Conta</Label>
+                <select
+                  id="edit-acc-status"
+                  className="w-full p-2 border rounded-md bg-background text-sm font-medium"
+                  value={editIsActive ? "active" : "inactive"}
+                  onChange={(e) => setEditIsActive(e.target.value === "active")}
+                >
+                  <option value="active">Ativa</option>
+                  <option value="inactive">Desativada / Inativa</option>
                 </select>
               </div>
             </div>

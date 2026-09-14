@@ -48,6 +48,7 @@ export interface UpdateAccountDto {
   name?: string;
   type?: "CHECKING" | "SAVINGS" | "CREDIT_CARD" | "INVESTMENT" | "CASH";
   currency?: string;
+  isActive?: boolean;
 }
 
 export interface ApiTransaction {
@@ -109,12 +110,14 @@ export interface CreateTransferDto {
   toAccountId: string;
   amount: number;
   transferredAt?: string;
+  transactionAt?: string;
   description?: string;
 }
 
 export interface UpdateTransferDto {
   amount?: number;
   transferredAt?: string;
+  transactionAt?: string;
   description?: string;
 }
 
@@ -162,9 +165,9 @@ export interface ApiBudget {
 
 export interface CreateBudgetDto {
   categoryId: string;
-  month: number;
-  year: number;
+  month: string;
   amount: number;
+  year?: number;
 }
 
 export interface UpdateBudgetDto {
@@ -198,10 +201,11 @@ export interface CreateRecurringTransactionDto {
   type: "INCOME" | "EXPENSE";
   amount: number;
   frequency: RecurrenceFrequency;
+  startDate: string;
+  categoryId?: string;
   interval?: number;
   description?: string;
-  nextDueDate: string;
-  categoryId?: string;
+  nextDueDate?: string;
 }
 
 export interface UpdateRecurringTransactionDto {
