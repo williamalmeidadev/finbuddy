@@ -79,11 +79,11 @@ class EnvironmentVariables {
 
   @IsNumber()
   @IsOptional()
-  THROTTLE_LIMIT?: number = 100;
+  THROTTLE_LIMIT?: number = 1000;
 
   @IsNumber()
   @IsOptional()
-  THROTTLE_AUTH_LIMIT?: number = 10;
+  THROTTLE_AUTH_LIMIT?: number = 200;
 
   @IsString()
   @IsOptional()
@@ -91,7 +91,7 @@ class EnvironmentVariables {
 
   @IsString()
   @IsOptional()
-  OPENAI_MODEL?: string = 'gpt-5.5';
+  OPENAI_MODEL?: string = 'gpt-4o-mini';
 
   @IsNumber()
   @IsOptional()
@@ -107,7 +107,7 @@ class EnvironmentVariables {
 
   @IsNumber()
   @IsOptional()
-  AI_THROTTLE_LIMIT?: number = 20;
+  AI_THROTTLE_LIMIT?: number = 100;
 
   @IsNumber()
   @IsOptional()

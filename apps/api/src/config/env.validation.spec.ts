@@ -22,8 +22,8 @@ describe('Environment Validation', () => {
     expect(config.RECURRING_TRANSACTION_AUTOMATION_ENABLED).toBe(true);
     expect(config.RECURRING_TRANSACTION_AUTOMATION_CRON).toBe('* * * * *');
     expect(config.THROTTLE_TTL).toBe(60000);
-    expect(config.THROTTLE_LIMIT).toBe(100);
-    expect(config.THROTTLE_AUTH_LIMIT).toBe(10);
+    expect(config.THROTTLE_LIMIT).toBe(1000);
+    expect(config.THROTTLE_AUTH_LIMIT).toBe(200);
   });
 
   it('should apply OpenAI environment variable defaults when omitted', () => {
@@ -34,7 +34,7 @@ describe('Environment Validation', () => {
       PORT: 3000,
     });
 
-    expect(config.OPENAI_MODEL).toBe('gpt-5.5');
+    expect(config.OPENAI_MODEL).toBe('gpt-4o-mini');
     expect(config.OPENAI_TIMEOUT_MS).toBe(30000);
   });
 
