@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ExpenseCategoryChart } from "@/components/dashboard/expense-category-chart";
 import {
   TrendingUp,
   TrendingDown,
@@ -407,6 +408,9 @@ export const DashboardPage: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Expense Category Pie Chart */}
+      <ExpenseCategoryChart transactions={transactions} categories={categories} />
 
       {/* Main Grid: Accounts & Recent Transactions */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
