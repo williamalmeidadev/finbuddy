@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ArrowRightLeft, PlusCircle, Trash2, Calendar, RefreshCw, AlertCircle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowRightLeft, PlusCircle, Trash2, Calendar, RefreshCw, AlertCircle, Search, Filter } from "lucide-react";
 
 export const TransfersPage: React.FC = () => {
   const { data: transfers = [], isLoading: isTrLoading, error: trError, refetch: refetchTr } = useTransfers();
@@ -33,6 +34,10 @@ export const TransfersPage: React.FC = () => {
 
   // Delete modal state
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  // Search & Filter state
+  const [searchTerm, setSearchTerm] = useState("");
+  const [accountFilter, setAccountFilter] = useState("ALL");
 
   const handleRefresh = () => {
     refetchTr();
@@ -104,6 +109,25 @@ export const TransfersPage: React.FC = () => {
       alert(err instanceof Error ? err.message : "Erro ao estornar transferência.");
     }
   };
+
+  // Client-side search filtering
+  const filteredTransfers = transfers.filter((tr) => {
+    const matchesAccount =
+      accountFilter === "ALL" ||
+      tr.fromAccountId === accountFilter ||
+      tr.toAccountId === accountFilter ||
+      tr.fromAccount?.id === accountFilter ||
+      tr.toAccount?.id === accountFilter;
+
+    if (!matchesAccount) return false;
+    if (!searchTerm) return true;
+
+    const term = searchTerm.toLowerCase();
+    const descMatch = tr.description?.toLowerCase().includes(term);
+    const fromMatch = (tr.fromAccount?.name || tr.sourceAccount?.name)?.toLowerCase().includes(term);
+    const toMatch = (tr.toAccount?.name || tr.destinationAccount?.name)?.toLowerCase().includes(term);
+    return descMatch || fromMatch || toMatch;
+  });
 
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 min-w-0 pb-12">
@@ -202,7 +226,7 @@ export const TransfersPage: React.FC = () => {
                     </Label>
                     <Input
                       id="description"
-                      placeholder="Ex: Reserva de emergência, etc."
+                      placeholder="Ex: Reserva de emergência"
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       className="col-span-3"
@@ -215,7 +239,7 @@ export const TransfersPage: React.FC = () => {
                     Cancelar
                   </Button>
                   <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? "Processando..." : "Confirmar Transferência"}
+                    {isSubmitting ? "Transferindo..." : "Confirmar Transferência"}
                   </Button>
                 </DialogFooter>
               </form>
@@ -240,24 +264,57 @@ export const TransfersPage: React.FC = () => {
         </div>
       )}
 
+      {/* Filter & Search Bar */}
+      <Card className="shadow-sm">
+        <CardContent className="p-3.5 md:px-4 md:py-3 flex flex-col md:flex-row items-center justify-between gap-3">
+          <div className="relative w-full md:w-80 flex items-center">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder="Buscar por descrição ou conta..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 h-9 text-sm"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
+            <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">Filtrar por conta:</span>
+            <Select value={accountFilter} onValueChange={(v) => setAccountFilter(v || "ALL")}>
+              <SelectTrigger className="w-[170px] h-9">
+                <SelectValue placeholder="Todas as Contas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Todas as Contas</SelectItem>
+                {accounts.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Transfers List */}
       <Card className="shadow-sm">
         <CardHeader>
           <CardTitle className="text-lg font-semibold">Histórico de Transferências</CardTitle>
           <CardDescription>
-            {transfers.length} transferências registradas entre contas.
+            Exibindo {filteredTransfers.length} de {transfers.length} transferências registradas entre contas.
           </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="text-center py-12 text-muted-foreground">Carregando transferências...</div>
-          ) : transfers.length === 0 ? (
+          ) : filteredTransfers.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
-              Nenhuma transferência cadastrada até o momento.
+              Nenhuma transferência encontrada para os filtros selecionados.
             </div>
           ) : (
             <div className="space-y-3">
-              {transfers.map((tr) => (
+              {filteredTransfers.map((tr) => (
                 <div
                   key={tr.id}
                   className="flex items-center justify-between p-3.5 rounded-lg border bg-card hover:bg-accent/40 transition-colors"
@@ -280,16 +337,17 @@ export const TransfersPage: React.FC = () => {
                           {formatDate(tr.transferredAt || tr.createdAt)}
                         </span>
                         {tr.description && (
-                          <span className="truncate max-w-[200px]">
-                            • {tr.description}
-                          </span>
+                          <>
+                            <span>•</span>
+                            <span className="truncate max-w-[200px]">{tr.description}</span>
+                          </>
                         )}
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className="font-bold text-base text-blue-600 dark:text-blue-400">
+                  <div className="flex items-center space-x-3 shrink-0">
+                    <span className="font-semibold text-base text-foreground">
                       {formatCurrency(tr.amount)}
                     </span>
 
@@ -299,23 +357,25 @@ export const TransfersPage: React.FC = () => {
                           size="xs"
                           variant="destructive"
                           onClick={() => handleDelete(tr.id)}
+                          disabled={deleteTransfer.isPending}
                         >
-                          Sim
+                          Confirmar
                         </Button>
                         <Button
                           size="xs"
                           variant="ghost"
                           onClick={() => setDeleteConfirmId(null)}
                         >
-                          Não
+                          X
                         </Button>
                       </div>
                     ) : (
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-red-500"
+                        className="text-muted-foreground hover:text-red-500 h-8 w-8"
                         onClick={() => setDeleteConfirmId(tr.id)}
+                        title="Estornar transferência"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

@@ -7,7 +7,101 @@ import { cn } from "@/lib/utils"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { UnfoldMoreIcon, Tick02Icon, ArrowUp01Icon, ArrowDown01Icon } from "@hugeicons/core-free-icons"
 
-const Select = SelectPrimitive.Root
+type SelectItemsContextType = {
+  registerItem: (value: any, label: React.ReactNode) => void
+}
+
+const SelectItemsContext = React.createContext<SelectItemsContextType | null>(null)
+
+function extractTextFromChildren(node: React.ReactNode): string {
+  if (node == null) return ""
+  if (typeof node === "string" || typeof node === "number") return String(node)
+  if (Array.isArray(node)) return node.map(extractTextFromChildren).join("").trim()
+  if (React.isValidElement(node) && node.props && (node.props as { children?: React.ReactNode }).children) {
+    return extractTextFromChildren((node.props as { children?: React.ReactNode }).children)
+  }
+  return ""
+}
+
+function extractItemsFromChildren(children: React.ReactNode): { value: any; label: React.ReactNode }[] {
+  const items: { value: any; label: React.ReactNode }[] = []
+
+  function walk(node: React.ReactNode) {
+    if (node == null) return
+    if (Array.isArray(node)) {
+      node.forEach(walk)
+      return
+    }
+    if (!React.isValidElement(node)) return
+
+    const props = node.props as Record<string, any>
+    if (props) {
+      if ("value" in props && props.value !== undefined) {
+        const textLabel = props.label ?? extractTextFromChildren(props.children)
+        items.push({ value: props.value, label: textLabel || String(props.value) })
+      }
+      if (props.children) {
+        walk(props.children)
+      }
+    }
+  }
+
+  walk(children)
+  return items
+}
+
+function Select({ children, items: itemsProp, ...props }: SelectPrimitive.Root.Props<any> & { items?: any }) {
+  const [registeredItems, setRegisteredItems] = React.useState<Map<any, React.ReactNode>>(() => new Map())
+
+  const registerItem = React.useCallback((value: any, label: React.ReactNode) => {
+    setRegisteredItems((prev) => {
+      if (prev.get(value) === label) return prev
+      const next = new Map(prev)
+      next.set(value, label)
+      return next
+    })
+  }, [])
+
+  const extractedItems = React.useMemo(() => {
+    return extractItemsFromChildren(children)
+  }, [children])
+
+  const mergedItems = React.useMemo(() => {
+    const map = new Map<any, React.ReactNode>()
+
+    for (const item of extractedItems) {
+      map.set(item.value, item.label)
+    }
+
+    registeredItems.forEach((label, val) => {
+      map.set(val, label)
+    })
+
+    if (itemsProp) {
+      if (Array.isArray(itemsProp)) {
+        for (const item of itemsProp as any[]) {
+          if (item && item.value !== undefined) {
+            map.set(item.value, item.label ?? item.value)
+          }
+        }
+      } else if (typeof itemsProp === "object") {
+        for (const [val, label] of Object.entries(itemsProp as Record<string, React.ReactNode>)) {
+          map.set(val, label)
+        }
+      }
+    }
+
+    return Array.from(map.entries()).map(([value, label]) => ({ value, label }))
+  }, [extractedItems, registeredItems, itemsProp])
+
+  return (
+    <SelectItemsContext.Provider value={{ registerItem }}>
+      <SelectPrimitive.Root items={mergedItems} {...props}>
+        {children}
+      </SelectPrimitive.Root>
+    </SelectItemsContext.Provider>
+  )
+}
 
 function SelectGroup({ className, ...props }: SelectPrimitive.Group.Props) {
   return (
@@ -112,11 +206,24 @@ function SelectLabel({
 function SelectItem({
   className,
   children,
+  label,
+  value,
   ...props
 }: SelectPrimitive.Item.Props) {
+  const textLabel = label ?? extractTextFromChildren(children)
+  const context = React.useContext(SelectItemsContext)
+
+  React.useEffect(() => {
+    if (context && value !== undefined) {
+      context.registerItem(value, textLabel || children)
+    }
+  }, [context, value, textLabel, children])
+
   return (
     <SelectPrimitive.Item
       data-slot="select-item"
+      label={textLabel}
+      value={value}
       className={cn(
         "relative flex w-full cursor-default items-center gap-2.5 rounded-2xl py-2 pe-8 ps-3 text-sm font-medium outline-hidden select-none focus:bg-accent focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
         className

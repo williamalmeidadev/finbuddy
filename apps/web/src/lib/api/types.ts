@@ -100,10 +100,10 @@ export interface ApiTransfer {
   transactionAt?: string;
   description?: string | null;
   createdAt: string;
-  sourceAccount?: { name: string };
-  destinationAccount?: { name: string };
-  fromAccount?: { name: string };
-  toAccount?: { name: string };
+  sourceAccount?: { id?: string; name: string };
+  destinationAccount?: { id?: string; name: string };
+  fromAccount?: { id?: string; name: string };
+  toAccount?: { id?: string; name: string };
 }
 
 export interface CreateTransferDto {

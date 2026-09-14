@@ -323,7 +323,7 @@ export const AccountsPage: React.FC = () => {
                 </div>
               </CardContent>
 
-              <CardFooter className="pt-2 border-t bg-muted/20 flex items-center justify-between">
+              <CardFooter className="py-3 border-t bg-muted/20 flex items-center justify-between">
                 <Button
                   variant="ghost"
                   size="sm"

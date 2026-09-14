@@ -8,7 +8,6 @@ import {
 } from "@/lib/queries";
 import { aiService, ConversationItem, ConversationMessage } from "@/lib/api/services";
 import { ApiAgentResponse, ApiAgentConfirmation } from "@/lib/api/types";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmationCard } from "@/components/ai/confirmation-card";
@@ -20,6 +19,7 @@ interface LocalMessage {
   role: "user" | "assistant";
   content: string;
   timestamp?: string;
+  isThinking?: boolean;
   confirmation?: ApiAgentConfirmation & {
     status?: "pending" | "confirmed" | "cancelled" | "executing" | "expired";
   };
@@ -34,7 +34,6 @@ export const AiAssistantPage: React.FC = () => {
   const {
     data: messagesRes,
     isLoading: isMsgsLoading,
-    error: msgsError,
     refetch: refetchMsgs,
   } = useConversationMessages(activeConversationId);
 
@@ -131,7 +130,15 @@ export const AiAssistantPage: React.FC = () => {
       timestamp: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
     };
 
-    setLocalMessages((prev) => [...prev, newMsg]);
+    const pendingAssistantMsgId = "pending-assistant-" + Date.now();
+    const pendingMsg: LocalMessage = {
+      id: pendingAssistantMsgId,
+      role: "assistant",
+      content: "...",
+      isThinking: true,
+    };
+
+    setLocalMessages((prev) => [...prev, newMsg, pendingMsg]);
     setTimeout(scrollToBottom, 50);
 
     try {
@@ -153,8 +160,11 @@ export const AiAssistantPage: React.FC = () => {
         confirmation: response.type === "confirmation_required" ? response.confirmation : undefined,
       };
 
-      setLocalMessages((prev) => [...prev, assistantMsg]);
+      setLocalMessages((prev) =>
+        prev.map((m) => (m.id === pendingAssistantMsgId ? assistantMsg : m))
+      );
     } catch (err: unknown) {
+      setLocalMessages((prev) => prev.filter((m) => m.id !== pendingAssistantMsgId));
       setError(
         err instanceof Error
           ? err.message
@@ -253,9 +263,9 @@ export const AiAssistantPage: React.FC = () => {
     <div className="flex-1 flex flex-col md:flex-row h-[calc(100vh-4rem)] overflow-hidden min-w-0">
       {/* Sidebar: Conversation List */}
       <div className="w-full md:w-80 border-r bg-card flex flex-col shrink-0">
-        <div className="p-4 border-b flex items-center justify-between">
+        <div className="h-16 px-4 border-b flex items-center justify-between shrink-0 bg-card">
           <div className="flex items-center gap-2">
-            <Bot className="h-5 w-5 text-primary" />
+            <Bot className="h-5 w-5 text-primary shrink-0" />
             <h2 className="font-bold text-base text-foreground">Conversas IA</h2>
           </div>
           <Button size="sm" onClick={handleNewConversation}>
@@ -266,7 +276,7 @@ export const AiAssistantPage: React.FC = () => {
 
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
           {isConvsLoading ? (
-            <div className="text-center py-8 text-xs text-muted-foreground">Carregando histório...</div>
+            <div className="text-center py-8 text-xs text-muted-foreground">Carregando histórico...</div>
           ) : conversations.length === 0 ? (
             <div className="text-center py-8 text-xs text-muted-foreground px-4">
               Nenhuma conversa iniciada. Clique em "Nova" para conversar com o FinBuddy IA.
@@ -303,20 +313,28 @@ export const AiAssistantPage: React.FC = () => {
       {/* Main Chat Interface */}
       <div className="flex-1 flex flex-col h-full bg-background min-w-0">
         {/* Chat Header */}
-        <div className="p-4 border-b bg-card flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-primary/10 text-primary">
+        <div className="h-16 px-4 border-b bg-card flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3 min-w-0 pr-2">
+            <div className="p-2 rounded-xl bg-primary/10 text-primary shrink-0">
               <Bot className="h-5 w-5" />
             </div>
-            <div>
-              <h3 className="font-bold text-sm text-foreground">Assistente Financeiro FinBuddy</h3>
-              <p className="text-xs text-muted-foreground">
+            <div className="min-w-0">
+              <h3 className="font-bold text-sm text-foreground leading-tight truncate">Assistente Financeiro FinBuddy</h3>
+              <p className="text-xs text-muted-foreground truncate">
                 Pergunte sobre saldos, extratos ou peça para agendar transações
               </p>
             </div>
           </div>
 
-          <Button variant="ghost" size="sm" onClick={() => { refetchConvs(); if (activeConversationId) refetchMsgs(); }}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="shrink-0"
+            onClick={() => {
+              refetchConvs();
+              if (activeConversationId) refetchMsgs();
+            }}
+          >
             <RefreshCw className={`h-4 w-4 ${isMsgsLoading ? "animate-spin" : ""}`} />
           </Button>
         </div>
@@ -338,6 +356,7 @@ export const AiAssistantPage: React.FC = () => {
                   role={msg.role}
                   content={msg.content}
                   timestamp={msg.timestamp}
+                  isThinking={msg.isThinking}
                 />
 
                 {/* Confirmation Card Overlay */}

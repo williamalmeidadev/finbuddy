@@ -7,13 +7,13 @@ import {
   useDeleteBudget,
 } from "@/lib/queries";
 import { ApiBudget } from "@/lib/api/types";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Target, PlusCircle, Trash2, Edit2, RefreshCw, AlertCircle } from "lucide-react";
+import { Target, PlusCircle, Trash2, Edit2, RefreshCw, AlertCircle, Filter } from "lucide-react";
 
 export const BudgetsPage: React.FC = () => {
   const currentDate = new Date();
@@ -205,10 +205,13 @@ export const BudgetsPage: React.FC = () => {
 
       {/* Month/Year Filter Selector */}
       <Card className="shadow-sm">
-        <CardContent className="pt-6 flex items-center gap-4">
-          <span className="text-sm font-medium text-muted-foreground">Mês de Referência:</span>
+        <CardContent className="p-3.5 md:px-4 md:py-3 flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
+            <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">Mês de Referência:</span>
+          </div>
           <Select value={month.toString()} onValueChange={(v) => v && setMonth(parseInt(v))}>
-            <SelectTrigger className="w-[140px]">
+            <SelectTrigger className="w-[140px] h-9">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -228,7 +231,7 @@ export const BudgetsPage: React.FC = () => {
           </Select>
 
           <Select value={year.toString()} onValueChange={(v) => v && setYear(parseInt(v))}>
-            <SelectTrigger className="w-[100px]">
+            <SelectTrigger className="w-[100px] h-9">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -306,7 +309,7 @@ export const BudgetsPage: React.FC = () => {
                   </p>
                 </CardContent>
 
-                <div className="p-3 border-t bg-muted/20 flex items-center justify-between">
+                <CardFooter className="py-3 border-t bg-muted/20 flex items-center justify-between">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -345,7 +348,7 @@ export const BudgetsPage: React.FC = () => {
                       Excluir
                     </Button>
                   )}
-                </div>
+                </CardFooter>
               </Card>
             );
           })}
