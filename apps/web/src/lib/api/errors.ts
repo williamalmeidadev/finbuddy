@@ -15,19 +15,20 @@ export class ApiError extends Error {
     this.errorDetails = errorDetails;
   }
 
-  static fromResponse(statusCode: number, data?: any): ApiError {
+  static fromResponse(statusCode: number, data?: unknown): ApiError {
     let message = "An error occurred while communicating with the server.";
     if (data && typeof data === "object") {
-      if (typeof data.message === "string") {
-        message = data.message;
-      } else if (Array.isArray(data.message) && data.message.length > 0) {
-        message = data.message.join(", ");
+      const d = data as Record<string, unknown>;
+      if (typeof d.message === "string") {
+        message = d.message;
+      } else if (Array.isArray(d.message) && d.message.length > 0) {
+        message = (d.message as string[]).join(", ");
       }
     }
 
     if (statusCode === 401) {
-      message = (data && typeof data === "object" && typeof data.message === "string")
-        ? data.message
+      message = (data && typeof data === "object" && typeof (data as Record<string, unknown>).message === "string")
+        ? (data as Record<string, unknown>).message as string
         : "Session expired or unauthorized. Please log in again.";
     } else if (statusCode === 403) {
       message = "You do not have permission to perform this action.";

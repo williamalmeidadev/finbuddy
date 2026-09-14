@@ -7,11 +7,10 @@ export interface RequestOptions extends RequestInit {
 }
 
 export function getBaseUrl(): string {
-  if (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
-  }
-  if (typeof process !== "undefined" && process.env && (process.env.VITE_API_URL || process.env.NEXT_PUBLIC_API_URL)) {
-    return process.env.VITE_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+  // Vite exposes environment variables exclusively through import.meta.env at build time.
+  // process.env is a Node.js API and is NOT available in browser builds.
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL as string;
   }
   return "http://localhost:3000";
 }
