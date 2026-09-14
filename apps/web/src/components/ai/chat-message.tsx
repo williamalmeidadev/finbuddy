@@ -50,149 +50,298 @@ function parseInlineMarkdown(text: string, isUser: boolean): React.ReactNode[] {
   });
 }
 
+function isDelimiterRow(line: string): boolean {
+  const trimmed = line.trim();
+  if (!trimmed.includes("-")) return false;
+  return /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?\s*$/.test(trimmed);
+}
+
+function splitTableRow(line: string): string[] {
+  let trimmed = line.trim();
+  if (trimmed.startsWith("|")) {
+    trimmed = trimmed.substring(1);
+  }
+  if (trimmed.endsWith("|") && !trimmed.endsWith("\\|")) {
+    trimmed = trimmed.substring(0, trimmed.length - 1);
+  }
+  const rawCells = trimmed.split(/(?<!\\)\|/);
+  return rawCells.map((cell) => cell.replace(/\\\|/g, "|").trim());
+}
+
+function parseTableAlignments(delimiterLine: string): Array<"left" | "center" | "right"> {
+  const rawCells = splitTableRow(delimiterLine);
+  return rawCells.map((cell) => {
+    const c = cell.trim();
+    const startsWithColon = c.startsWith(":");
+    const endsWithColon = c.endsWith(":");
+    if (startsWithColon && endsWithColon) return "center";
+    if (endsWithColon) return "right";
+    if (startsWithColon) return "left";
+    return "left";
+  });
+}
+
 function FormattedText({ content, isUser }: { content: string; isUser: boolean }) {
   const lines = content.split("\n");
+  const blocks: React.ReactNode[] = [];
+  let i = 0;
 
-  return (
-    <div className="space-y-1.5 break-words">
-      {lines.map((line, lineIndex) => {
-        const trimmed = line.trim();
+  while (i < lines.length) {
+    const line = lines[i];
+    const trimmed = line.trim();
 
-        if (trimmed === "") {
-          return <div key={lineIndex} className="h-1" />;
+    // Check if line i starts a Markdown Table
+    const isHeaderCandidate = line.includes("|");
+    const nextIsDelimiter = i + 1 < lines.length && isDelimiterRow(lines[i + 1]);
+
+    if (isHeaderCandidate && nextIsDelimiter) {
+      const headerLine = lines[i];
+      const delimiterLine = lines[i + 1];
+      const headers = splitTableRow(headerLine);
+      const alignments = parseTableAlignments(delimiterLine);
+
+      const rows: string[][] = [];
+      i += 2; // skip header and delimiter
+
+      while (i < lines.length) {
+        const rowLine = lines[i];
+        const rowTrimmed = rowLine.trim();
+        if (rowTrimmed === "" || !rowLine.includes("|")) {
+          break;
         }
+        rows.push(splitTableRow(rowLine));
+        i++;
+      }
 
-        // Horizontal Rule
-        if (trimmed === "---" || trimmed === "***" || trimmed === "___") {
-          return (
-            <hr
-              key={lineIndex}
+      blocks.push(
+        <div
+          key={`table-${i}`}
+          className={cn(
+            "my-2.5 w-full overflow-x-auto rounded-md border shadow-2xs",
+            isUser
+              ? "border-primary-foreground/20 bg-primary-foreground/10"
+              : "border-border bg-card/60"
+          )}
+        >
+          <table className="w-full min-w-max text-xs border-collapse">
+            <thead>
+              <tr
+                className={cn(
+                  "border-b font-semibold",
+                  isUser
+                    ? "bg-primary-foreground/15 text-primary-foreground border-primary-foreground/20"
+                    : "bg-muted/80 text-foreground border-border/60"
+                )}
+              >
+                {headers.map((headerText, colIdx) => {
+                  const align = alignments[colIdx] || "left";
+                  return (
+                    <th
+                      key={colIdx}
+                      className={cn(
+                        "px-3 py-2 font-semibold border-r last:border-r-0",
+                        align === "center" && "text-center",
+                        align === "right" && "text-right",
+                        align === "left" && "text-left",
+                        isUser ? "border-primary-foreground/20" : "border-border/60"
+                      )}
+                    >
+                      {parseInlineMarkdown(headerText, isUser)}
+                    </th>
+                  );
+                })}
+              </tr>
+            </thead>
+            <tbody
               className={cn(
-                "my-2 border-t",
-                isUser ? "border-primary-foreground/30" : "border-border"
-              )}
-            />
-          );
-        }
-
-        // Headings (#, ##, ###, ####, etc.)
-        const headingMatch = trimmed.match(/^(#{1,6})\s+(.*)$/);
-        if (headingMatch) {
-          const level = headingMatch[1].length;
-          const text = headingMatch[2];
-          const parsed = parseInlineMarkdown(text, isUser);
-
-          if (level === 1) {
-            return (
-              <h1 key={lineIndex} className="text-base font-bold mt-3 mb-1">
-                {parsed}
-              </h1>
-            );
-          }
-          if (level === 2) {
-            return (
-              <h2 key={lineIndex} className="text-sm font-bold mt-2.5 mb-1">
-                {parsed}
-              </h2>
-            );
-          }
-          if (level === 3) {
-            return (
-              <h3 key={lineIndex} className="text-sm font-semibold mt-2 mb-0.5">
-                {parsed}
-              </h3>
-            );
-          }
-          return (
-            <h4 key={lineIndex} className="text-xs font-semibold mt-1.5 mb-0.5">
-              {parsed}
-            </h4>
-          );
-        }
-
-        // Blockquotes (> text)
-        if (trimmed.startsWith("> ")) {
-          const text = trimmed.slice(2);
-          return (
-            <blockquote
-              key={lineIndex}
-              className={cn(
-                "border-l-2 pl-2.5 py-0.5 italic my-1 text-xs",
+                "divide-y text-xs",
                 isUser
-                  ? "border-primary-foreground/50 text-primary-foreground/90"
-                  : "border-primary/50 text-muted-foreground"
+                  ? "divide-primary-foreground/15 text-primary-foreground"
+                  : "divide-border/40 text-foreground"
               )}
             >
-              {parseInlineMarkdown(text, isUser)}
-            </blockquote>
-          );
-        }
+              {rows.map((rowCells, rowIdx) => (
+                <tr
+                  key={rowIdx}
+                  className={cn(
+                    "transition-colors",
+                    isUser ? "hover:bg-primary-foreground/10" : "hover:bg-muted/40"
+                  )}
+                >
+                  {headers.map((_, colIdx) => {
+                    const cellText = rowCells[colIdx] ?? "";
+                    const align = alignments[colIdx] || "left";
+                    return (
+                      <td
+                        key={colIdx}
+                        className={cn(
+                          "px-3 py-2 border-r last:border-r-0 leading-relaxed",
+                          align === "center" && "text-center",
+                          align === "right" && "text-right",
+                          align === "left" && "text-left",
+                          isUser ? "border-primary-foreground/15" : "border-border/40"
+                        )}
+                      >
+                        {parseInlineMarkdown(cellText, isUser)}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+      continue;
+    }
 
-        // Numbered List (1. , 2. , 10. )
-        const numListMatch = trimmed.match(/^(\d+)\.\s+(.*)$/);
-        if (numListMatch) {
-          const num = numListMatch[1];
-          const text = numListMatch[2];
-          return (
-            <div key={lineIndex} className="flex items-start gap-2 ml-1">
-              <span
-                className={cn(
-                  "font-semibold text-xs shrink-0 min-w-[1.25rem]",
-                  isUser ? "text-primary-foreground/90" : "text-primary"
-                )}
-              >
-                {num}.
-              </span>
-              <span className="flex-1 leading-relaxed">
-                {parseInlineMarkdown(text, isUser)}
-              </span>
-            </div>
-          );
-        }
+    if (trimmed === "") {
+      blocks.push(<div key={i} className="h-1" />);
+      i++;
+      continue;
+    }
 
-        // Bullet List (- , * , • or solitary •)
-        const isBullet =
-          trimmed.startsWith("- ") ||
-          trimmed.startsWith("* ") ||
-          trimmed.startsWith("• ") ||
-          trimmed.startsWith("•");
+    // Horizontal Rule
+    if (trimmed === "---" || trimmed === "***" || trimmed === "___") {
+      blocks.push(
+        <hr
+          key={i}
+          className={cn(
+            "my-2 border-t",
+            isUser ? "border-primary-foreground/30" : "border-border"
+          )}
+        />
+      );
+      i++;
+      continue;
+    }
 
-        if (isBullet) {
-          let cleanLine = trimmed;
-          if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
-            cleanLine = trimmed.substring(2);
-          } else if (trimmed.startsWith("• ")) {
-            cleanLine = trimmed.substring(2);
-          } else if (trimmed.startsWith("•")) {
-            cleanLine = trimmed.substring(1).trim();
-          }
+    // Headings (#, ##, ###, ####, etc.)
+    const headingMatch = trimmed.match(/^(#{1,6})\s+(.*)$/);
+    if (headingMatch) {
+      const level = headingMatch[1].length;
+      const text = headingMatch[2];
+      const parsed = parseInlineMarkdown(text, isUser);
 
-          return (
-            <div key={lineIndex} className="flex items-start gap-2 ml-1">
-              <span
-                className={cn(
-                  "font-bold text-xs shrink-0 mt-0.5",
-                  isUser ? "text-primary-foreground" : "text-primary"
-                )}
-              >
-                •
-              </span>
-              <span className="flex-1 leading-relaxed">
-                {parseInlineMarkdown(cleanLine, isUser)}
-              </span>
-            </div>
-          );
-        }
-
-        // Normal paragraph line
-        return (
-          <div key={lineIndex} className="leading-relaxed">
-            {parseInlineMarkdown(line, isUser)}
-          </div>
+      if (level === 1) {
+        blocks.push(
+          <h1 key={i} className="text-base font-bold mt-3 mb-1">
+            {parsed}
+          </h1>
         );
-      })}
-    </div>
-  );
+      } else if (level === 2) {
+        blocks.push(
+          <h2 key={i} className="text-sm font-bold mt-2.5 mb-1">
+            {parsed}
+          </h2>
+        );
+      } else if (level === 3) {
+        blocks.push(
+          <h3 key={i} className="text-sm font-semibold mt-2 mb-0.5">
+            {parsed}
+          </h3>
+        );
+      } else {
+        blocks.push(
+          <h4 key={i} className="text-xs font-semibold mt-1.5 mb-0.5">
+            {parsed}
+          </h4>
+        );
+      }
+      i++;
+      continue;
+    }
+
+    // Blockquotes (> text)
+    if (trimmed.startsWith("> ")) {
+      const text = trimmed.slice(2);
+      blocks.push(
+        <blockquote
+          key={i}
+          className={cn(
+            "border-l-2 pl-2.5 py-0.5 italic my-1 text-xs",
+            isUser
+              ? "border-primary-foreground/50 text-primary-foreground/90"
+              : "border-primary/50 text-muted-foreground"
+          )}
+        >
+          {parseInlineMarkdown(text, isUser)}
+        </blockquote>
+      );
+      i++;
+      continue;
+    }
+
+    // Numbered List (1. , 2. , 10. )
+    const numListMatch = trimmed.match(/^(\d+)\.\s+(.*)$/);
+    if (numListMatch) {
+      const num = numListMatch[1];
+      const text = numListMatch[2];
+      blocks.push(
+        <div key={i} className="flex items-start gap-2 ml-1">
+          <span
+            className={cn(
+              "font-semibold text-xs shrink-0 min-w-[1.25rem]",
+              isUser ? "text-primary-foreground/90" : "text-primary"
+            )}
+          >
+            {num}.
+          </span>
+          <span className="flex-1 leading-relaxed">
+            {parseInlineMarkdown(text, isUser)}
+          </span>
+        </div>
+      );
+      i++;
+      continue;
+    }
+
+    // Bullet List (- , * , • or solitary •)
+    const isBullet =
+      trimmed.startsWith("- ") ||
+      trimmed.startsWith("* ") ||
+      trimmed.startsWith("• ") ||
+      trimmed.startsWith("•");
+
+    if (isBullet) {
+      let cleanLine = trimmed;
+      if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+        cleanLine = trimmed.substring(2);
+      } else if (trimmed.startsWith("• ")) {
+        cleanLine = trimmed.substring(2);
+      } else if (trimmed.startsWith("•")) {
+        cleanLine = trimmed.substring(1).trim();
+      }
+
+      blocks.push(
+        <div key={i} className="flex items-start gap-2 ml-1">
+          <span
+            className={cn(
+              "font-bold text-xs shrink-0 mt-0.5",
+              isUser ? "text-primary-foreground" : "text-primary"
+            )}
+          >
+            •
+          </span>
+          <span className="flex-1 leading-relaxed">
+            {parseInlineMarkdown(cleanLine, isUser)}
+          </span>
+        </div>
+      );
+      i++;
+      continue;
+    }
+
+    // Normal paragraph line
+    blocks.push(
+      <div key={i} className="leading-relaxed">
+        {parseInlineMarkdown(line, isUser)}
+      </div>
+    );
+    i++;
+  }
+
+  return <div className="space-y-1.5 break-words">{blocks}</div>;
 }
 
 export function ChatMessage({
