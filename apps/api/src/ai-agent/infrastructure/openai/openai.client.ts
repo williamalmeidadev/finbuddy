@@ -97,7 +97,7 @@ export class OpenAIClient {
         model,
         instructions: options.instructions,
         input: options.input,
-        max_tokens: maxTokens,
+        max_output_tokens: maxTokens,
         tools:
           options.tools && options.tools.length > 0 ? options.tools : undefined,
       };

@@ -138,7 +138,7 @@ describe('OpenAIClient', () => {
         model: 'gpt-5.5',
         instructions: 'You are a financial advisor',
         input: 'Analyze spending',
-        max_tokens: 1000,
+        max_output_tokens: 1000,
         tools: undefined,
       });
     });
@@ -159,7 +159,7 @@ describe('OpenAIClient', () => {
         model: 'gpt-4o-mini',
         instructions: 'You are a financial advisor',
         input: 'Analyze spending',
-        max_tokens: 1000,
+        max_output_tokens: 1000,
         tools: undefined,
       });
     });
@@ -181,7 +181,7 @@ describe('OpenAIClient', () => {
         model: 'gpt-5.5',
         instructions: 'Use tools if needed',
         input: 'Check balance',
-        max_tokens: 1000,
+        max_output_tokens: 1000,
         tools,
       });
     });
@@ -201,7 +201,7 @@ describe('OpenAIClient', () => {
         model: 'gpt-5.5',
         instructions: 'Instructions',
         input: 'Check balance',
-        max_tokens: 1000,
+        max_output_tokens: 1000,
         tools: undefined,
       });
     });
