@@ -13,6 +13,10 @@ services:
       PORT: 3000
       NODE_ENV: production
       SWAGGER_ENABLED: "true"
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      DISABLE_RATE_LIMIT: ${DISABLE_RATE_LIMIT:-false}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3003}
     healthcheck:
       test: ["CMD-SHELL", "node -e 'require(\"http\").get(\"http://localhost:3000/health/ready\", (r) => process.exit(r.statusCode === 200 ? 0 : 1))'"]
       interval: 10s
