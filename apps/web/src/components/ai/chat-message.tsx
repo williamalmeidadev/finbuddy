@@ -54,22 +54,142 @@ function FormattedText({ content, isUser }: { content: string; isUser: boolean }
   const lines = content.split("\n");
 
   return (
-    <div className="space-y-1 whitespace-pre-wrap break-words">
+    <div className="space-y-1.5 break-words">
       {lines.map((line, lineIndex) => {
         const trimmed = line.trim();
-        const isBullet = trimmed.startsWith("- ") || trimmed.startsWith("* ");
-        const cleanLine = isBullet ? trimmed.substring(2) : line;
 
-        if (isBullet) {
+        if (trimmed === "") {
+          return <div key={lineIndex} className="h-1" />;
+        }
+
+        // Horizontal Rule
+        if (trimmed === "---" || trimmed === "***" || trimmed === "___") {
+          return (
+            <hr
+              key={lineIndex}
+              className={cn(
+                "my-2 border-t",
+                isUser ? "border-primary-foreground/30" : "border-border"
+              )}
+            />
+          );
+        }
+
+        // Headings (#, ##, ###, ####, etc.)
+        const headingMatch = trimmed.match(/^(#{1,6})\s+(.*)$/);
+        if (headingMatch) {
+          const level = headingMatch[1].length;
+          const text = headingMatch[2];
+          const parsed = parseInlineMarkdown(text, isUser);
+
+          if (level === 1) {
+            return (
+              <h1 key={lineIndex} className="text-base font-bold mt-3 mb-1">
+                {parsed}
+              </h1>
+            );
+          }
+          if (level === 2) {
+            return (
+              <h2 key={lineIndex} className="text-sm font-bold mt-2.5 mb-1">
+                {parsed}
+              </h2>
+            );
+          }
+          if (level === 3) {
+            return (
+              <h3 key={lineIndex} className="text-sm font-semibold mt-2 mb-0.5">
+                {parsed}
+              </h3>
+            );
+          }
+          return (
+            <h4 key={lineIndex} className="text-xs font-semibold mt-1.5 mb-0.5">
+              {parsed}
+            </h4>
+          );
+        }
+
+        // Blockquotes (> text)
+        if (trimmed.startsWith("> ")) {
+          const text = trimmed.slice(2);
+          return (
+            <blockquote
+              key={lineIndex}
+              className={cn(
+                "border-l-2 pl-2.5 py-0.5 italic my-1 text-xs",
+                isUser
+                  ? "border-primary-foreground/50 text-primary-foreground/90"
+                  : "border-primary/50 text-muted-foreground"
+              )}
+            >
+              {parseInlineMarkdown(text, isUser)}
+            </blockquote>
+          );
+        }
+
+        // Numbered List (1. , 2. , 10. )
+        const numListMatch = trimmed.match(/^(\d+)\.\s+(.*)$/);
+        if (numListMatch) {
+          const num = numListMatch[1];
+          const text = numListMatch[2];
           return (
             <div key={lineIndex} className="flex items-start gap-2 ml-1">
-              <span className={cn("font-bold text-xs shrink-0 mt-0.5", isUser ? "text-primary-foreground" : "text-primary")}>•</span>
-              <span className="flex-1">{parseInlineMarkdown(cleanLine, isUser)}</span>
+              <span
+                className={cn(
+                  "font-semibold text-xs shrink-0 min-w-[1.25rem]",
+                  isUser ? "text-primary-foreground/90" : "text-primary"
+                )}
+              >
+                {num}.
+              </span>
+              <span className="flex-1 leading-relaxed">
+                {parseInlineMarkdown(text, isUser)}
+              </span>
             </div>
           );
         }
 
-        return <div key={lineIndex}>{parseInlineMarkdown(line, isUser)}</div>;
+        // Bullet List (- , * , • or solitary •)
+        const isBullet =
+          trimmed.startsWith("- ") ||
+          trimmed.startsWith("* ") ||
+          trimmed.startsWith("• ") ||
+          trimmed.startsWith("•");
+
+        if (isBullet) {
+          let cleanLine = trimmed;
+          if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+            cleanLine = trimmed.substring(2);
+          } else if (trimmed.startsWith("• ")) {
+            cleanLine = trimmed.substring(2);
+          } else if (trimmed.startsWith("•")) {
+            cleanLine = trimmed.substring(1).trim();
+          }
+
+          return (
+            <div key={lineIndex} className="flex items-start gap-2 ml-1">
+              <span
+                className={cn(
+                  "font-bold text-xs shrink-0 mt-0.5",
+                  isUser ? "text-primary-foreground" : "text-primary"
+                )}
+              >
+                •
+              </span>
+              <span className="flex-1 leading-relaxed">
+                {parseInlineMarkdown(cleanLine, isUser)}
+              </span>
+            </div>
+          );
+        }
+
+        // Normal paragraph line
+        return (
+          <div key={lineIndex} className="leading-relaxed">
+            {parseInlineMarkdown(line, isUser)}
+          </div>
+        );
       })}
     </div>
   );
