@@ -2,6 +2,8 @@ import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/lib/auth/auth-context";
 import { ProtectedRoute, PublicOnlyRoute } from "@/lib/auth/auth-guard";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "@/lib/query/query-client";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppLayout } from "@/components/layout/AppLayout";
 
@@ -19,8 +21,9 @@ import { SettingsPage } from "@/pages/SettingsPage";
 
 export function App() {
   return (
-    <ThemeProvider defaultTheme="system" storageKey="finbuddy-theme">
-      <AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider defaultTheme="system" storageKey="finbuddy-theme">
+        <AuthProvider>
         <BrowserRouter>
           <Routes>
             {/* Public Auth Routes */}
@@ -69,6 +72,7 @@ export function App() {
         </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>
+    </QueryClientProvider>
   );
 }
 

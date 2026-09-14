@@ -32,6 +32,7 @@ export interface ApiAccount {
   type: "CHECKING" | "SAVINGS" | "CREDIT_CARD" | "INVESTMENT" | "CASH";
   balance: number;
   currency: string;
+  color?: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

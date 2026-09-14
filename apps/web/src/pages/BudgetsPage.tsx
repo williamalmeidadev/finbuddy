@@ -1,6 +1,12 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { budgetService, categoryService } from "@/lib/api/services";
-import { ApiBudget, ApiCategory } from "@/lib/api/types";
+import React, { useState } from "react";
+import {
+  useBudgets,
+  useCategories,
+  useCreateBudget,
+  useUpdateBudget,
+  useDeleteBudget,
+} from "@/lib/queries";
+import { ApiBudget } from "@/lib/api/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,14 +16,23 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Target, PlusCircle, Trash2, Edit2, RefreshCw, AlertCircle } from "lucide-react";
 
 export const BudgetsPage: React.FC = () => {
-  const [budgets, setBudgets] = useState<ApiBudget[]>([]);
-  const [categories, setCategories] = useState<ApiCategory[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
-
   const currentDate = new Date();
   const [month, setMonth] = useState<number>(currentDate.getMonth() + 1);
   const [year, setYear] = useState<number>(currentDate.getFullYear());
+
+  const monthStr = `${year}-${String(month).padStart(2, "0")}`;
+
+  const { data: budgets = [], isLoading: isBudLoading, error: budError, refetch: refetchBud } = useBudgets(monthStr);
+  const { data: allCategories = [], isLoading: isCatLoading, refetch: refetchCat } = useCategories();
+
+  const categories = allCategories.filter((c) => c.type === "EXPENSE");
+
+  const createBudget = useCreateBudget();
+  const updateBudget = useUpdateBudget();
+  const deleteBudget = useDeleteBudget();
+
+  const isLoading = isBudLoading || isCatLoading;
+  const error = budError ? (budError instanceof Error ? budError.message : "Erro ao carregar orçamentos.") : "";
 
   // Create Modal
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -32,27 +47,10 @@ export const BudgetsPage: React.FC = () => {
   // Delete State
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
-    setError("");
-    try {
-      const monthStr = `${year}-${String(month).padStart(2, "0")}`;
-      const [budRes, catRes] = await Promise.all([
-        budgetService.findAll(monthStr),
-        categoryService.findAll(),
-      ]);
-      setBudgets(budRes);
-      setCategories(catRes.filter(c => c.type === "EXPENSE"));
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Erro ao carregar orçamentos.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [month, year]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  const handleRefresh = () => {
+    refetchBud();
+    refetchCat();
+  };
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -66,16 +64,14 @@ export const BudgetsPage: React.FC = () => {
     if (!categoryId || !amount) return;
     setIsSubmitting(true);
     try {
-      const monthStr = `${year}-${String(month).padStart(2, "0")}`;
-      await budgetService.create({
+      await createBudget.mutateAsync({
         categoryId,
-        month: monthStr,
         amount: parseFloat(amount),
+        month: monthStr,
       });
       setCategoryId("");
       setAmount("");
       setIsCreateOpen(false);
-      await loadData();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Erro ao criar orçamento.");
     } finally {
@@ -93,13 +89,15 @@ export const BudgetsPage: React.FC = () => {
     if (!editingBudget || !editAmount) return;
     setIsSubmitting(true);
     try {
-      await budgetService.update(editingBudget.id, {
-        amount: parseFloat(editAmount),
+      await updateBudget.mutateAsync({
+        id: editingBudget.id,
+        dto: {
+          amount: parseFloat(editAmount),
+        },
       });
       setEditingBudget(null);
-      await loadData();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Erro ao editar orçamento.");
+      alert(err instanceof Error ? err.message : "Erro ao atualizar orçamento.");
     } finally {
       setIsSubmitting(false);
     }
@@ -107,9 +105,8 @@ export const BudgetsPage: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     try {
-      await budgetService.delete(id);
+      await deleteBudget.mutateAsync(id);
       setDeleteConfirmId(null);
-      await loadData();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Erro ao excluir orçamento.");
     }
@@ -117,16 +114,17 @@ export const BudgetsPage: React.FC = () => {
 
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 min-w-0 pb-12">
+      {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Orçamentos</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Metas e Orçamentos</h1>
           <p className="text-muted-foreground text-sm">
-            Defina e controle metas de gastos por categoria mensal.
+            Planeje limites de gastos mensais por categoria de despesa.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={loadData} disabled={isLoading}>
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? "animate-spin" : ""}`} />
             Atualizar
           </Button>
@@ -141,47 +139,55 @@ export const BudgetsPage: React.FC = () => {
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
                 <DialogTitle>Definir Teto de Gastos</DialogTitle>
-                <DialogDescription>Escolha uma categoria e um limite para o mês atual.</DialogDescription>
+                <DialogDescription>
+                  Selecione uma categoria e o valor limite para este mês.
+                </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleCreateSubmit}>
                 <div className="grid gap-4 py-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="cat">Categoria de Despesa</Label>
-                    <Select
-                      value={categoryId}
-                      onValueChange={(val) => setCategoryId(val || "")}
-                      items={categories.map(cat => ({ label: cat.name, value: cat.id }))}
-                      required
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione a categoria" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map((cat) => (
-                          <SelectItem key={cat.id} value={cat.id}>
-                            {cat.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="category" className="text-right">
+                      Categoria
+                    </Label>
+                    <div className="col-span-3">
+                      <Select value={categoryId} onValueChange={(v) => setCategoryId(v || "")}>
+                        <SelectTrigger id="category">
+                          <SelectValue placeholder="Selecione..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
-                  <div className="grid gap-2">
-                    <Label htmlFor="val">Limite de Gasto (R$)</Label>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="amount" className="text-right">
+                      Limite (R$)
+                    </Label>
                     <Input
-                      id="val"
+                      id="amount"
                       type="number"
                       step="0.01"
-                      placeholder="0.00"
+                      placeholder="0,00"
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
+                      className="col-span-3"
                       required
                     />
                   </div>
                 </div>
+
                 <DialogFooter>
-                  <Button type="submit" className="w-full" disabled={isSubmitting}>
-                    {isSubmitting ? "Salvando..." : "Definir Orçamento"}
+                  <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? "Salvando..." : "Salvar Orçamento"}
                   </Button>
                 </DialogFooter>
               </form>
@@ -191,116 +197,200 @@ export const BudgetsPage: React.FC = () => {
       </div>
 
       {error && (
-        <div className="p-4 text-sm text-destructive bg-destructive/10 rounded-lg border border-destructive/20 font-medium">
-          {error}
+        <div className="flex items-center gap-2 p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-sm">
+          <AlertCircle className="h-5 w-5 shrink-0" />
+          <span>{error}</span>
         </div>
       )}
 
-      {/* Grid of Budgets */}
-      {budgets.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-12 border border-dashed rounded-lg bg-card text-center text-muted-foreground">
-          <AlertCircle className="h-12 w-12 mb-3 stroke-1 text-amber-500" />
-          <p className="font-semibold text-lg">Nenhum orçamento cadastrado</p>
-          <p className="text-sm mt-1 mb-4">Defina limites para suas categorias de despesa.</p>
+      {/* Month/Year Filter Selector */}
+      <Card className="shadow-sm">
+        <CardContent className="pt-6 flex items-center gap-4">
+          <span className="text-sm font-medium text-muted-foreground">Mês de Referência:</span>
+          <Select value={month.toString()} onValueChange={(v) => v && setMonth(parseInt(v))}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1">Janeiro</SelectItem>
+              <SelectItem value="2">Fevereiro</SelectItem>
+              <SelectItem value="3">Março</SelectItem>
+              <SelectItem value="4">Abril</SelectItem>
+              <SelectItem value="5">Maio</SelectItem>
+              <SelectItem value="6">Junho</SelectItem>
+              <SelectItem value="7">Julho</SelectItem>
+              <SelectItem value="8">Agosto</SelectItem>
+              <SelectItem value="9">Setembro</SelectItem>
+              <SelectItem value="10">Outubro</SelectItem>
+              <SelectItem value="11">Novembro</SelectItem>
+              <SelectItem value="12">Dezembro</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={year.toString()} onValueChange={(v) => v && setYear(parseInt(v))}>
+            <SelectTrigger className="w-[100px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="2025">2025</SelectItem>
+              <SelectItem value="2026">2026</SelectItem>
+              <SelectItem value="2027">2027</SelectItem>
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
+
+      {/* Budgets List Grid */}
+      {isLoading ? (
+        <div className="text-center py-12 text-muted-foreground">Carregando orçamentos...</div>
+      ) : budgets.length === 0 ? (
+        <div className="text-center py-12 border rounded-lg bg-card p-8">
+          <Target className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+          <h3 className="font-semibold text-lg">Nenhum orçamento para {monthStr}</h3>
+          <p className="text-sm text-muted-foreground mt-1 mb-4">
+            Defina limites mensais para controlar seus gastos por categoria.
+          </p>
+          <Button onClick={() => setIsCreateOpen(true)}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Criar Primeiro Orçamento
+          </Button>
         </div>
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {budgets.map((b) => {
-            const spent = b.spent ?? b.spentAmount ?? 0;
-            const remaining = b.remaining ?? (b.amount - spent);
-            const percentage = b.percentageUsed ?? Math.min(100, Math.round((spent / (b.amount || 1)) * 100));
-            const isOverBudget = spent > b.amount;
+            const spent = b.spentAmount || 0;
+            const progress = b.amount > 0 ? Math.min(100, (spent / b.amount) * 100) : 0;
+            const isExceeded = spent > b.amount;
 
             return (
-              <Card key={b.id} className="shadow-sm border">
-                <CardHeader className="flex flex-row items-center justify-between pb-3">
+              <Card key={b.id} className="shadow-sm flex flex-col justify-between">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <div>
                     <CardTitle className="text-base font-bold">
-                      {b.category?.name || categories.find((c) => c.id === b.categoryId)?.name || "Categoria"}
+                      {b.category?.name || "Categoria"}
                     </CardTitle>
                     <CardDescription className="text-xs">
-                      Teto: {formatCurrency(b.amount)}
+                      Mês: {b.month}
                     </CardDescription>
                   </div>
-                  <div className={`p-2 rounded-lg ${isOverBudget ? "bg-red-500/10 text-red-600" : "bg-primary/10 text-primary"}`}>
-                    <Target className="h-5 w-5" />
-                  </div>
+                  <Target className={`h-5 w-5 ${isExceeded ? "text-red-500" : "text-primary"}`} />
                 </CardHeader>
 
                 <CardContent className="space-y-3">
-                  <div className="flex justify-between text-xs font-semibold">
-                    <span>Gasto: <strong className={isOverBudget ? "text-red-500" : "text-foreground"}>{formatCurrency(spent)}</strong></span>
-                    <span>Restante: <strong>{formatCurrency(remaining)}</strong></span>
-                  </div>
-
-                  <div className="space-y-1">
-                    <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                      <div
-                        className={`h-full transition-all duration-300 ${isOverBudget ? "bg-red-500" : percentage > 85 ? "bg-amber-500" : "bg-primary"}`}
-                        style={{ width: `${Math.min(100, percentage)}%` }}
-                      />
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <span className="text-xs text-muted-foreground">Gasto Atual</span>
+                      <p className={`text-lg font-bold ${isExceeded ? "text-red-600 dark:text-red-400" : "text-foreground"}`}>
+                        {formatCurrency(spent)}
+                      </p>
                     </div>
-                    <p className="text-[11px] text-right text-muted-foreground">{percentage}% utilizado</p>
+                    <div className="text-right">
+                      <span className="text-xs text-muted-foreground">Limite</span>
+                      <p className="text-sm font-semibold text-foreground">
+                        {formatCurrency(b.amount)}
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="flex justify-end gap-2 pt-2 border-t">
-                    <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => handleOpenEdit(b)}>
-                      <Edit2 className="h-3.5 w-3.5 mr-1" /> Editar
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-8 px-2 text-xs text-destructive hover:text-destructive" onClick={() => setDeleteConfirmId(b.id)}>
-                      <Trash2 className="h-3.5 w-3.5 mr-1" /> Excluir
-                    </Button>
+                  {/* Progress Bar */}
+                  <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-300 ${
+                        isExceeded ? "bg-red-500" : progress > 80 ? "bg-amber-500" : "bg-emerald-500"
+                      }`}
+                      style={{ width: `${progress}%` }}
+                    />
                   </div>
+                  <p className="text-[11px] text-right font-medium text-muted-foreground">
+                    {progress.toFixed(0)}% do orçamento utilizado
+                  </p>
                 </CardContent>
+
+                <div className="p-3 border-t bg-muted/20 flex items-center justify-between">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs"
+                    onClick={() => handleOpenEdit(b)}
+                  >
+                    <Edit2 className="h-3.5 w-3.5 mr-1" />
+                    Editar
+                  </Button>
+
+                  {deleteConfirmId === b.id ? (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="xs"
+                        variant="destructive"
+                        onClick={() => handleDelete(b.id)}
+                      >
+                        Sim
+                      </Button>
+                      <Button
+                        size="xs"
+                        variant="ghost"
+                        onClick={() => setDeleteConfirmId(null)}
+                      >
+                        Não
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs text-muted-foreground hover:text-red-500"
+                      onClick={() => setDeleteConfirmId(b.id)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 mr-1" />
+                      Excluir
+                    </Button>
+                  )}
+                </div>
               </Card>
             );
           })}
         </div>
       )}
 
-      {/* Edit Modal */}
-      <Dialog open={editingBudget !== null} onOpenChange={(open) => { if (!open) setEditingBudget(null); }}>
-        <DialogContent className="sm:max-w-[400px]">
+      {/* Edit Budget Dialog */}
+      <Dialog open={!!editingBudget} onOpenChange={(open) => !open && setEditingBudget(null)}>
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Editar Orçamento</DialogTitle>
-            <DialogDescription>Ajuste o valor limite do orçamento.</DialogDescription>
+            <DialogTitle>Editar Teto de Orçamento</DialogTitle>
+            <DialogDescription>
+              Categoria: {editingBudget?.category?.name} ({editingBudget?.month})
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEditSubmit}>
             <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="edit-val">Novo Limite (R$)</Label>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-amount" className="text-right">
+                  Novo Limite
+                </Label>
                 <Input
-                  id="edit-val"
+                  id="edit-amount"
                   type="number"
                   step="0.01"
                   value={editAmount}
                   onChange={(e) => setEditAmount(e.target.value)}
+                  className="col-span-3"
                   required
                 />
               </div>
             </div>
             <DialogFooter>
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
+              <Button type="button" variant="outline" onClick={() => setEditingBudget(null)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? "Salvando..." : "Salvar Alterações"}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
-
-      {/* Delete Dialog */}
-      <Dialog open={deleteConfirmId !== null} onOpenChange={(open) => { if (!open) setDeleteConfirmId(null); }}>
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle>Excluir Orçamento</DialogTitle>
-            <DialogDescription>Tem certeza que deseja excluir esta meta de gastos?</DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex gap-2 justify-end mt-4">
-            <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>Cancelar</Button>
-            <Button variant="destructive" onClick={() => deleteConfirmId && handleDelete(deleteConfirmId)}>Excluir</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
+
+export default BudgetsPage;

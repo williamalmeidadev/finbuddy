@@ -1,4 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import {
+  useConversations,
+  useConversationMessages,
+  useSendMessage,
+  useApproveAiConfirmation,
+  useRejectAiConfirmation,
+} from "@/lib/queries";
 import { aiService, ConversationItem, ConversationMessage } from "@/lib/api/services";
 import { ApiAgentResponse, ApiAgentConfirmation } from "@/lib/api/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -19,12 +26,24 @@ interface LocalMessage {
 }
 
 export const AiAssistantPage: React.FC = () => {
-  const [conversations, setConversations] = useState<ConversationItem[]>([]);
+  const { data: conversationsRes, isLoading: isConvsLoading, refetch: refetchConvs } = useConversations();
+  const conversations: ConversationItem[] = conversationsRes?.items || conversationsRes?.data || [];
+
   const [activeConversationId, setActiveConversationId] = useState<string | undefined>(undefined);
-  const [messages, setMessages] = useState<LocalMessage[]>([]);
+
+  const {
+    data: messagesRes,
+    isLoading: isMsgsLoading,
+    error: msgsError,
+    refetch: refetchMsgs,
+  } = useConversationMessages(activeConversationId);
+
+  const sendMessageMutation = useSendMessage();
+  const approveConfirmationMutation = useApproveAiConfirmation();
+  const rejectConfirmationMutation = useRejectAiConfirmation();
+
+  const [localMessages, setLocalMessages] = useState<LocalMessage[]>([]);
   const [inputMessage, setInputMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [isConversationsLoading, setIsConversationsLoading] = useState(true);
   const [error, setError] = useState("");
   const [submittingConfirmationId, setSubmittingConfirmationId] = useState<string | null>(null);
 
@@ -34,29 +53,10 @@ export const AiAssistantPage: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const loadConversations = useCallback(async () => {
-    setIsConversationsLoading(true);
-    try {
-      const res = await aiService.listConversations();
-      const list = res.items || res.data || [];
-      setConversations(list);
-    } catch {
-      // Non-blocking
-    } finally {
-      setIsConversationsLoading(false);
-    }
-  }, []);
-
+  // Sync query messages to local state when activeConversationId changes
   useEffect(() => {
-    loadConversations();
-  }, [loadConversations]);
-
-  const loadMessages = useCallback(async (convId: string) => {
-    setIsLoading(true);
-    setError("");
-    try {
-      const res = await aiService.getConversationMessages(convId);
-      const list = res.items || res.data || [];
+    if (messagesRes) {
+      const list = messagesRes.items || messagesRes.data || [];
       const items: LocalMessage[] = list.map((m: ConversationMessage) => {
         let content = m.content || "";
         if (content.includes("Confirmation required to execute")) {
@@ -73,26 +73,22 @@ export const AiAssistantPage: React.FC = () => {
           confirmation: m.confirmation,
         };
       });
-      setMessages(items);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Erro ao carregar histórico da conversa.");
-    } finally {
-      setIsLoading(false);
+      setLocalMessages(items);
       setTimeout(scrollToBottom, 100);
     }
-  }, []);
+  }, [messagesRes]);
 
   const handleSelectConversation = (convId: string) => {
     setActiveConversationId(convId);
-    loadMessages(convId);
+    setError("");
   };
 
   const handleNewConversation = async () => {
     try {
       const newConv = await aiService.createConversation("Nova Conversa");
-      setConversations((prev) => [newConv, ...prev]);
+      await refetchConvs();
       setActiveConversationId(newConv.id);
-      setMessages([
+      setLocalMessages([
         {
           id: "welcome-" + Date.now(),
           role: "assistant",
@@ -109,10 +105,10 @@ export const AiAssistantPage: React.FC = () => {
     e.stopPropagation();
     try {
       await aiService.deleteConversation(convId);
-      setConversations((prev) => prev.filter((c) => c.id !== convId));
+      await refetchConvs();
       if (activeConversationId === convId) {
         setActiveConversationId(undefined);
-        setMessages([]);
+        setLocalMessages([]);
       }
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Erro ao excluir conversa.");
@@ -121,7 +117,7 @@ export const AiAssistantPage: React.FC = () => {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputMessage.trim() || isLoading) return;
+    if (!inputMessage.trim() || sendMessageMutation.isPending) return;
 
     const userText = inputMessage.trim();
     setInputMessage("");
@@ -135,16 +131,18 @@ export const AiAssistantPage: React.FC = () => {
       timestamp: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
     };
 
-    setMessages((prev) => [...prev, newMsg]);
-    setIsLoading(true);
+    setLocalMessages((prev) => [...prev, newMsg]);
     setTimeout(scrollToBottom, 50);
 
     try {
-      const response: ApiAgentResponse = await aiService.sendMessage(userText, activeConversationId);
+      const response: ApiAgentResponse = await sendMessageMutation.mutateAsync({
+        message: userText,
+        conversationId: activeConversationId,
+      });
 
       if (response.conversationId && !activeConversationId) {
         setActiveConversationId(response.conversationId);
-        await loadConversations();
+        await refetchConvs();
       }
 
       const assistantMsg: LocalMessage = {
@@ -155,7 +153,7 @@ export const AiAssistantPage: React.FC = () => {
         confirmation: response.type === "confirmation_required" ? response.confirmation : undefined,
       };
 
-      setMessages((prev) => [...prev, assistantMsg]);
+      setLocalMessages((prev) => [...prev, assistantMsg]);
     } catch (err: unknown) {
       setError(
         err instanceof Error
@@ -163,7 +161,6 @@ export const AiAssistantPage: React.FC = () => {
           : "Ocorreu um erro ao comunicar com o assistente IA. Por favor, tente novamente."
       );
     } finally {
-      setIsLoading(false);
       setTimeout(scrollToBottom, 100);
     }
   };
@@ -172,8 +169,12 @@ export const AiAssistantPage: React.FC = () => {
     setSubmittingConfirmationId(confirmationId);
     setError("");
     try {
-      await aiService.confirmAction(confirmationId, activeConversationId);
-      setMessages((prev) =>
+      await approveConfirmationMutation.mutateAsync({
+        confirmationId,
+        conversationId: activeConversationId,
+      });
+
+      setLocalMessages((prev) =>
         prev
           .map((m) => {
             if (
@@ -210,8 +211,12 @@ export const AiAssistantPage: React.FC = () => {
     setSubmittingConfirmationId(confirmationId);
     setError("");
     try {
-      await aiService.cancelAction(confirmationId, activeConversationId);
-      setMessages((prev) =>
+      await rejectConfirmationMutation.mutateAsync({
+        confirmationId,
+        conversationId: activeConversationId,
+      });
+
+      setLocalMessages((prev) =>
         prev
           .map((m) => {
             if (
@@ -232,7 +237,7 @@ export const AiAssistantPage: React.FC = () => {
           .concat({
             id: "sys-" + Date.now(),
             role: "assistant",
-            content: "❌ Operação financeira cancelada pelo usuário.",
+            content: "❌ Operação cancelada pelo usuário.",
             timestamp: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
           })
       );
@@ -245,44 +250,47 @@ export const AiAssistantPage: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col md:flex-row h-full min-h-0 overflow-hidden bg-background">
+    <div className="flex-1 flex flex-col md:flex-row h-[calc(100vh-4rem)] overflow-hidden min-w-0">
       {/* Sidebar: Conversation List */}
-      <div className="w-full md:w-80 border-b md:border-b-0 md:border-r bg-card flex flex-col shrink-0 max-h-56 md:max-h-full overflow-hidden">
-        <div className="h-16 px-4 border-b flex items-center justify-between shrink-0 bg-card">
-          <div className="flex items-center gap-2 font-bold text-sm text-foreground">
-            <Bot className="h-5 w-5 text-primary shrink-0" />
-            <span>Conversas IA</span>
+      <div className="w-full md:w-80 border-r bg-card flex flex-col shrink-0">
+        <div className="p-4 border-b flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Bot className="h-5 w-5 text-primary" />
+            <h2 className="font-bold text-base text-foreground">Conversas IA</h2>
           </div>
-          <Button variant="outline" size="sm" onClick={handleNewConversation} className="h-8 text-xs gap-1">
-            <Plus className="h-3.5 w-3.5" /> Nova
+          <Button size="sm" onClick={handleNewConversation}>
+            <Plus className="h-4 w-4 mr-1" />
+            Nova
           </Button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
-          {isConversationsLoading ? (
-            <p className="text-xs text-muted-foreground p-3 text-center">Carregando conversas...</p>
+          {isConvsLoading ? (
+            <div className="text-center py-8 text-xs text-muted-foreground">Carregando histório...</div>
           ) : conversations.length === 0 ? (
-            <p className="text-xs text-muted-foreground p-3 text-center">Nenhuma conversa salva.</p>
+            <div className="text-center py-8 text-xs text-muted-foreground px-4">
+              Nenhuma conversa iniciada. Clique em "Nova" para conversar com o FinBuddy IA.
+            </div>
           ) : (
-            conversations.map((conv) => (
+            conversations.map((c) => (
               <div
-                key={conv.id}
-                onClick={() => handleSelectConversation(conv.id)}
-                className={`flex items-center justify-between p-2.5 rounded-lg text-xs font-medium cursor-pointer transition-colors ${
-                  activeConversationId === conv.id
-                    ? "bg-primary text-primary-foreground font-semibold"
-                    : "hover:bg-muted text-foreground"
+                key={c.id}
+                onClick={() => handleSelectConversation(c.id)}
+                className={`flex items-center justify-between p-2.5 rounded-lg text-xs cursor-pointer transition-colors ${
+                  activeConversationId === c.id
+                    ? "bg-primary/10 text-primary font-semibold"
+                    : "hover:bg-accent/50 text-foreground"
                 }`}
               >
-                <div className="flex items-center gap-2 min-w-0">
-                  <MessageSquare className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{conv.title || "Conversa FinBuddy"}</span>
+                <div className="flex items-center gap-2 min-w-0 pr-1">
+                  <MessageSquare className="h-4 w-4 shrink-0 opacity-70" />
+                  <span className="truncate">{c.title || "Conversa FinBuddy"}</span>
                 </div>
                 <Button
                   variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0 hover:text-destructive opacity-70 hover:opacity-100"
-                  onClick={(e) => handleDeleteConversation(conv.id, e)}
+                  size="icon"
+                  className="h-6 w-6 text-muted-foreground hover:text-red-500 shrink-0"
+                  onClick={(e) => handleDeleteConversation(c.id, e)}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
@@ -293,101 +301,92 @@ export const AiAssistantPage: React.FC = () => {
       </div>
 
       {/* Main Chat Interface */}
-      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-        {/* Top Chat Bar */}
-        <div className="h-16 px-4 md:px-6 border-b bg-card flex items-center justify-between shrink-0">
-          <div className="flex flex-col justify-center min-w-0">
-            <h1 className="text-sm md:text-base font-bold flex items-center gap-2 text-foreground truncate">
-              <Bot className="h-5 w-5 text-primary shrink-0" />
-              <span>FinBuddy Copilot IA</span>
-            </h1>
-            <p className="text-xs text-muted-foreground truncate hidden sm:block">
-              Seu assistente financeiro pessoal com autonomia para análise e ações seguras.
-            </p>
+      <div className="flex-1 flex flex-col h-full bg-background min-w-0">
+        {/* Chat Header */}
+        <div className="p-4 border-b bg-card flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-primary/10 text-primary">
+              <Bot className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-sm text-foreground">Assistente Financeiro FinBuddy</h3>
+              <p className="text-xs text-muted-foreground">
+                Pergunte sobre saldos, extratos ou peça para agendar transações
+              </p>
+            </div>
           </div>
+
+          <Button variant="ghost" size="sm" onClick={() => { refetchConvs(); if (activeConversationId) refetchMsgs(); }}>
+            <RefreshCw className={`h-4 w-4 ${isMsgsLoading ? "animate-spin" : ""}`} />
+          </Button>
         </div>
 
-        {/* Message History */}
-        <div className="flex-1 p-4 overflow-y-auto space-y-4">
-          {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center p-8 text-muted-foreground">
-              <div className="p-4 rounded-full bg-primary/10 text-primary mb-3">
-                <Bot className="h-10 w-10" />
-              </div>
-              <h3 className="font-bold text-lg text-foreground">Como posso ajudar suas finanças hoje?</h3>
-              <p className="text-xs max-w-md mt-1 mb-6">
-                Pergunte sobre seus saldos, solicite relatórios de gastos ou peça para realizar transferências.
+        {/* Chat Messages */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {localMessages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center p-6 text-muted-foreground">
+              <Bot className="h-12 w-12 mb-3 text-primary opacity-40 stroke-1" />
+              <h4 className="font-semibold text-foreground text-base">Como posso ajudar suas finanças hoje?</h4>
+              <p className="text-xs text-muted-foreground max-w-sm mt-1 mb-4">
+                Exemplos: "Qual meu saldo no Bradesco?", "Quanto gastei com mercado este mês?", "Adicione uma despesa de R$ 50 em alimentação".
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-left max-w-lg">
-                <button
-                  className="p-3 rounded-lg border bg-card hover:bg-muted text-foreground transition-colors"
-                  onClick={() => setInputMessage("Qual é o meu saldo total consolidado?")}
-                >
-                  "Qual é o meu saldo total consolidado?"
-                </button>
-                <button
-                  className="p-3 rounded-lg border bg-card hover:bg-muted text-foreground transition-colors"
-                  onClick={() => setInputMessage("Quanto gastei este mês com despesas?")}
-                >
-                  "Quanto gastei este mês com despesas?"
-                </button>
-              </div>
             </div>
           ) : (
-            messages.map((msg) => (
-              <React.Fragment key={msg.id}>
-                <ChatMessage role={msg.role} content={msg.content} timestamp={msg.timestamp} />
+            localMessages.map((msg) => (
+              <div key={msg.id} className="space-y-3">
+                <ChatMessage
+                  role={msg.role}
+                  content={msg.content}
+                  timestamp={msg.timestamp}
+                />
 
-                {/* Render Confirmation Card if confirmation_required */}
+                {/* Confirmation Card Overlay */}
                 {msg.confirmation && (
-                  <div className="max-w-[85%] ml-11">
+                  <div className="pl-11 max-w-xl">
                     <ConfirmationCard
+                      {...msg.confirmation}
                       confirmationId={msg.confirmation.confirmationId || msg.confirmation.id}
-                      toolName={msg.confirmation.toolName || msg.confirmation.tool}
-                      action={msg.confirmation.action || msg.confirmation.parameters}
-                      expiresAt={msg.confirmation.expiresAt}
-                      status={msg.confirmation.status || "pending"}
-                      onConfirm={handleConfirmAction}
-                      onCancel={handleCancelAction}
-                      isSubmitting={
-                        submittingConfirmationId ===
-                        (msg.confirmation.confirmationId || msg.confirmation.id)
-                      }
+                      onConfirm={() => handleConfirmAction(msg.confirmation!.confirmationId || msg.confirmation!.id || "")}
+                      onCancel={() => handleCancelAction(msg.confirmation!.confirmationId || msg.confirmation!.id || "")}
+                      isSubmitting={submittingConfirmationId === (msg.confirmation.confirmationId || msg.confirmation.id)}
                     />
                   </div>
                 )}
-              </React.Fragment>
+              </div>
             ))
           )}
-
-          {isLoading && (
-            <ChatMessage role="assistant" content="" isThinking={true} />
-          )}
-
-          {error && (
-            <div className="p-3 text-xs text-destructive bg-destructive/10 rounded-md border border-destructive/20 font-medium flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
           <div ref={messagesEndRef} />
         </div>
 
+        {error && (
+          <div className="mx-4 mb-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-xs flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
         {/* Input Bar */}
-        <form onSubmit={handleSendMessage} className="p-4 border-t bg-card flex gap-2 shrink-0">
-          <Input
-            placeholder="Digite sua pergunta ou solicitação financeira..."
-            value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
-            disabled={isLoading}
-            className="flex-1"
-          />
-          <Button type="submit" disabled={isLoading || !inputMessage.trim()}>
-            {isLoading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-          </Button>
-        </form>
+        <div className="p-4 border-t bg-card">
+          <form onSubmit={handleSendMessage} className="flex gap-2">
+            <Input
+              placeholder="Digite sua pergunta ou instrução financeira..."
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+              disabled={sendMessageMutation.isPending}
+              className="flex-1"
+            />
+            <Button type="submit" disabled={sendMessageMutation.isPending || !inputMessage.trim()}>
+              {sendMessageMutation.isPending ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
+          </form>
+        </div>
       </div>
     </div>
   );
 };
+
+export default AiAssistantPage;

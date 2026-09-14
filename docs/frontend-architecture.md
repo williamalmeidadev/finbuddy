@@ -10,6 +10,7 @@ The frontend includes:
 - **Component Foundation**: Lucide React & Tailwind-styled UI primitives
 - **Icons**: Lucide React
 - **API Transport**: Centralized `client.ts` fetch wrapper with dynamic `VITE_API_URL` resolution, automatic 401 token refresh retry queuing, subscriber deduplication, and loop protection
+- **Server State Management**: TanStack Query v5 (`@tanstack/react-query`) for in-memory server-state caching, request deduplication, controlled stale times, typed query keys (`queryKeys`), and targeted mutation invalidation.
 - **Authentication**: In-memory token management, `AuthProvider` (`auth-context.tsx`), `useAuth` hook, and protected `/app/*` (`AuthGuard` / `ProtectedRoute`)
 - **Financial Product Views**:
   - **Dashboard**: Net worth summary, monthly income/expense/savings breakdown, connected account grid, recent ledger entries, category budget health indicators, and quick action modals.

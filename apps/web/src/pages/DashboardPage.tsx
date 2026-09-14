@@ -1,13 +1,14 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState } from "react";
 import {
-  financialSummaryService,
-  accountService,
-  transactionService,
-  categoryService,
-  transferService,
-} from "@/lib/api/services";
+  useFinancialSummary,
+  useAccounts,
+  useTransactions,
+  useCategories,
+  useCreateTransaction,
+  useCreateTransfer,
+  useDeleteTransaction,
+} from "@/lib/queries";
 import {
-  ApiFinancialSummary,
   ApiAccount,
   ApiTransaction,
   ApiCategory,
@@ -34,12 +35,17 @@ import {
 } from "lucide-react";
 
 export const DashboardPage: React.FC = () => {
-  const [summary, setSummary] = useState<ApiFinancialSummary | null>(null);
-  const [accounts, setAccounts] = useState<ApiAccount[]>([]);
-  const [transactions, setTransactions] = useState<ApiTransaction[]>([]);
-  const [categories, setCategories] = useState<ApiCategory[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
+  const { data: summary, isLoading: isSummaryLoading, error: summaryError, refetch: refetchSummary } = useFinancialSummary();
+  const { data: accounts = [], isLoading: isAccountsLoading, refetch: refetchAccounts } = useAccounts();
+  const { data: transactions = [], isLoading: isTxLoading, refetch: refetchTx } = useTransactions();
+  const { data: categories = [], isLoading: isCatLoading, refetch: refetchCat } = useCategories();
+
+  const createTransaction = useCreateTransaction();
+  const createTransfer = useCreateTransfer();
+  const deleteTransaction = useDeleteTransaction();
+
+  const isLoading = isSummaryLoading || isAccountsLoading || isTxLoading || isCatLoading;
+  const error = summaryError ? (summaryError instanceof Error ? summaryError.message : "Erro ao carregar dados do dashboard.") : "";
 
   // Quick transaction modal state
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -53,31 +59,12 @@ export const DashboardPage: React.FC = () => {
   const [txDate, setTxDate] = useState(new Date().toISOString().substring(0, 16));
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
-    setError("");
-    try {
-      const [sumRes, accRes, txRes, catRes] = await Promise.all([
-        financialSummaryService.getSummary().catch(() => null),
-        accountService.findAll().catch(() => []),
-        transactionService.findAll().catch(() => []),
-        categoryService.findAll().catch(() => []),
-      ]);
-
-      setSummary(sumRes);
-      setAccounts(accRes);
-      setTransactions(txRes);
-      setCategories(catRes);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Erro ao carregar dados do dashboard.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  const handleRefreshAll = () => {
+    refetchSummary();
+    refetchAccounts();
+    refetchTx();
+    refetchCat();
+  };
 
   const formatCurrency = (val?: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -115,7 +102,7 @@ export const DashboardPage: React.FC = () => {
     setIsSubmitting(true);
     try {
       if (type === "TRANSFER") {
-        await transferService.create({
+        await createTransfer.mutateAsync({
           fromAccountId: accountId,
           toAccountId: destinationAccountId,
           amount: parseFloat(amount),
@@ -123,7 +110,7 @@ export const DashboardPage: React.FC = () => {
           transferredAt: new Date(txDate).toISOString(),
         });
       } else {
-        await transactionService.create({
+        await createTransaction.mutateAsync({
           accountId,
           categoryId: categoryId || undefined,
           amount: parseFloat(amount),
@@ -133,14 +120,13 @@ export const DashboardPage: React.FC = () => {
         });
       }
 
-      // Reset Form & reload
+      // Reset Form
       setDescription("");
       setAmount("");
       setAccountId("");
       setCategoryId("");
       setDestinationAccountId("");
       setIsDialogOpen(false);
-      await loadData();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Erro ao criar transação.");
     } finally {
@@ -150,9 +136,8 @@ export const DashboardPage: React.FC = () => {
 
   const handleDeleteTransaction = async (id: string) => {
     try {
-      await transactionService.delete(id);
+      await deleteTransaction.mutateAsync(id);
       setDeleteConfirmId(null);
-      await loadData();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Erro ao excluir transação.");
     }
@@ -175,7 +160,7 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={loadData} disabled={isLoading}>
+          <Button variant="outline" size="sm" onClick={handleRefreshAll} disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? "animate-spin" : ""}`} />
             Atualizar / Refresh
           </Button>
@@ -201,139 +186,145 @@ export const DashboardPage: React.FC = () => {
                     <Button
                       type="button"
                       variant={type === "EXPENSE" ? "default" : "outline"}
-                      className={`text-xs ${type === "EXPENSE" ? "bg-red-500 hover:bg-red-600 text-white" : ""}`}
-                      onClick={() => { setType("EXPENSE"); setCategoryId(""); }}
+                      className={type === "EXPENSE" ? "bg-red-600 hover:bg-red-700 text-white" : ""}
+                      onClick={() => setType("EXPENSE")}
                     >
                       Despesa
                     </Button>
                     <Button
                       type="button"
                       variant={type === "INCOME" ? "default" : "outline"}
-                      className={`text-xs ${type === "INCOME" ? "bg-emerald-500 hover:bg-emerald-600 text-white" : ""}`}
-                      onClick={() => { setType("INCOME"); setCategoryId(""); }}
+                      className={type === "INCOME" ? "bg-emerald-600 hover:bg-emerald-700 text-white" : ""}
+                      onClick={() => setType("INCOME")}
                     >
                       Receita
                     </Button>
                     <Button
                       type="button"
                       variant={type === "TRANSFER" ? "default" : "outline"}
-                      className={`text-xs ${type === "TRANSFER" ? "bg-blue-500 hover:bg-blue-600 text-white" : ""}`}
-                      onClick={() => { setType("TRANSFER"); setCategoryId(""); }}
+                      className={type === "TRANSFER" ? "bg-blue-600 hover:bg-blue-700 text-white" : ""}
+                      onClick={() => setType("TRANSFER")}
                     >
-                      Transferir
+                      Transf.
                     </Button>
                   </div>
 
-                  <div className="grid gap-2">
-                    <Label htmlFor="desc">Descrição</Label>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="amount" className="text-right">
+                      Valor
+                    </Label>
                     <Input
-                      id="desc"
-                      placeholder="Ex: Mercado, Salário, etc"
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label htmlFor="val">Valor (R$)</Label>
-                    <Input
-                      id="val"
+                      id="amount"
                       type="number"
                       step="0.01"
-                      placeholder="0.00"
+                      placeholder="0,00"
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
+                      className="col-span-3"
                       required
                     />
                   </div>
 
-                  <div className="grid gap-2">
-                    <Label htmlFor="date">Data & Hora</Label>
-                    <Input
-                      id="date"
-                      type="datetime-local"
-                      value={txDate}
-                      onChange={(e) => setTxDate(e.target.value)}
-                      required
-                    />
-                  </div>
+                  {type !== "TRANSFER" && (
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="category" className="text-right">
+                        Categoria
+                      </Label>
+                      <div className="col-span-3">
+                        <Select value={categoryId} onValueChange={(v) => setCategoryId(v || "")}>
+                          <SelectTrigger id="category">
+                            <SelectValue placeholder="Selecione..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {categories.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {c.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  )}
 
-                  <div className="grid gap-2">
-                    <Label htmlFor="acc">
-                      {type === "TRANSFER" ? "Conta de Origem" : "Conta"}
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="account" className="text-right">
+                      {type === "TRANSFER" ? "Origem" : "Conta"}
                     </Label>
-                    <Select
-                      value={accountId}
-                      onValueChange={(val) => setAccountId(val || "")}
-                      items={accounts.map(acc => ({ label: `${acc.name} (${formatCurrency(acc.balance)})`, value: acc.id }))}
-                      required
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione a conta" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {accounts.map((acc) => (
-                          <SelectItem key={acc.id} value={acc.id}>
-                            {acc.name} ({formatCurrency(acc.balance)})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="col-span-3">
+                      <Select value={accountId} onValueChange={(v) => setAccountId(v || "")}>
+                        <SelectTrigger id="account">
+                          <SelectValue placeholder="Selecione a conta..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {accounts.map((a) => (
+                            <SelectItem key={a.id} value={a.id}>
+                              {a.name} ({formatCurrency(a.balance)})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
                   {type === "TRANSFER" && (
-                    <div className="grid gap-2">
-                      <Label htmlFor="destAcc">Conta de Destino</Label>
-                      <Select
-                        value={destinationAccountId}
-                        onValueChange={(val) => setDestinationAccountId(val || "")}
-                        items={accounts.filter(acc => acc.id !== accountId).map(acc => ({ label: `${acc.name} (${formatCurrency(acc.balance)})`, value: acc.id }))}
-                        required
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o destino" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {accounts
-                            .filter((acc) => acc.id !== accountId)
-                            .map((acc) => (
-                              <SelectItem key={acc.id} value={acc.id}>
-                                {acc.name} ({formatCurrency(acc.balance)})
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="destinationAccount" className="text-right">
+                        Destino
+                      </Label>
+                      <div className="col-span-3">
+                        <Select value={destinationAccountId} onValueChange={(v) => setDestinationAccountId(v || "")}>
+                          <SelectTrigger id="destinationAccount">
+                            <SelectValue placeholder="Selecione o destino..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {accounts
+                              .filter((a) => a.id !== accountId)
+                              .map((a) => (
+                                <SelectItem key={a.id} value={a.id}>
+                                  {a.name} ({formatCurrency(a.balance)})
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                   )}
 
-                  {type !== "TRANSFER" && (
-                    <div className="grid gap-2">
-                      <Label htmlFor="cat">Categoria</Label>
-                      <Select
-                        value={categoryId}
-                        onValueChange={(val) => setCategoryId(val || "")}
-                        items={categories.filter(c => c.type === type).map(cat => ({ label: cat.name, value: cat.id }))}
-                        required
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione a categoria" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories
-                            .filter((c) => c.type === type)
-                            .map((cat) => (
-                              <SelectItem key={cat.id} value={cat.id}>
-                                {cat.name}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="description" className="text-right">
+                      Descrição
+                    </Label>
+                    <Input
+                      id="description"
+                      placeholder="Ex: Almoço, Salário, etc."
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      className="col-span-3"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="txDate" className="text-right">
+                      Data/Hora
+                    </Label>
+                    <Input
+                      id="txDate"
+                      type="datetime-local"
+                      value={txDate}
+                      onChange={(e) => setTxDate(e.target.value)}
+                      className="col-span-3"
+                      required
+                    />
+                  </div>
                 </div>
+
                 <DialogFooter>
-                  <Button type="submit" className="w-full" disabled={isSubmitting}>
-                    {isSubmitting ? "Lançando..." : "Confirmar Lançamento"}
+                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? "Salvando..." : "Salvar Transação"}
                   </Button>
                 </DialogFooter>
               </form>
@@ -343,93 +334,111 @@ export const DashboardPage: React.FC = () => {
       </div>
 
       {error && (
-        <div className="p-4 text-sm text-destructive bg-destructive/10 rounded-lg border border-destructive/20 font-medium">
-          {error}
+        <div className="flex items-center gap-2 p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-sm">
+          <AlertCircle className="h-5 w-5 shrink-0" />
+          <span>{error}</span>
         </div>
       )}
 
-      {/* Summary Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Overview Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Saldo Total Consolidação / Total Net Worth</CardTitle>
-            <div className="p-2 bg-primary/10 text-primary rounded-md">
-              <Wallet className="h-4 w-4" />
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Saldo Total</CardTitle>
+            <Wallet className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(totalBalance)}</div>
-            <p className="text-xs text-muted-foreground mt-1">Soma de todas as contas ativas</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Soma de todas as contas ativas
+            </p>
           </CardContent>
         </Card>
 
         <Card className="shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Receitas do Mês</CardTitle>
-            <div className="p-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-md">
-              <TrendingUp className="h-4 w-4" />
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Receitas do Mês</CardTitle>
+            <TrendingUp className="h-4 w-4 text-emerald-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-              +{formatCurrency(monthlyIncome)}
+              {formatCurrency(monthlyIncome)}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Entradas registradas</p>
+            <p className="text-xs text-muted-foreground mt-1">Entradas no mês vigente</p>
           </CardContent>
         </Card>
 
         <Card className="shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Despesas do Mês</CardTitle>
-            <div className="p-2 bg-red-500/10 text-red-600 dark:text-red-400 rounded-md">
-              <TrendingDown className="h-4 w-4" />
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Despesas do Mês</CardTitle>
+            <TrendingDown className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600 dark:text-red-400">
-              -{formatCurrency(monthlyExpenses)}
+              {formatCurrency(monthlyExpenses)}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Saídas registradas</p>
+            <p className="text-xs text-muted-foreground mt-1">Saídas no mês vigente</p>
           </CardContent>
         </Card>
 
         <Card className="shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Resultado Líquido</CardTitle>
-            <div className={`p-2 rounded-md ${netSavings >= 0 ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-600"}`}>
-              <ArrowRightLeft className="h-4 w-4" />
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Resultado do Mês</CardTitle>
+            <div
+              className={`h-2 w-2 rounded-full ${
+                netSavings >= 0 ? "bg-emerald-500" : "bg-red-500"
+              }`}
+            />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${netSavings >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
+            <div
+              className={`text-2xl font-bold ${
+                netSavings >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
+              }`}
+            >
               {formatCurrency(netSavings)}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Balanço do mês atual</p>
+            <p className="text-xs text-muted-foreground mt-1">Diferença (Receitas - Despesas)</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Expense Category Pie Chart */}
+      {/* Monthly Expense Pie Chart */}
       <ExpenseCategoryChart transactions={transactions} categories={categories} />
 
-      {/* Main Grid: Accounts & Recent Transactions */}
+      {/* Accounts & Recent Activity Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-1 md:col-span-2 lg:col-span-3 shadow-sm">
+        {/* Accounts List */}
+        <Card className="lg:col-span-3 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-lg">Saldos por Conta</CardTitle>
-            <CardDescription>Resumo das suas contas bancárias e carteiras.</CardDescription>
+            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+              <Wallet className="h-5 w-5 text-primary" />
+              Minhas Contas
+            </CardTitle>
+            <CardDescription>Saldos disponíveis por instituição</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {accounts.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-6">Nenhuma conta cadastrada.</p>
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                Nenhuma conta cadastrada.
+              </p>
             ) : (
               accounts.map((acc) => (
-                <div key={acc.id} className="flex items-center justify-between border-b pb-3 last:border-0 last:pb-0">
-                  <div>
-                    <p className="text-sm font-semibold">{acc.name}</p>
-                    <p className="text-xs text-muted-foreground uppercase">{acc.type}</p>
+                <div
+                  key={acc.id}
+                  className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div
+                      className="w-3 h-3 rounded-full shrink-0"
+                      style={{ backgroundColor: acc.color || "#820AD1" }}
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{acc.name}</p>
+                      <p className="text-xs text-muted-foreground uppercase">{acc.type}</p>
+                    </div>
                   </div>
-                  <span className={`text-sm font-bold ${acc.balance < 0 ? "text-red-500" : "text-foreground"}`}>
+                  <span className="font-semibold text-sm">
                     {formatCurrency(acc.balance)}
                   </span>
                 </div>
@@ -438,63 +447,110 @@ export const DashboardPage: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card className="col-span-1 md:col-span-2 lg:col-span-4 shadow-sm">
+        {/* Recent Transactions List */}
+        <Card className="lg:col-span-4 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-lg">Lançamentos Recentes</CardTitle>
-            <CardDescription>Últimas movimentações registradas.</CardDescription>
+            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-primary" />
+              Últimas Transações
+            </CardTitle>
+            <CardDescription>Movimentações recentes registradas</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             {transactions.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground text-sm">
-                <AlertCircle className="h-8 w-8 mb-2 stroke-1" />
-                Nenhuma transação cadastrada.
-              </div>
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                Nenhuma transação lançada até o momento.
+              </p>
             ) : (
-              <div className="space-y-4">
-                {transactions.slice(0, 6).map((tx) => (
-                  <div key={tx.id} className="flex items-center justify-between border-b pb-3 last:border-0 last:pb-0">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-full ${tx.type === "INCOME" ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-600"}`}>
-                        {tx.type === "INCOME" ? <ArrowDownLeft className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold">{tx.description || (tx.type === "INCOME" ? "Receita" : "Despesa")}</p>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          {tx.category && <span className="flex items-center gap-1"><Tag className="h-3 w-3" />{tx.category.name}</span>}
-                          <span>•</span>
-                          <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{formatDate(tx.transactionAt)}</span>
-                        </div>
-                      </div>
+              transactions.slice(0, 6).map((tx) => (
+                <div
+                  key={tx.id}
+                  className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                >
+                  <div className="flex items-center space-x-3 min-w-0 pr-2">
+                    <div
+                      className={`p-2 rounded-full shrink-0 ${
+                        tx.type === "INCOME"
+                          ? "bg-emerald-500/10 text-emerald-500"
+                          : tx.type === "EXPENSE"
+                          ? "bg-red-500/10 text-red-500"
+                          : "bg-blue-500/10 text-blue-500"
+                      }`}
+                    >
+                      {tx.type === "INCOME" ? (
+                        <ArrowDownLeft className="h-4 w-4" />
+                      ) : tx.type === "EXPENSE" ? (
+                        <ArrowUpRight className="h-4 w-4" />
+                      ) : (
+                        <ArrowRightLeft className="h-4 w-4" />
+                      )}
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className={`text-sm font-bold ${tx.type === "INCOME" ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
-                        {tx.type === "INCOME" ? "+" : "-"}{formatCurrency(tx.amount)}
-                      </span>
-                      <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-destructive h-8 px-2" onClick={() => setDeleteConfirmId(tx.id)}>
-                        Excluir
-                      </Button>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {tx.description || tx.category?.name || "Sem descrição"}
+                      </p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>{formatDate(tx.transactionAt)}</span>
+                        {tx.category?.name && (
+                          <span className="inline-flex items-center gap-1 bg-muted px-1.5 py-0.5 rounded text-[10px]">
+                            <Tag className="h-3 w-3" />
+                            {tx.category.name}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                ))}
-              </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span
+                      className={`font-semibold text-sm ${
+                        tx.type === "INCOME"
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : tx.type === "EXPENSE"
+                          ? "text-red-600 dark:text-red-400"
+                          : "text-blue-600 dark:text-blue-400"
+                      }`}
+                    >
+                      {tx.type === "INCOME" ? "+" : tx.type === "EXPENSE" ? "-" : ""}
+                      {formatCurrency(tx.amount)}
+                    </span>
+
+                    {deleteConfirmId === tx.id ? (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="xs"
+                          variant="destructive"
+                          onClick={() => handleDeleteTransaction(tx.id)}
+                        >
+                          Sim
+                        </Button>
+                        <Button
+                          size="xs"
+                          variant="ghost"
+                          onClick={() => setDeleteConfirmId(null)}
+                        >
+                          Não
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        size="xs"
+                        variant="ghost"
+                        className="text-muted-foreground hover:text-red-500"
+                        onClick={() => setDeleteConfirmId(tx.id)}
+                      >
+                        Excluir
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))
             )}
           </CardContent>
         </Card>
       </div>
-
-      {/* Delete Dialog */}
-      <Dialog open={deleteConfirmId !== null} onOpenChange={(open) => { if (!open) setDeleteConfirmId(null); }}>
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle>Excluir Transação</DialogTitle>
-            <DialogDescription>Tem certeza que deseja excluir esta transação?</DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex gap-2 justify-end mt-4">
-            <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>Cancelar</Button>
-            <Button variant="destructive" onClick={() => deleteConfirmId && handleDeleteTransaction(deleteConfirmId)}>Excluir</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
+
+export default DashboardPage;

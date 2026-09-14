@@ -3,6 +3,8 @@ import { ApiUser } from "../api/types";
 import { tokenStorage } from "./token-storage";
 import { apiClient } from "../api/client";
 
+import { clearQueryCacheOnLogout } from "../query/query-client";
+
 export interface AuthContextType {
   user: ApiUser | null;
   isAuthenticated: boolean;
@@ -35,6 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(currentUser);
       } catch (err) {
         tokenStorage.clearTokens();
+        clearQueryCacheOnLogout();
         setUser(null);
       } finally {
         setIsLoading(false);
@@ -44,6 +47,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = React.useCallback(async (email: string, password: string) => {
+    // Clear any previous query cache on login
+    clearQueryCacheOnLogout();
+
     const res = await apiClient<{
       accessToken: string;
       refreshToken: string;
@@ -87,6 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
     tokenStorage.clearTokens();
+    clearQueryCacheOnLogout();
     setUser(null);
   }, []);
 

@@ -1,13 +1,17 @@
 import React from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { useProfile } from "@/lib/queries";
 import { useTheme } from "@/components/theme-provider";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { User, Sun, Moon, LogOut, ShieldCheck } from "lucide-react";
 
 export const SettingsPage: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user: authUser, logout } = useAuth();
+  const { data: profileUser } = useProfile();
   const { theme, setTheme } = useTheme();
+
+  const user = profileUser || authUser;
 
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 min-w-0 pb-12">
@@ -90,3 +94,5 @@ export const SettingsPage: React.FC = () => {
     </div>
   );
 };
+
+export default SettingsPage;
