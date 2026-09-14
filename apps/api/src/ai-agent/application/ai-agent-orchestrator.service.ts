@@ -11,7 +11,7 @@ import { AgentToolRegistryService } from './tools/agent-tool-registry.service';
 import { AgentToolAuthorizationService } from './authorization/agent-tool-authorization.service';
 import { AgentToolArgumentValidatorService } from './validation/agent-tool-argument-validator.service';
 import { AiConfirmationService } from './ai-confirmation.service';
-import { FINBUDDY_AGENT_INSTRUCTIONS } from './prompts/finbuddy-agent.instructions';
+import { getFinbuddyAgentInstructions } from './prompts/finbuddy-agent.instructions';
 import { AgentResponse } from '../domain/agent-response';
 import {
   AgentToolContext,
@@ -64,7 +64,12 @@ export class AiAgentOrchestratorService {
     });
 
     const tools = this.toolRegistry.getToolDefinitions();
-    const context: AgentToolContext = { userId, requestId, aiRequestId };
+    const context: AgentToolContext = {
+      userId,
+      requestId,
+      aiRequestId,
+      currentDateIso: new Date().toISOString(),
+    };
 
     const maxToolIterations =
       this.configService.get<number>('OPENAI_MAX_TOOL_ITERATIONS') ?? 5;
@@ -133,7 +138,7 @@ export class AiAgentOrchestratorService {
       let response: OpenAIResponseOutput;
       try {
         response = await this.openAiClient.createRawResponse({
-          instructions: FINBUDDY_AGENT_INSTRUCTIONS,
+          instructions: getFinbuddyAgentInstructions(context.currentDateIso ?? new Date().toISOString()),
           input: currentInput,
           tools: tools.length > 0 ? tools : undefined,
           previousResponseId,

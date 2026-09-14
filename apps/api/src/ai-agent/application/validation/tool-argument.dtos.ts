@@ -112,11 +112,12 @@ export class CreateTransactionArgsDto {
   @Length(1, 255)
   description?: string;
 
+  @IsOptional()
   @IsISO8601(
     {},
     { message: 'transactionAt must be a valid ISO 8601 datetime string' },
   )
-  transactionAt!: string;
+  transactionAt?: string;
 }
 
 export class SaveMemoryArgsDto {
@@ -196,12 +197,12 @@ export class CreateTransferArgsDto {
   @Max(999999999999.9999)
   amount!: number;
 
+  @IsOptional()
   @IsISO8601(
     {},
     { message: 'transactionAt must be a valid ISO 8601 datetime string' },
   )
-  @IsNotEmpty()
-  transactionAt!: string;
+  transactionAt?: string;
 }
 
 export class UpdateTransferArgsDto {

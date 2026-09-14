@@ -4,7 +4,6 @@ import { OpenAIClient } from '../infrastructure/openai/openai.client';
 import { AgentToolRegistryService } from './tools/agent-tool-registry.service';
 import { AgentToolAuthorizationService } from './authorization/agent-tool-authorization.service';
 import { AgentToolArgumentValidatorService } from './validation/agent-tool-argument-validator.service';
-import { FINBUDDY_AGENT_INSTRUCTIONS } from './prompts/finbuddy-agent.instructions';
 import { AgentResponse } from '../domain/agent-response';
 import { ServiceUnavailableException } from '@nestjs/common';
 import { MetricsService } from '../../common/metrics/metrics.service';
@@ -123,7 +122,7 @@ describe('AiAgentOrchestratorService', () => {
 
       expect(mockToolRegistry.getToolDefinitions).toHaveBeenCalled();
       expect(mockOpenAiClient.createRawResponse).toHaveBeenCalledWith({
-        instructions: FINBUDDY_AGENT_INSTRUCTIONS,
+        instructions: expect.stringContaining('You are FinBuddy'),
         input: 'Hello FinBuddy',
         tools: undefined,
         previousResponseId: undefined,

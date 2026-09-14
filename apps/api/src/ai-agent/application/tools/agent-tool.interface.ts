@@ -11,6 +11,10 @@ export interface AgentToolContext {
   userId: string;
   requestId?: string;
   aiRequestId?: string;
+  /** Server-side ISO 8601 date-time injected at request time (e.g. "2026-09-14T11:42:00.000Z").
+   *  Tools should use this as the default transactionAt/transferredAt when the user does not specify a date.
+   *  Falls back to the current server time when not provided (e.g. in unit tests). */
+  currentDateIso?: string;
 }
 
 export interface AgentToolResult<T = any> {

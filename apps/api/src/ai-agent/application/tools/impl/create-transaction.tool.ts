@@ -45,14 +45,14 @@ export class CreateTransactionTool implements AgentTool {
       transactionAt: {
         type: 'string',
         description:
-          'Transaction ISO date-time string (e.g. 2026-09-11T12:00:00Z)',
+          'Optional ISO 8601 date-time of the transaction. Omit to use the current server date and time automatically.',
       },
       categoryId: {
         type: 'string',
         description: 'Optional category UUID associated with the transaction',
       },
     },
-    required: ['accountId', 'type', 'amount', 'transactionAt'],
+    required: ['accountId', 'type', 'amount'],
     additionalProperties: false,
   };
 
@@ -64,6 +64,10 @@ export class CreateTransactionTool implements AgentTool {
   ): Promise<AgentToolResult> {
     try {
       const dto = input as CreateTransactionArgsDto;
+      const transactionAt = dto.transactionAt
+        ? new Date(dto.transactionAt)
+        : new Date(context.currentDateIso ?? new Date().toISOString());
+
       const result = await this.transactionService.create(context.userId, {
         accountId: dto.accountId,
         categoryId: dto.categoryId,
@@ -71,7 +75,7 @@ export class CreateTransactionTool implements AgentTool {
         amount: dto.amount,
         description: dto.description,
         source: TransactionSource.MANUAL,
-        transactionAt: new Date(dto.transactionAt),
+        transactionAt,
       });
 
       return {

@@ -39,10 +39,10 @@ export class CreateTransferTool implements AgentTool {
       transactionAt: {
         type: 'string',
         description:
-          'Transfer ISO date-time string (e.g. 2026-09-13T15:30:00Z)',
+          'Optional ISO 8601 date-time of the transfer. Omit to use the current server date and time automatically.',
       },
     },
-    required: ['fromAccountId', 'toAccountId', 'amount', 'transactionAt'],
+    required: ['fromAccountId', 'toAccountId', 'amount'],
     additionalProperties: false,
   };
 
@@ -54,11 +54,15 @@ export class CreateTransferTool implements AgentTool {
   ): Promise<AgentToolResult> {
     try {
       const dto = input as CreateTransferArgsDto;
+      const transactionAt = dto.transactionAt
+        ? new Date(dto.transactionAt)
+        : new Date(context.currentDateIso ?? new Date().toISOString());
+
       const result = await this.transferService.create(context.userId, {
         fromAccountId: dto.fromAccountId,
         toAccountId: dto.toAccountId,
         amount: dto.amount,
-        transactionAt: new Date(dto.transactionAt),
+        transactionAt,
       });
 
       return {
