@@ -180,7 +180,7 @@ export const TransactionsPage: React.FC = () => {
   });
 
   return (
-    <div className="flex-1 space-y-6 p-4 md:p-8 overflow-y-auto max-h-[calc(100vh-4rem)] md:max-h-screen">
+    <div className="flex-1 space-y-6 p-4 md:p-8 min-w-0 pb-12">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Transações</h1>

@@ -163,7 +163,7 @@ export const DashboardPage: React.FC = () => {
   const netSavings = summary?.netSavings ?? (monthlyIncome - monthlyExpenses);
 
   return (
-    <div className="flex-1 space-y-6 p-4 md:p-8 overflow-y-auto max-h-[calc(100vh-4rem)] md:max-h-screen">
+    <div className="flex-1 space-y-6 p-4 md:p-8 min-w-0 pb-12">
       {/* Header & Actions */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>

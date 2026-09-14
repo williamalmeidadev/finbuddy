@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmationCard } from "@/components/ai/confirmation-card";
 import { ChatMessage } from "@/components/ai/chat-message";
-import { ToolActivity } from "@/components/ai/tool-activity";
 import { Bot, Send, Plus, Trash2, MessageSquare, AlertCircle, RefreshCw } from "lucide-react";
 
 interface LocalMessage {
@@ -24,8 +23,6 @@ export const AiAssistantPage: React.FC = () => {
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isConversationsLoading, setIsConversationsLoading] = useState(true);
-  const [isToolActive, setIsToolActive] = useState(false);
-  const [activeToolMessage, setActiveToolMessage] = useState("");
   const [error, setError] = useState("");
   const [submittingConfirmationId, setSubmittingConfirmationId] = useState<string | null>(null);
 
@@ -58,12 +55,22 @@ export const AiAssistantPage: React.FC = () => {
     try {
       const res = await aiService.getConversationMessages(convId);
       const list = res.items || res.data || [];
-      const items: LocalMessage[] = list.map((m: ConversationMessage) => ({
-        id: m.id,
-        role: String(m.role).toLowerCase() === "user" ? "user" : "assistant",
-        content: m.content,
-        timestamp: new Date(m.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
-      }));
+      const items: LocalMessage[] = list.map((m: ConversationMessage) => {
+        let content = m.content || "";
+        if (content.includes("Confirmation required to execute")) {
+          content = content.replace(
+            /Confirmation required to execute \w+\. Please confirm or cancel this financial action\./g,
+            "Esta operação financeira requereu sua confirmação para ser concluída."
+          );
+        }
+        return {
+          id: m.id,
+          role: String(m.role).toLowerCase() === "user" ? "user" : "assistant",
+          content,
+          timestamp: new Date(m.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+          confirmation: m.confirmation,
+        };
+      });
       setMessages(items);
     } catch (err: any) {
       setError(err?.message || "Erro ao carregar histórico da conversa.");
@@ -128,8 +135,6 @@ export const AiAssistantPage: React.FC = () => {
 
     setMessages((prev) => [...prev, newMsg]);
     setIsLoading(true);
-    setIsToolActive(true);
-    setActiveToolMessage("Analisando suas finanças com o FinBuddy AI...");
     setTimeout(scrollToBottom, 50);
 
     try {
@@ -156,8 +161,6 @@ export const AiAssistantPage: React.FC = () => {
       );
     } finally {
       setIsLoading(false);
-      setIsToolActive(false);
-      setActiveToolMessage("");
       setTimeout(scrollToBottom, 100);
     }
   };
@@ -166,16 +169,32 @@ export const AiAssistantPage: React.FC = () => {
     setSubmittingConfirmationId(confirmationId);
     setError("");
     try {
-      const res = await aiService.confirmAction(confirmationId);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: "sys-" + Date.now(),
-          role: "assistant",
-          content: `✅ Operação financeira confirmada e executada com sucesso! ${res.message || ""}`,
-          timestamp: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
-        },
-      ]);
+      await aiService.confirmAction(confirmationId, activeConversationId);
+      setMessages((prev) =>
+        prev
+          .map((m) => {
+            if (
+              m.confirmation &&
+              (m.confirmation.confirmationId === confirmationId ||
+                m.confirmation.id === confirmationId)
+            ) {
+              return {
+                ...m,
+                confirmation: {
+                  ...m.confirmation,
+                  status: "confirmed",
+                },
+              };
+            }
+            return m;
+          })
+          .concat({
+            id: "sys-" + Date.now(),
+            role: "assistant",
+            content: "✅ Operação financeira confirmada e executada com sucesso!",
+            timestamp: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+          })
+      );
     } catch (err: any) {
       setError(err?.message || "Erro ao executar confirmação financeira.");
     } finally {
@@ -188,16 +207,32 @@ export const AiAssistantPage: React.FC = () => {
     setSubmittingConfirmationId(confirmationId);
     setError("");
     try {
-      await aiService.cancelAction(confirmationId);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: "sys-" + Date.now(),
-          role: "assistant",
-          content: "❌ Operação financeira cancelada pelo usuário.",
-          timestamp: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
-        },
-      ]);
+      await aiService.cancelAction(confirmationId, activeConversationId);
+      setMessages((prev) =>
+        prev
+          .map((m) => {
+            if (
+              m.confirmation &&
+              (m.confirmation.confirmationId === confirmationId ||
+                m.confirmation.id === confirmationId)
+            ) {
+              return {
+                ...m,
+                confirmation: {
+                  ...m.confirmation,
+                  status: "cancelled",
+                },
+              };
+            }
+            return m;
+          })
+          .concat({
+            id: "sys-" + Date.now(),
+            role: "assistant",
+            content: "❌ Operação financeira cancelada pelo usuário.",
+            timestamp: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+          })
+      );
     } catch (err: any) {
       setError(err?.message || "Erro ao cancelar operação.");
     } finally {
@@ -207,16 +242,16 @@ export const AiAssistantPage: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col md:flex-row h-[calc(100vh-4rem)] md:h-screen overflow-hidden bg-background">
+    <div className="flex-1 flex flex-col md:flex-row h-full min-h-0 overflow-hidden bg-background">
       {/* Sidebar: Conversation List */}
-      <div className="w-full md:w-80 border-r bg-card flex flex-col shrink-0 max-h-48 md:max-h-full overflow-y-auto">
-        <div className="p-4 border-b flex items-center justify-between">
-          <div className="flex items-center gap-2 font-bold text-sm">
-            <Bot className="h-5 w-5 text-primary" />
+      <div className="w-full md:w-80 border-b md:border-b-0 md:border-r bg-card flex flex-col shrink-0 max-h-56 md:max-h-full overflow-hidden">
+        <div className="h-16 px-4 border-b flex items-center justify-between shrink-0 bg-card">
+          <div className="flex items-center gap-2 font-bold text-sm text-foreground">
+            <Bot className="h-5 w-5 text-primary shrink-0" />
             <span>Conversas IA</span>
           </div>
-          <Button variant="outline" size="sm" onClick={handleNewConversation}>
-            <Plus className="h-4 w-4 mr-1" /> Nova
+          <Button variant="outline" size="sm" onClick={handleNewConversation} className="h-8 text-xs gap-1">
+            <Plus className="h-3.5 w-3.5" /> Nova
           </Button>
         </div>
 
@@ -255,15 +290,15 @@ export const AiAssistantPage: React.FC = () => {
       </div>
 
       {/* Main Chat Interface */}
-      <div className="flex-1 flex flex-col min-w-0 h-full">
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
         {/* Top Chat Bar */}
-        <div className="p-4 border-b bg-card flex items-center justify-between shrink-0">
-          <div>
-            <h1 className="text-lg font-bold flex items-center gap-2">
-              <Bot className="h-5 w-5 text-primary" />
-              FinBuddy Copilot IA
+        <div className="h-16 px-4 md:px-6 border-b bg-card flex items-center justify-between shrink-0">
+          <div className="flex flex-col justify-center min-w-0">
+            <h1 className="text-sm md:text-base font-bold flex items-center gap-2 text-foreground truncate">
+              <Bot className="h-5 w-5 text-primary shrink-0" />
+              <span>FinBuddy Copilot IA</span>
             </h1>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground truncate hidden sm:block">
               Seu assistente financeiro pessoal com autonomia para análise e ações seguras.
             </p>
           </div>
@@ -304,14 +339,17 @@ export const AiAssistantPage: React.FC = () => {
                 {msg.confirmation && (
                   <div className="max-w-[85%] ml-11">
                     <ConfirmationCard
-                      confirmationId={msg.confirmation.id}
-                      tool={msg.confirmation.tool}
-                      riskLevel={msg.confirmation.riskLevel}
-                      parameters={msg.confirmation.parameters}
+                      confirmationId={msg.confirmation.confirmationId || msg.confirmation.id}
+                      toolName={msg.confirmation.toolName || msg.confirmation.tool}
+                      action={msg.confirmation.action || msg.confirmation.parameters}
                       expiresAt={msg.confirmation.expiresAt}
+                      status={(msg.confirmation as any).status || "pending"}
                       onConfirm={handleConfirmAction}
                       onCancel={handleCancelAction}
-                      isSubmitting={submittingConfirmationId === msg.confirmation.id}
+                      isSubmitting={
+                        submittingConfirmationId ===
+                        (msg.confirmation.confirmationId || msg.confirmation.id)
+                      }
                     />
                   </div>
                 )}
@@ -319,10 +357,8 @@ export const AiAssistantPage: React.FC = () => {
             ))
           )}
 
-          {isToolActive && (
-            <div className="py-2">
-              <ToolActivity message={activeToolMessage} />
-            </div>
+          {isLoading && (
+            <ChatMessage role="assistant" content="" isThinking={true} />
           )}
 
           {error && (

@@ -1,17 +1,16 @@
 import React from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/components/theme-provider";
-import { getBaseUrl } from "@/lib/api/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { User, Sun, Moon, LogOut, ShieldCheck, Server } from "lucide-react";
+import { User, Sun, Moon, LogOut, ShieldCheck } from "lucide-react";
 
 export const SettingsPage: React.FC = () => {
   const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
 
   return (
-    <div className="flex-1 space-y-6 p-4 md:p-8 overflow-y-auto max-h-[calc(100vh-4rem)] md:max-h-screen">
+    <div className="flex-1 space-y-6 p-4 md:p-8 min-w-0 pb-12">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Configurações</h1>
         <p className="text-muted-foreground text-sm">
@@ -69,23 +68,6 @@ export const SettingsPage: React.FC = () => {
               {theme === "dark" ? <Sun className="mr-2 h-4 w-4 text-amber-500" /> : <Moon className="mr-2 h-4 w-4 text-indigo-500" />}
               Alternar Tema
             </Button>
-          </CardContent>
-        </Card>
-
-        {/* System & Connection Info */}
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Server className="h-5 w-5 text-primary" />
-              Conexão com Backend API
-            </CardTitle>
-            <CardDescription>Configuração centralizada de API.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm">
-            <div className="flex justify-between border-b pb-2">
-              <span className="text-muted-foreground">URL Base do Backend</span>
-              <span className="font-mono text-xs">{getBaseUrl()}</span>
-            </div>
           </CardContent>
         </Card>
 

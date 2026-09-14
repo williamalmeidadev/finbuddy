@@ -172,7 +172,7 @@ export const AccountsPage: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 space-y-6 p-4 md:p-8 overflow-y-auto max-h-[calc(100vh-4rem)] md:max-h-screen">
+    <div className="flex-1 space-y-6 p-4 md:p-8 min-w-0 pb-12">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Minhas Contas</h1>
@@ -283,7 +283,7 @@ export const AccountsPage: React.FC = () => {
                           : "bg-amber-500/10 text-amber-600 border-amber-500/20 font-bold text-[10px] px-2 py-0.5"
                       }
                     >
-                      {acc.isActive ? "Ativa" : "Desativada"}
+                      {acc.isActive ? "Ativa" : "Desativada (Inactive)"}
                     </Badge>
                   </div>
                 </div>
