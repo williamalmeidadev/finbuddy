@@ -66,8 +66,8 @@ export const TransactionsPage: React.FC = () => {
       if (accRes.length > 0 && !accountId) {
         setAccountId(accRes[0].id);
       }
-    } catch (err: any) {
-      setError(err?.message || "Erro ao carregar transações.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro ao carregar transações.");
     } finally {
       setIsLoading(false);
     }
@@ -123,8 +123,8 @@ export const TransactionsPage: React.FC = () => {
       setCategoryId("");
       setIsCreateOpen(false);
       await loadData();
-    } catch (err: any) {
-      alert(err?.message || "Erro ao cadastrar transação.");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Erro ao cadastrar transação.");
     } finally {
       setIsSubmitting(false);
     }
@@ -149,8 +149,8 @@ export const TransactionsPage: React.FC = () => {
       });
       setEditingTx(null);
       await loadData();
-    } catch (err: any) {
-      alert(err?.message || "Erro ao editar transação.");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Erro ao editar transação.");
     } finally {
       setIsSubmitting(false);
     }
@@ -161,8 +161,8 @@ export const TransactionsPage: React.FC = () => {
       await transactionService.delete(id);
       setDeleteConfirmId(null);
       await loadData();
-    } catch (err: any) {
-      alert(err?.message || "Erro ao excluir transação.");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Erro ao excluir transação.");
     }
   };
 

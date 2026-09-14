@@ -13,7 +13,9 @@ interface LocalMessage {
   role: "user" | "assistant";
   content: string;
   timestamp?: string;
-  confirmation?: ApiAgentConfirmation;
+  confirmation?: ApiAgentConfirmation & {
+    status?: "pending" | "confirmed" | "cancelled" | "executing" | "expired";
+  };
 }
 
 export const AiAssistantPage: React.FC = () => {
@@ -72,8 +74,8 @@ export const AiAssistantPage: React.FC = () => {
         };
       });
       setMessages(items);
-    } catch (err: any) {
-      setError(err?.message || "Erro ao carregar histórico da conversa.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro ao carregar histórico da conversa.");
     } finally {
       setIsLoading(false);
       setTimeout(scrollToBottom, 100);
@@ -98,8 +100,8 @@ export const AiAssistantPage: React.FC = () => {
           timestamp: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
         },
       ]);
-    } catch (err: any) {
-      setError(err?.message || "Erro ao criar nova conversa.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro ao criar nova conversa.");
     }
   };
 
@@ -112,8 +114,8 @@ export const AiAssistantPage: React.FC = () => {
         setActiveConversationId(undefined);
         setMessages([]);
       }
-    } catch (err: any) {
-      alert(err?.message || "Erro ao excluir conversa.");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Erro ao excluir conversa.");
     }
   };
 
@@ -154,10 +156,11 @@ export const AiAssistantPage: React.FC = () => {
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(
-        err?.message ||
-          "Ocorreu um erro ao comunicar com o assistente IA. Por favor, tente novamente."
+        err instanceof Error
+          ? err.message
+          : "Ocorreu um erro ao comunicar com o assistente IA. Por favor, tente novamente."
       );
     } finally {
       setIsLoading(false);
@@ -195,8 +198,8 @@ export const AiAssistantPage: React.FC = () => {
             timestamp: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
           })
       );
-    } catch (err: any) {
-      setError(err?.message || "Erro ao executar confirmação financeira.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro ao executar confirmação financeira.");
     } finally {
       setSubmittingConfirmationId(null);
       setTimeout(scrollToBottom, 100);
@@ -233,8 +236,8 @@ export const AiAssistantPage: React.FC = () => {
             timestamp: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
           })
       );
-    } catch (err: any) {
-      setError(err?.message || "Erro ao cancelar operação.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro ao cancelar operação.");
     } finally {
       setSubmittingConfirmationId(null);
       setTimeout(scrollToBottom, 100);
@@ -343,7 +346,7 @@ export const AiAssistantPage: React.FC = () => {
                       toolName={msg.confirmation.toolName || msg.confirmation.tool}
                       action={msg.confirmation.action || msg.confirmation.parameters}
                       expiresAt={msg.confirmation.expiresAt}
-                      status={(msg.confirmation as any).status || "pending"}
+                      status={msg.confirmation.status || "pending"}
                       onConfirm={handleConfirmAction}
                       onCancel={handleCancelAction}
                       isSubmitting={

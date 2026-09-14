@@ -39,8 +39,8 @@ export const TransfersPage: React.FC = () => {
         setFromAccountId((prev) => prev || accRes[0].id);
         setToAccountId((prev) => prev || accRes[1].id);
       }
-    } catch (err: any) {
-      setError(err?.message || "Erro ao carregar transferências.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro ao carregar transferências.");
     } finally {
       setIsLoading(false);
     }
@@ -92,8 +92,8 @@ export const TransfersPage: React.FC = () => {
       setDescription("");
       setIsDialogOpen(false);
       await loadData();
-    } catch (err: any) {
-      alert(err?.message || "Erro ao criar transferência.");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Erro ao criar transferência.");
     } finally {
       setIsSubmitting(false);
     }
@@ -104,8 +104,8 @@ export const TransfersPage: React.FC = () => {
       await transferService.delete(id);
       setDeleteConfirmId(null);
       await loadData();
-    } catch (err: any) {
-      alert(err?.message || "Erro ao excluir transferência.");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Erro ao excluir transferência.");
     }
   };
 

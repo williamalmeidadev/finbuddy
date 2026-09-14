@@ -31,8 +31,8 @@ export const RegisterPage: React.FC = () => {
     try {
       await register(name || "Usuário FinBuddy", email, password);
       navigate("/app/dashboard");
-    } catch (err: any) {
-      setError(err?.message || "Falha ao registrar conta. Verifique os dados fornecidos.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Falha ao registrar conta. Verifique os dados fornecidos.");
     } finally {
       setIsLoading(false);
     }

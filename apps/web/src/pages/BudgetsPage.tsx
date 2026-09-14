@@ -43,8 +43,8 @@ export const BudgetsPage: React.FC = () => {
       ]);
       setBudgets(budRes);
       setCategories(catRes.filter(c => c.type === "EXPENSE"));
-    } catch (err: any) {
-      setError(err?.message || "Erro ao carregar orçamentos.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro ao carregar orçamentos.");
     } finally {
       setIsLoading(false);
     }
@@ -76,8 +76,8 @@ export const BudgetsPage: React.FC = () => {
       setAmount("");
       setIsCreateOpen(false);
       await loadData();
-    } catch (err: any) {
-      alert(err?.message || "Erro ao criar orçamento.");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Erro ao criar orçamento.");
     } finally {
       setIsSubmitting(false);
     }
@@ -98,8 +98,8 @@ export const BudgetsPage: React.FC = () => {
       });
       setEditingBudget(null);
       await loadData();
-    } catch (err: any) {
-      alert(err?.message || "Erro ao editar orçamento.");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Erro ao editar orçamento.");
     } finally {
       setIsSubmitting(false);
     }
@@ -110,8 +110,8 @@ export const BudgetsPage: React.FC = () => {
       await budgetService.delete(id);
       setDeleteConfirmId(null);
       await loadData();
-    } catch (err: any) {
-      alert(err?.message || "Erro ao excluir orçamento.");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Erro ao excluir orçamento.");
     }
   };
 

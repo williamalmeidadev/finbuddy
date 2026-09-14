@@ -220,7 +220,9 @@ export interface ConversationMessage {
   role: "user" | "assistant" | "system";
   content: string;
   createdAt: string;
-  confirmation?: ApiAgentConfirmation & { status?: string };
+  confirmation?: ApiAgentConfirmation & {
+    status?: "pending" | "confirmed" | "cancelled" | "executing" | "expired";
+  };
 }
 
 export const aiService = {

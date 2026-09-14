@@ -52,8 +52,8 @@ export const AccountsPage: React.FC = () => {
     try {
       const data = await accountService.findAll();
       setAccounts(data);
-    } catch (err: any) {
-      setError(err?.message || "Erro ao carregar contas.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro ao carregar contas.");
     } finally {
       setIsLoading(false);
     }
@@ -117,8 +117,8 @@ export const AccountsPage: React.FC = () => {
       setType("CHECKING");
       setIsDialogOpen(false);
       await loadAccounts();
-    } catch (err: any) {
-      alert(err?.message || "Erro ao criar conta.");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Erro ao criar conta.");
     } finally {
       setIsSubmitting(false);
     }
@@ -145,8 +145,8 @@ export const AccountsPage: React.FC = () => {
       setIsEditOpen(false);
       setEditingAccount(null);
       await loadAccounts();
-    } catch (err: any) {
-      alert(err?.message || "Erro ao atualizar conta.");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Erro ao atualizar conta.");
     } finally {
       setIsSubmitting(false);
     }
@@ -157,8 +157,8 @@ export const AccountsPage: React.FC = () => {
       await accountService.delete(id);
       setDeleteConfirmId(null);
       await loadAccounts();
-    } catch (err: any) {
-      alert(err?.message || "Erro ao desativar conta.");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Erro ao desativar conta.");
     }
   };
 
@@ -166,8 +166,8 @@ export const AccountsPage: React.FC = () => {
     try {
       await accountService.update(id, { isActive: true });
       await loadAccounts();
-    } catch (err: any) {
-      alert(err?.message || "Erro ao reativar conta.");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Erro ao reativar conta.");
     }
   };
 

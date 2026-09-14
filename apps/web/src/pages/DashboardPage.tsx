@@ -67,8 +67,8 @@ export const DashboardPage: React.FC = () => {
       setAccounts(accRes);
       setTransactions(txRes);
       setCategories(catRes);
-    } catch (err: any) {
-      setError(err?.message || "Erro ao carregar dados do dashboard.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro ao carregar dados do dashboard.");
     } finally {
       setIsLoading(false);
     }
@@ -140,8 +140,8 @@ export const DashboardPage: React.FC = () => {
       setDestinationAccountId("");
       setIsDialogOpen(false);
       await loadData();
-    } catch (err: any) {
-      alert(err?.message || "Erro ao criar transação.");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Erro ao criar transação.");
     } finally {
       setIsSubmitting(false);
     }
@@ -152,8 +152,8 @@ export const DashboardPage: React.FC = () => {
       await transactionService.delete(id);
       setDeleteConfirmId(null);
       await loadData();
-    } catch (err: any) {
-      alert(err?.message || "Erro ao excluir transação.");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Erro ao excluir transação.");
     }
   };
 

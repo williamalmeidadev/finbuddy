@@ -26,8 +26,8 @@ export const LoginPage: React.FC = () => {
     try {
       await login(email, password);
       navigate("/app/dashboard");
-    } catch (err: any) {
-      setError(err?.message || "Falha ao autenticar. Verifique seu e-mail e senha.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Falha ao autenticar. Verifique seu e-mail e senha.");
     } finally {
       setIsLoading(false);
     }

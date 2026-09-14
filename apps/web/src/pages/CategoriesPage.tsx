@@ -35,8 +35,8 @@ export const CategoriesPage: React.FC = () => {
     try {
       const data = await categoryService.findAll();
       setCategories(data);
-    } catch (err: any) {
-      setError(err?.message || "Erro ao carregar categorias.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro ao carregar categorias.");
     } finally {
       setIsLoading(false);
     }
@@ -60,8 +60,8 @@ export const CategoriesPage: React.FC = () => {
       setType("EXPENSE");
       setIsCreateOpen(false);
       await loadCategories();
-    } catch (err: any) {
-      alert(err?.message || "Erro ao criar categoria.");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Erro ao criar categoria.");
     } finally {
       setIsSubmitting(false);
     }
@@ -84,8 +84,8 @@ export const CategoriesPage: React.FC = () => {
       });
       setEditingCategory(null);
       await loadCategories();
-    } catch (err: any) {
-      alert(err?.message || "Erro ao editar categoria.");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Erro ao editar categoria.");
     } finally {
       setIsSubmitting(false);
     }
@@ -96,8 +96,8 @@ export const CategoriesPage: React.FC = () => {
       await categoryService.deactivate(id);
       setDeleteConfirmId(null);
       await loadCategories();
-    } catch (err: any) {
-      alert(err?.message || "Erro ao desativar categoria.");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Erro ao desativar categoria.");
     }
   };
 

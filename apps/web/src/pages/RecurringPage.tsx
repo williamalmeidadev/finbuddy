@@ -48,8 +48,8 @@ export const RecurringPage: React.FC = () => {
       setRecurringRules(recRes);
       setAccounts(accRes);
       setCategories(catRes);
-    } catch (err: any) {
-      setError(err?.message || "Erro ao carregar transações recorrentes.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro ao carregar transações recorrentes.");
     } finally {
       setIsLoading(false);
     }
@@ -96,8 +96,8 @@ export const RecurringPage: React.FC = () => {
       setCategoryId("");
       setIsCreateOpen(false);
       await loadData();
-    } catch (err: any) {
-      alert(err?.message || "Erro ao cadastrar transação recorrente.");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Erro ao cadastrar transação recorrente.");
     } finally {
       setIsSubmitting(false);
     }
@@ -122,8 +122,8 @@ export const RecurringPage: React.FC = () => {
       });
       setEditingRule(null);
       await loadData();
-    } catch (err: any) {
-      alert(err?.message || "Erro ao editar regra recorrente.");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Erro ao editar regra recorrente.");
     } finally {
       setIsSubmitting(false);
     }
@@ -134,8 +134,8 @@ export const RecurringPage: React.FC = () => {
       await recurringService.delete(id);
       setDeleteConfirmId(null);
       await loadData();
-    } catch (err: any) {
-      alert(err?.message || "Erro ao desativar regra recorrente.");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Erro ao desativar regra recorrente.");
     }
   };
 
