@@ -2,7 +2,7 @@ import * as React from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Check, X, Loader2 } from "lucide-react";
-import { accountService, categoryService } from "@/lib/api/services";
+import { accountService, categoryService, transactionService, transferService } from "@/lib/api/services";
 
 export interface ConfirmationCardProps {
   confirmationId?: string;
@@ -85,6 +85,16 @@ export function ConfirmationCard({
   const [resolvedFromAccount, setResolvedFromAccount] = React.useState<string | null>(null);
   const [resolvedToAccount, setResolvedToAccount] = React.useState<string | null>(null);
   const [resolvedCategory, setResolvedCategory] = React.useState<string | null>(null);
+  const [resolvedTxDetails, setResolvedTxDetails] = React.useState<{
+    type?: string;
+    amount?: number;
+    description?: string;
+    transactionAt?: string;
+    accountName?: string;
+    categoryName?: string;
+    fromAccountName?: string;
+    toAccountName?: string;
+  } | null>(null);
 
   React.useEffect(() => {
     let isMounted = true;
@@ -99,6 +109,45 @@ export function ConfirmationCard({
     const fromAccountName = typeof params.fromAccountName === "string" ? params.fromAccountName : undefined;
     const toAccountName = typeof params.toAccountName === "string" ? params.toAccountName : undefined;
     const categoryName = typeof params.categoryName === "string" ? params.categoryName : undefined;
+
+    const transactionId = typeof params.transactionId === "string" ? params.transactionId : undefined;
+    const transferId = typeof params.transferId === "string" ? params.transferId : undefined;
+    const hasDetails = params.amount !== undefined || params.description !== undefined || params.name !== undefined;
+
+    // Load target item details for deletion/updates if details are not provided directly
+    if ((transactionId || transferId) && !hasDetails) {
+      async function loadItemDetails() {
+        try {
+          if (transactionId) {
+            const tx = await transactionService.findOne(transactionId).catch(() => null);
+            if (tx && isMounted) {
+              setResolvedTxDetails({
+                type: tx.type,
+                amount: tx.amount,
+                description: tx.description ?? undefined,
+                transactionAt: tx.transactionAt,
+                accountName: tx.account?.name,
+                categoryName: tx.category?.name,
+              });
+            }
+          } else if (transferId) {
+            const tr = await transferService.findOne(transferId).catch(() => null);
+            if (tr && isMounted) {
+              setResolvedTxDetails({
+                amount: tr.amount,
+                description: tr.description ?? undefined,
+                transactionAt: tr.transferredAt || tr.transactionAt,
+                fromAccountName: tr.fromAccount?.name || tr.sourceAccount?.name,
+                toAccountName: tr.toAccount?.name || tr.destinationAccount?.name,
+              });
+            }
+          }
+        } catch {
+          // Fallback gracefully
+        }
+      }
+      loadItemDetails();
+    }
 
     const needAccounts = (!accountName && accountId) || (!fromAccountName && fromAccountId) || (!toAccountName && toAccountId);
     const needCategories = !categoryName && categoryId;
@@ -166,7 +215,21 @@ export function ConfirmationCard({
     return String(value);
   };
 
-  const rawParams = { ...effectiveParams } as Record<string, unknown>;
+  const rawParams = {
+    ...(resolvedTxDetails || {}),
+    ...effectiveParams,
+  } as Record<string, unknown>;
+
+  if (resolvedTxDetails) {
+    if (!rawParams.type && resolvedTxDetails.type) rawParams.type = resolvedTxDetails.type;
+    if (!rawParams.amount && resolvedTxDetails.amount) rawParams.amount = resolvedTxDetails.amount;
+    if (!rawParams.description && resolvedTxDetails.description) rawParams.description = resolvedTxDetails.description;
+    if (!rawParams.transactionAt && resolvedTxDetails.transactionAt) rawParams.transactionAt = resolvedTxDetails.transactionAt;
+    if (!rawParams.accountName && resolvedTxDetails.accountName) rawParams.accountName = resolvedTxDetails.accountName;
+    if (!rawParams.categoryName && resolvedTxDetails.categoryName) rawParams.categoryName = resolvedTxDetails.categoryName;
+    if (!rawParams.fromAccountName && resolvedTxDetails.fromAccountName) rawParams.fromAccountName = resolvedTxDetails.fromAccountName;
+    if (!rawParams.toAccountName && resolvedTxDetails.toAccountName) rawParams.toAccountName = resolvedTxDetails.toAccountName;
+  }
 
   if (!rawParams.accountName && resolvedAccount) {
     rawParams.accountName = resolvedAccount;
@@ -283,8 +346,8 @@ export function ConfirmationCard({
             ))}
           </div>
         ) : (
-          <div className="rounded-md bg-background/80 p-2.5 font-mono border text-[11px]">
-            {JSON.stringify(effectiveParams, null, 2)}
+          <div className="rounded-md bg-background/80 p-2.5 border text-xs text-muted-foreground italic">
+            Operação em registro financeiro.
           </div>
         )}
 

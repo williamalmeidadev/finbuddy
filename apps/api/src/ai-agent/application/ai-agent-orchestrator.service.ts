@@ -26,6 +26,8 @@ import {
 
 import { AccountService } from '../../account/account.service';
 import { CategoryService } from '../../category/category.service';
+import { TransactionService } from '../../transaction/transaction.service';
+import { TransferService } from '../../transfer/transfer.service';
 
 export interface ProcessUserMessageOptions {
   requestId?: string;
@@ -49,6 +51,8 @@ export class AiAgentOrchestratorService {
     private readonly configService: ConfigService,
     private readonly accountService: AccountService,
     private readonly categoryService: CategoryService,
+    private readonly transactionService: TransactionService,
+    private readonly transferService: TransferService,
   ) {}
 
   async processUserMessage(
@@ -417,6 +421,53 @@ export class AiAgentOrchestratorService {
     const enriched = { ...argumentsObj };
 
     try {
+      if (enriched.transactionId) {
+        const tx = await this.transactionService
+          .findById(enriched.transactionId, userId)
+          .catch(() => null);
+        if (tx) {
+          if (enriched.description === undefined && tx.description) {
+            enriched.description = tx.description;
+          }
+          if (enriched.amount === undefined && tx.amount !== undefined) {
+            enriched.amount = tx.amount;
+          }
+          if (enriched.type === undefined && tx.type) {
+            enriched.type = tx.type;
+          }
+          if (enriched.transactionAt === undefined && tx.transactionAt) {
+            enriched.transactionAt = tx.transactionAt;
+          }
+          if (!enriched.accountId && tx.accountId) {
+            enriched.accountId = tx.accountId;
+          }
+          if (!enriched.categoryId && tx.categoryId) {
+            enriched.categoryId = tx.categoryId;
+          }
+        }
+      }
+
+      if (enriched.transferId) {
+        const transfers = await this.transferService
+          .findByUserId(userId)
+          .catch(() => []);
+        const tr = transfers.find((t) => t.id === enriched.transferId);
+        if (tr) {
+          if (enriched.amount === undefined && tr.amount !== undefined) {
+            enriched.amount = tr.amount;
+          }
+          if (enriched.transactionAt === undefined) {
+            enriched.transactionAt = tr.transactionAt || tr.transferredAt;
+          }
+          if (!enriched.fromAccountId && (tr.fromAccountId || tr.sourceAccountId)) {
+            enriched.fromAccountId = tr.fromAccountId || tr.sourceAccountId;
+          }
+          if (!enriched.toAccountId && (tr.toAccountId || tr.destinationAccountId)) {
+            enriched.toAccountId = tr.toAccountId || tr.destinationAccountId;
+          }
+        }
+      }
+
       const needAccounts =
         enriched.accountId || enriched.fromAccountId || enriched.toAccountId;
       const needCategories = enriched.categoryId;

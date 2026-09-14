@@ -15,6 +15,8 @@ import { AiAgentObservabilityService } from './observability/ai-agent-observabil
 import { ConfigService } from '@nestjs/config';
 import { AccountService } from '../../account/account.service';
 import { CategoryService } from '../../category/category.service';
+import { TransactionService } from '../../transaction/transaction.service';
+import { TransferService } from '../../transfer/transfer.service';
 
 describe('AiAgentOrchestratorService', () => {
   let service: AiAgentOrchestratorService;
@@ -94,6 +96,18 @@ describe('AiAgentOrchestratorService', () => {
         },
         {
           provide: CategoryService,
+          useValue: {
+            findByUserId: jest.fn().mockResolvedValue([]),
+          },
+        },
+        {
+          provide: TransactionService,
+          useValue: {
+            findById: jest.fn().mockResolvedValue(null),
+          },
+        },
+        {
+          provide: TransferService,
           useValue: {
             findByUserId: jest.fn().mockResolvedValue([]),
           },
