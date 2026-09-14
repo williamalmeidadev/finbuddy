@@ -11,6 +11,7 @@ import { AgentResponse } from './domain/agent-response';
 import { AiConversationService } from './application/ai-conversation.service';
 import { AiMemoryService } from './application/memory/ai-memory.service';
 import { ConfigService } from '@nestjs/config';
+import { DatabaseService } from '../database/database.service';
 
 describe('AiAgentService', () => {
   let service: AiAgentService;
@@ -140,6 +141,14 @@ describe('AiAgentService', () => {
               if (key === 'AI_MAX_CONCURRENT_REQUESTS_PER_USER') return 3;
               return defaultValue;
             }),
+          },
+        },
+        {
+          provide: DatabaseService,
+          useValue: {
+            aiConfirmation: {
+              findUnique: jest.fn().mockResolvedValue(null),
+            },
           },
         },
       ],

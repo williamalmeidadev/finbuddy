@@ -20,7 +20,11 @@ import {
 
 import { AiConversationService } from './application/ai-conversation.service';
 import { AiMemoryService } from './application/memory/ai-memory.service';
-import { ConversationMessageRole } from '../generated/prisma/enums';
+import {
+  ConversationMessageRole,
+  AiConfirmationStatus,
+} from '../generated/prisma/enums';
+import { DatabaseService } from '../database/database.service';
 import {
   CreateMemoryDto,
   ListMemoriesQueryDto,
@@ -56,6 +60,7 @@ export class AiAgentService {
     private readonly conversationService: AiConversationService,
     private readonly memoryService: AiMemoryService,
     private readonly configService: ConfigService,
+    private readonly prisma: DatabaseService,
   ) {}
 
   async sendMessage(
@@ -121,7 +126,7 @@ export class AiAgentService {
 
       const history = rawHistory.map((h) => ({
         role: h.role,
-        content: h.content,
+        content: h.content.replace(/<!--CONFIRMATION:[\s\S]*?-->/g, '').trim(),
       }));
 
       // 2. Conversation context budget enforcement
@@ -172,12 +177,16 @@ export class AiAgentService {
         },
       );
 
+      const assistantContent = response.confirmation
+        ? `${response.message} <!--CONFIRMATION:${JSON.stringify(response.confirmation)}-->`
+        : response.message;
+
       // Persist assistant message
       await this.conversationService.appendMessage(
         conversationId,
         userId,
         ConversationMessageRole.ASSISTANT,
-        response.message,
+        assistantContent,
         options,
       );
 
@@ -230,12 +239,76 @@ export class AiAgentService {
     page?: number,
     limit?: number,
   ) {
-    return this.conversationService.getConversationMessages(
+    const result = await this.conversationService.getConversationMessages(
       id,
       userId,
       page,
       limit,
     );
+
+    const items = await Promise.all(
+      result.items.map(async (msg) => {
+        let content = msg.content;
+        let confirmation: Record<string, unknown> | undefined = undefined;
+
+        const match = content.match(/<!--CONFIRMATION:([\s\S]*?)-->/);
+        if (match && match[1]) {
+          try {
+            const rawConf = JSON.parse(match[1]) as Record<string, unknown>;
+            content = content
+              .replace(/<!--CONFIRMATION:[\s\S]*?-->/g, '')
+              .trim();
+            const confId =
+              typeof rawConf.confirmationId === 'string'
+                ? rawConf.confirmationId
+                : typeof rawConf.id === 'string'
+                  ? rawConf.id
+                  : undefined;
+            let status = 'pending';
+
+            if (confId) {
+              const dbConf = await this.prisma.aiConfirmation.findUnique({
+                where: { id: confId },
+              });
+              if (dbConf) {
+                if (dbConf.status === AiConfirmationStatus.CONSUMED) {
+                  status = 'confirmed';
+                } else if (dbConf.status === AiConfirmationStatus.CANCELLED) {
+                  status = 'cancelled';
+                } else if (
+                  dbConf.status === AiConfirmationStatus.EXPIRED ||
+                  dbConf.expiresAt <= new Date()
+                ) {
+                  status = 'expired';
+                } else {
+                  status = 'pending';
+                }
+              } else {
+                status = 'cancelled';
+              }
+            }
+
+            confirmation = {
+              ...rawConf,
+              status,
+            };
+          } catch {
+            // Ignore JSON parse errors
+          }
+        }
+
+        return {
+          ...msg,
+          content,
+          confirmation,
+        };
+      }),
+    );
+
+    return {
+      ...result,
+      items,
+    };
   }
 
   async deleteConversation(
@@ -354,6 +427,16 @@ export class AiAgentService {
         success: true,
       });
 
+      if (options?.conversationId) {
+        await this.conversationService.appendMessage(
+          options.conversationId,
+          userId,
+          ConversationMessageRole.ASSISTANT,
+          `✅ Operação financeira confirmada e executada com sucesso!`,
+          options,
+        );
+      }
+
       return {
         success: true,
         message: 'Financial action executed successfully',
@@ -399,6 +482,17 @@ export class AiAgentService {
       userId,
       options,
     );
+
+    if (options?.conversationId) {
+      await this.conversationService.appendMessage(
+        options.conversationId,
+        userId,
+        ConversationMessageRole.ASSISTANT,
+        `❌ Operação financeira cancelada pelo usuário.`,
+        options,
+      );
+    }
+
     return {
       success: true,
       message: 'Confirmation request cancelled',

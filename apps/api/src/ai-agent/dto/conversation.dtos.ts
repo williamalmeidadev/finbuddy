@@ -97,6 +97,9 @@ export class ConversationMessageResponseDto {
 
   @ApiProperty({ example: '2026-09-13T12:00:00.000Z' })
   createdAt: Date;
+
+  @ApiPropertyOptional()
+  confirmation?: Record<string, any>;
 }
 
 export class PaginatedConversationsResponseDto {

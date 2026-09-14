@@ -294,7 +294,7 @@ export class AiAgentOrchestratorService {
               );
 
               return new AgentResponse(
-                `Confirmation required to execute ${tool.name}. Please confirm or cancel this financial action.`,
+                `Esta operação financeira requer a sua confirmação. Por favor, confira os detalhes abaixo para autorizar ou cancelar.`,
                 'confirmation_required',
                 {
                   confirmationId: confirmation.id,
