@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiClient } from "@/lib/api/client";
-import { ApiCategory, ApiRecurringTransaction } from "@/lib/api/types";
+import { ApiCategory, ApiRecurringTransaction, RecurrenceFrequency } from "@/lib/api/types";
 import { AlertCircle } from "lucide-react";
 
 interface EditRecurringDialogProps {
@@ -82,8 +82,8 @@ export function EditRecurringDialog({
 
       onSuccess?.(updated);
       onOpenChange(false);
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to update recurring transaction.");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to update recurring transaction.");
     } finally {
       setIsLoading(false);
     }
@@ -125,7 +125,7 @@ export function EditRecurringDialog({
             <select
               id="edit-rec-freq"
               value={frequency}
-              onChange={(e) => setFrequency(e.target.value as any)}
+              onChange={(e) => setFrequency(e.target.value as RecurrenceFrequency)}
               disabled={isLoading}
               className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm outline-none focus:ring-1 focus:ring-ring"
             >

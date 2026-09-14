@@ -185,7 +185,7 @@ export const AiAssistantPage: React.FC = () => {
                 ...m,
                 confirmation: {
                   ...m.confirmation,
-                  status: "confirmed",
+                  status: "confirmed" as const,
                 },
               };
             }
@@ -223,7 +223,7 @@ export const AiAssistantPage: React.FC = () => {
                 ...m,
                 confirmation: {
                   ...m.confirmation,
-                  status: "cancelled",
+                  status: "cancelled" as const,
                 },
               };
             }

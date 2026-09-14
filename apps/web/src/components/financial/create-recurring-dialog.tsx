@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiClient } from "@/lib/api/client";
-import { ApiAccount, ApiCategory, ApiRecurringTransaction } from "@/lib/api/types";
+import { ApiAccount, ApiCategory, ApiRecurringTransaction, RecurrenceFrequency } from "@/lib/api/types";
 import { AlertCircle } from "lucide-react";
 
 interface CreateRecurringDialogProps {
@@ -75,8 +75,8 @@ export function CreateRecurringDialog({
       onOpenChange(false);
       setAmount("");
       setDescription("");
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to create recurring transaction.");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to create recurring transaction.");
     } finally {
       setIsLoading(false);
     }
@@ -175,7 +175,7 @@ export function CreateRecurringDialog({
             <select
               id="rec-freq"
               value={frequency}
-              onChange={(e) => setFrequency(e.target.value as any)}
+              onChange={(e) => setFrequency(e.target.value as RecurrenceFrequency)}
               disabled={isLoading}
               className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm outline-none focus:ring-1 focus:ring-ring"
             >
