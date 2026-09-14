@@ -76,7 +76,15 @@ export class AiAgentController {
       typeof req.header === 'function'
         ? req.header('x-ai-request-id')
         : undefined;
-    return { requestId, aiRequestId };
+    const conversationId =
+      typeof req.header === 'function' && req.header('x-conversation-id')
+        ? req.header('x-conversation-id')
+        : req.body &&
+            typeof req.body === 'object' &&
+            'conversationId' in req.body
+          ? String((req.body as { conversationId?: unknown }).conversationId)
+          : undefined;
+    return { requestId, aiRequestId, conversationId };
   }
 
   @ApiOperation({ summary: 'Send a message to the AI financial assistant' })

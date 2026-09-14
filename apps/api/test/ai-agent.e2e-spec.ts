@@ -912,7 +912,7 @@ describe('AiAgentController (e2e)', () => {
 
       expect(response.body).toEqual({
         type: 'confirmation_required',
-        message: expect.stringContaining('Confirmation required'),
+        message: expect.stringContaining('confirmação'),
         conversationId: expect.any(String),
         confirmation: {
           confirmationId: expect.any(String),

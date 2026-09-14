@@ -32,6 +32,9 @@ import { DeleteTransactionTool } from '../../../src/ai-agent/application/tools/i
 import { CreateTransferTool } from '../../../src/ai-agent/application/tools/impl/create-transfer.tool';
 import { UpdateTransferTool } from '../../../src/ai-agent/application/tools/impl/update-transfer.tool';
 import { DeleteTransferTool } from '../../../src/ai-agent/application/tools/impl/delete-transfer.tool';
+import { CategoryService } from '../../../src/category/category.service';
+import { GetCategoriesTool } from '../../../src/ai-agent/application/tools/impl/get-categories.tool';
+import { CreateCategoryTool } from '../../../src/ai-agent/application/tools/impl/create-category.tool';
 import { TransferService } from '../../../src/transfer/transfer.service';
 
 import { calculateModelCost } from '../../../src/ai-agent/application/evaluation/pricing/model-pricing.config';
@@ -714,6 +717,8 @@ export class AgentEvaluationRunner {
         GetTransactionsTool,
         GetFinancialSummaryTool,
         GetBudgetsTool,
+        GetCategoriesTool,
+        CreateCategoryTool,
         CreateTransactionTool,
         SaveMemoryTool,
         UpdateTransactionTool,
@@ -724,6 +729,15 @@ export class AgentEvaluationRunner {
         { provide: OpenAIClient, useValue: mockOpenAiClient },
         { provide: MetricsService, useValue: mockMetricsService },
         { provide: AccountService, useValue: mockAccountService },
+        {
+          provide: CategoryService,
+          useValue: {
+            findByUserId: jest.fn().mockResolvedValue([]),
+            create: jest
+              .fn()
+              .mockResolvedValue({ id: 'cat-mock-1', name: 'Mock Cat' }),
+          },
+        },
         { provide: TransactionService, useValue: mockTransactionService },
         { provide: TransferService, useValue: mockTransferService },
         {

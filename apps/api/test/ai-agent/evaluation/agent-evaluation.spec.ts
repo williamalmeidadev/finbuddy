@@ -60,6 +60,10 @@ describe('AI Agent Evaluation Harness (Deterministic Suite)', () => {
         await import('../../../src/ai-agent/application/tools/impl/get-financial-summary.tool');
       const { GetBudgetsTool } =
         await import('../../../src/ai-agent/application/tools/impl/get-budgets.tool');
+      const { GetCategoriesTool } =
+        await import('../../../src/ai-agent/application/tools/impl/get-categories.tool');
+      const { CreateCategoryTool } =
+        await import('../../../src/ai-agent/application/tools/impl/create-category.tool');
       const { CreateTransactionTool } =
         await import('../../../src/ai-agent/application/tools/impl/create-transaction.tool');
       const { SaveMemoryTool } =
@@ -120,6 +124,29 @@ describe('AI Agent Evaluation Harness (Deterministic Suite)', () => {
               capability: 'read',
               riskLevel: 'LOW',
               readOnly: true,
+            },
+          },
+          {
+            provide: GetCategoriesTool,
+            useValue: {
+              name: 'get_categories',
+              description: 'desc',
+              inputSchema: {},
+              capability: 'read',
+              riskLevel: 'LOW',
+              readOnly: true,
+            },
+          },
+          {
+            provide: CreateCategoryTool,
+            useValue: {
+              name: 'create_category',
+              description: 'desc',
+              inputSchema: {},
+              capability: 'write',
+              riskLevel: 'MEDIUM',
+              readOnly: false,
+              requiresConfirmation: true,
             },
           },
           {
@@ -212,7 +239,7 @@ describe('AI Agent Evaluation Harness (Deterministic Suite)', () => {
       registry.onModuleInit();
       const tools = registry.getTools();
 
-      expect(tools.length).toBe(11);
+      expect(tools.length).toBe(13);
       for (const tool of tools) {
         expect(tool.name).toBeDefined();
         expect(tool.description).toBeDefined();
