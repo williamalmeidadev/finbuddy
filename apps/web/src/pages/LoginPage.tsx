@@ -10,8 +10,8 @@ import { Coins, LogIn, Mail, Lock, RefreshCw } from "lucide-react";
 export const LoginPage: React.FC = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = React.useState("alex.silva@finbuddy.com");
-  const [password, setPassword] = React.useState("Senha123!");
+  const [email, setEmail] = React.useState("");
+  const [password, setPassword] = React.useState("");
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState("");
 
