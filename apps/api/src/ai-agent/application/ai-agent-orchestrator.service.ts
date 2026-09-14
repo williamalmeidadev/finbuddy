@@ -456,14 +456,14 @@ export class AiAgentOrchestratorService {
           if (enriched.amount === undefined && tr.amount !== undefined) {
             enriched.amount = tr.amount;
           }
-          if (enriched.transactionAt === undefined) {
-            enriched.transactionAt = tr.transactionAt || tr.transferredAt;
+          if (enriched.transactionAt === undefined && tr.transactionAt) {
+            enriched.transactionAt = tr.transactionAt;
           }
-          if (!enriched.fromAccountId && (tr.fromAccountId || tr.sourceAccountId)) {
-            enriched.fromAccountId = tr.fromAccountId || tr.sourceAccountId;
+          if (!enriched.fromAccountId && tr.fromAccountId) {
+            enriched.fromAccountId = tr.fromAccountId;
           }
-          if (!enriched.toAccountId && (tr.toAccountId || tr.destinationAccountId)) {
-            enriched.toAccountId = tr.toAccountId || tr.destinationAccountId;
+          if (!enriched.toAccountId && tr.toAccountId) {
+            enriched.toAccountId = tr.toAccountId;
           }
         }
       }
