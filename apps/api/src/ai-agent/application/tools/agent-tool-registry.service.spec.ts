@@ -11,6 +11,8 @@ import { DeleteTransactionTool } from './impl/delete-transaction.tool';
 import { CreateTransferTool } from './impl/create-transfer.tool';
 import { UpdateTransferTool } from './impl/update-transfer.tool';
 import { DeleteTransferTool } from './impl/delete-transfer.tool';
+import { GetCategoriesTool } from './impl/get-categories.tool';
+import { CreateCategoryTool } from './impl/create-category.tool';
 
 describe('AgentToolRegistryService', () => {
   let service: AgentToolRegistryService;
@@ -42,6 +44,20 @@ describe('AgentToolRegistryService', () => {
     inputSchema: { type: 'object', properties: {} },
     execute: jest.fn(),
   } as unknown as GetBudgetsTool;
+
+  const mockGetCategoriesTool = {
+    name: 'get_categories',
+    description: 'Get categories',
+    inputSchema: { type: 'object', properties: {} },
+    execute: jest.fn(),
+  } as unknown as GetCategoriesTool;
+
+  const mockCreateCategoryTool = {
+    name: 'create_category',
+    description: 'Create category',
+    inputSchema: { type: 'object', properties: {} },
+    execute: jest.fn(),
+  } as unknown as CreateCategoryTool;
 
   const mockCreateTransactionTool = {
     name: 'create_transaction',
@@ -103,6 +119,8 @@ describe('AgentToolRegistryService', () => {
           useValue: mockGetFinancialSummaryTool,
         },
         { provide: GetBudgetsTool, useValue: mockGetBudgetsTool },
+        { provide: GetCategoriesTool, useValue: mockGetCategoriesTool },
+        { provide: CreateCategoryTool, useValue: mockCreateCategoryTool },
         { provide: CreateTransactionTool, useValue: mockCreateTransactionTool },
         { provide: SaveMemoryTool, useValue: mockSaveMemoryTool },
         { provide: UpdateTransactionTool, useValue: mockUpdateTransactionTool },
@@ -121,16 +139,18 @@ describe('AgentToolRegistryService', () => {
   });
 
   describe('onModuleInit', () => {
-    it('should register all eleven tools on initialization', () => {
+    it('should register all thirteen tools on initialization', () => {
       service.onModuleInit();
       const tools = service.getTools();
-      expect(tools).toHaveLength(11);
+      expect(tools).toHaveLength(13);
       expect(service.getTool('get_accounts')).toBe(mockGetAccountsTool);
       expect(service.getTool('get_transactions')).toBe(mockGetTransactionsTool);
       expect(service.getTool('get_financial_summary')).toBe(
         mockGetFinancialSummaryTool,
       );
       expect(service.getTool('get_budgets')).toBe(mockGetBudgetsTool);
+      expect(service.getTool('get_categories')).toBe(mockGetCategoriesTool);
+      expect(service.getTool('create_category')).toBe(mockCreateCategoryTool);
       expect(service.getTool('create_transaction')).toBe(
         mockCreateTransactionTool,
       );
@@ -155,6 +175,8 @@ describe('AgentToolRegistryService', () => {
     it('should return registered tool by name', () => {
       service.onModuleInit();
       expect(service.getTool('get_accounts')).toBe(mockGetAccountsTool);
+      expect(service.getTool('get_categories')).toBe(mockGetCategoriesTool);
+      expect(service.getTool('create_category')).toBe(mockCreateCategoryTool);
       expect(service.getTool('create_transaction')).toBe(
         mockCreateTransactionTool,
       );
@@ -180,7 +202,7 @@ describe('AgentToolRegistryService', () => {
       service.onModuleInit();
 
       const definitions = service.getToolDefinitions();
-      expect(definitions).toHaveLength(11);
+      expect(definitions).toHaveLength(13);
       expect(definitions[0]).toEqual({
         type: 'function',
         name: 'get_accounts',

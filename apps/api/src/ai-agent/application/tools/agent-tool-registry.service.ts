@@ -12,6 +12,9 @@ import { CreateTransferTool } from './impl/create-transfer.tool';
 import { UpdateTransferTool } from './impl/update-transfer.tool';
 import { DeleteTransferTool } from './impl/delete-transfer.tool';
 
+import { GetCategoriesTool } from './impl/get-categories.tool';
+import { CreateCategoryTool } from './impl/create-category.tool';
+
 @Injectable()
 export class AgentToolRegistryService implements OnModuleInit {
   private readonly tools = new Map<string, AgentTool>();
@@ -21,6 +24,8 @@ export class AgentToolRegistryService implements OnModuleInit {
     private readonly getTransactionsTool: GetTransactionsTool,
     private readonly getFinancialSummaryTool: GetFinancialSummaryTool,
     private readonly getBudgetsTool: GetBudgetsTool,
+    private readonly getCategoriesTool: GetCategoriesTool,
+    private readonly createCategoryTool: CreateCategoryTool,
     private readonly createTransactionTool: CreateTransactionTool,
     private readonly saveMemoryTool: SaveMemoryTool,
     private readonly updateTransactionTool: UpdateTransactionTool,
@@ -35,6 +40,8 @@ export class AgentToolRegistryService implements OnModuleInit {
     this.registerTool(this.getTransactionsTool);
     this.registerTool(this.getFinancialSummaryTool);
     this.registerTool(this.getBudgetsTool);
+    this.registerTool(this.getCategoriesTool);
+    this.registerTool(this.createCategoryTool);
     this.registerTool(this.createTransactionTool);
     this.registerTool(this.saveMemoryTool);
     this.registerTool(this.updateTransactionTool);

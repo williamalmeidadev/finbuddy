@@ -6,6 +6,8 @@ export class AgentToolPolicy {
     AgentCapability.READ_TRANSACTIONS,
     AgentCapability.READ_FINANCIAL_SUMMARY,
     AgentCapability.READ_BUDGETS,
+    AgentCapability.READ_CATEGORIES,
+    AgentCapability.CREATE_CATEGORY,
     AgentCapability.CREATE_TRANSACTION,
     AgentCapability.UPDATE_TRANSACTION,
     AgentCapability.DELETE_TRANSACTION,

@@ -31,10 +31,15 @@ import { CreateTransferTool } from './application/tools/impl/create-transfer.too
 import { UpdateTransferTool } from './application/tools/impl/update-transfer.tool';
 import { DeleteTransferTool } from './application/tools/impl/delete-transfer.tool';
 
+import { CategoryModule } from '../category/category.module';
+import { GetCategoriesTool } from './application/tools/impl/get-categories.tool';
+import { CreateCategoryTool } from './application/tools/impl/create-category.tool';
+
 @Module({
   imports: [
     MetricsModule,
     AccountModule,
+    CategoryModule,
     TransactionModule,
     FinancialSummaryModule,
     BudgetModule,
@@ -59,6 +64,8 @@ import { DeleteTransferTool } from './application/tools/impl/delete-transfer.too
     GetTransactionsTool,
     GetFinancialSummaryTool,
     GetBudgetsTool,
+    GetCategoriesTool,
+    CreateCategoryTool,
     CreateTransactionTool,
     SaveMemoryTool,
     UpdateTransactionTool,
