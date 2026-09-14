@@ -28,16 +28,43 @@ export class GetAccountsTool implements AgentTool {
   async execute(context: AgentToolContext): Promise<AgentToolResult> {
     try {
       const accounts = await this.accountService.findByUserId(context.userId);
-      const sanitized = accounts.map((acc) => ({
-        id: acc.id,
-        name: acc.name,
-        type: acc.type,
-        balance: acc.balance,
-        currency: acc.currency,
-        color: acc.color,
-        isActive: acc.isActive,
-      }));
-      return { success: true, data: sanitized };
+      const sanitized = accounts.map((acc) => {
+        const rawBalance = acc.balance as unknown;
+        const numBalance =
+          typeof rawBalance === 'number'
+            ? rawBalance
+            : rawBalance &&
+                typeof rawBalance === 'object' &&
+                'toNumber' in rawBalance &&
+                typeof (rawBalance as { toNumber: () => number }).toNumber ===
+                  'function'
+              ? (rawBalance as { toNumber: () => number }).toNumber()
+              : Number(rawBalance);
+        const formattedBalance = Number(numBalance.toFixed(2));
+        return {
+          id: acc.id,
+          name: acc.name,
+          type: acc.type,
+          balance: formattedBalance,
+          currency: acc.currency,
+          color: acc.color,
+          isActive: acc.isActive,
+        };
+      });
+
+      const activeAccounts = sanitized.filter((a) => a.isActive);
+      const totalBalance = Number(
+        activeAccounts.reduce((sum, a) => sum + a.balance, 0).toFixed(2),
+      );
+
+      return {
+        success: true,
+        data: {
+          totalBalance,
+          activeAccountsCount: activeAccounts.length,
+          accounts: sanitized,
+        },
+      };
     } catch (error) {
       return {
         success: false,

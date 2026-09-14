@@ -59,17 +59,21 @@ describe('GetAccountsTool', () => {
     expect(mockAccountService.findByUserId).toHaveBeenCalledWith('user-123');
     expect(result).toEqual({
       success: true,
-      data: [
-        {
-          id: 'acc-1',
-          name: 'Checking',
-          type: AccountType.CHECKING,
-          balance: 1000.5,
-          currency: 'BRL',
-          color: '#FFFFFF',
-          isActive: true,
-        },
-      ],
+      data: {
+        totalBalance: 1000.5,
+        activeAccountsCount: 1,
+        accounts: [
+          {
+            id: 'acc-1',
+            name: 'Checking',
+            type: AccountType.CHECKING,
+            balance: 1000.5,
+            currency: 'BRL',
+            color: '#FFFFFF',
+            isActive: true,
+          },
+        ],
+      },
     });
   });
 
