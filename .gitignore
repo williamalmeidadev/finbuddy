@@ -68,5 +68,6 @@ Thumbs.db
 pids
 *.pid
 *.seed
-*.pid.lock
-report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+# Temporary & Import Directories
+FRONTEND TESTE
+/FRONTEND TESTE
