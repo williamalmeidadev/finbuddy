@@ -118,6 +118,14 @@ export class CreateTransactionArgsDto {
     { message: 'transactionAt must be a valid ISO 8601 datetime string' },
   )
   transactionAt?: string;
+
+  @IsOptional()
+  @IsString()
+  accountName?: string;
+
+  @IsOptional()
+  @IsString()
+  categoryName?: string;
 }
 
 export class SaveMemoryArgsDto {
@@ -203,6 +211,14 @@ export class CreateTransferArgsDto {
     { message: 'transactionAt must be a valid ISO 8601 datetime string' },
   )
   transactionAt?: string;
+
+  @IsOptional()
+  @IsString()
+  fromAccountName?: string;
+
+  @IsOptional()
+  @IsString()
+  toAccountName?: string;
 }
 
 export class UpdateTransferArgsDto {

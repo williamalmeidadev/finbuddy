@@ -24,6 +24,9 @@ import {
   AiEventName,
 } from './observability/ai-agent-observability.types';
 
+import { AccountService } from '../../account/account.service';
+import { CategoryService } from '../../category/category.service';
+
 export interface ProcessUserMessageOptions {
   requestId?: string;
   aiRequestId?: string;
@@ -44,6 +47,8 @@ export class AiAgentOrchestratorService {
     private readonly metricsService: MetricsService,
     private readonly observability: AiAgentObservabilityService,
     private readonly configService: ConfigService,
+    private readonly accountService: AccountService,
+    private readonly categoryService: CategoryService,
   ) {}
 
   async processUserMessage(
@@ -285,11 +290,15 @@ export class AiAgentOrchestratorService {
             ) {
               // 3. Write tool detected: create confirmation & halt tool execution loop
               this.metricsService.increment('ai_confirmation_total');
+              const enrichedAction = await this.enrichConfirmationAction(
+                context.userId,
+                validationResult.value as Record<string, any>,
+              );
               const confirmation =
                 await this.confirmationService.createConfirmation(
                   context.userId,
                   tool.name,
-                  validationResult.value,
+                  enrichedAction,
                   { requestId, aiRequestId },
                 );
 
@@ -304,7 +313,7 @@ export class AiAgentOrchestratorService {
                 {
                   confirmationId: confirmation.id,
                   toolName: tool.name,
-                  action: validationResult.value as Record<string, any>,
+                  action: enrichedAction,
                   expiresAt: confirmation.expiresAt.toISOString(),
                 },
               );
@@ -399,5 +408,48 @@ export class AiAgentOrchestratorService {
     throw new ServiceUnavailableException(
       'AI agent exceeded maximum allowed tool steps',
     );
+  }
+
+  private async enrichConfirmationAction(
+    userId: string,
+    argumentsObj: Record<string, any>,
+  ): Promise<Record<string, any>> {
+    const enriched = { ...argumentsObj };
+
+    try {
+      const needAccounts =
+        enriched.accountId || enriched.fromAccountId || enriched.toAccountId;
+      const needCategories = enriched.categoryId;
+
+      const [accounts, categories] = await Promise.all([
+        needAccounts
+          ? this.accountService.findByUserId(userId).catch(() => [])
+          : Promise.resolve([]),
+        needCategories
+          ? this.categoryService.findByUserId(userId).catch(() => [])
+          : Promise.resolve([]),
+      ]);
+
+      if (enriched.accountId && !enriched.accountName) {
+        const acc = accounts.find((a) => a.id === enriched.accountId);
+        if (acc) enriched.accountName = acc.name;
+      }
+      if (enriched.fromAccountId && !enriched.fromAccountName) {
+        const acc = accounts.find((a) => a.id === enriched.fromAccountId);
+        if (acc) enriched.fromAccountName = acc.name;
+      }
+      if (enriched.toAccountId && !enriched.toAccountName) {
+        const acc = accounts.find((a) => a.id === enriched.toAccountId);
+        if (acc) enriched.toAccountName = acc.name;
+      }
+      if (enriched.categoryId && !enriched.categoryName) {
+        const cat = categories.find((c) => c.id === enriched.categoryId);
+        if (cat) enriched.categoryName = cat.name;
+      }
+    } catch {
+      // Fall back gracefully to original args
+    }
+
+    return enriched;
   }
 }

@@ -2,6 +2,7 @@ import * as React from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Check, X, Loader2 } from "lucide-react";
+import { accountService, categoryService } from "@/lib/api/services";
 
 export interface ConfirmationCardProps {
   confirmationId?: string;
@@ -29,14 +30,18 @@ const TOOL_LABELS: Record<string, string> = {
 };
 
 const FIELD_LABELS: Record<string, string> = {
-  amount: "Valor",
   type: "Tipo",
+  amount: "Valor",
   description: "Descrição",
+  accountName: "Conta",
+  fromAccountName: "Conta de Origem",
+  toAccountName: "Conta de Destino",
+  categoryName: "Categoria",
   transactionAt: "Data",
+  transferredAt: "Data de Transferência",
   name: "Nome",
   color: "Cor",
   icon: "Ícone",
-  transferredAt: "Data de Transferência",
 };
 
 const HIDDEN_KEYS = new Set([
@@ -76,6 +81,67 @@ export function ConfirmationCard({
   const isExecuting = isSubmitting || status === "executing";
   const isCompleted = isConfirmed || isCancelled || isExpired;
 
+  const [resolvedAccount, setResolvedAccount] = React.useState<string | null>(null);
+  const [resolvedFromAccount, setResolvedFromAccount] = React.useState<string | null>(null);
+  const [resolvedToAccount, setResolvedToAccount] = React.useState<string | null>(null);
+  const [resolvedCategory, setResolvedCategory] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    const params = effectiveParams as Record<string, unknown>;
+
+    const accountId = typeof params.accountId === "string" ? params.accountId : undefined;
+    const fromAccountId = typeof params.fromAccountId === "string" ? params.fromAccountId : undefined;
+    const toAccountId = typeof params.toAccountId === "string" ? params.toAccountId : undefined;
+    const categoryId = typeof params.categoryId === "string" ? params.categoryId : undefined;
+
+    const accountName = typeof params.accountName === "string" ? params.accountName : undefined;
+    const fromAccountName = typeof params.fromAccountName === "string" ? params.fromAccountName : undefined;
+    const toAccountName = typeof params.toAccountName === "string" ? params.toAccountName : undefined;
+    const categoryName = typeof params.categoryName === "string" ? params.categoryName : undefined;
+
+    const needAccounts = (!accountName && accountId) || (!fromAccountName && fromAccountId) || (!toAccountName && toAccountId);
+    const needCategories = !categoryName && categoryId;
+
+    if (!needAccounts && !needCategories) return;
+
+    async function loadNames() {
+      try {
+        const [accounts, categories] = await Promise.all([
+          needAccounts ? accountService.findAll().catch(() => []) : Promise.resolve([]),
+          needCategories ? categoryService.findAll().catch(() => []) : Promise.resolve([]),
+        ]);
+
+        if (!isMounted) return;
+
+        if (accountId && !accountName) {
+          const acc = accounts.find((a) => a.id === accountId);
+          if (acc) setResolvedAccount(acc.name);
+        }
+        if (fromAccountId && !fromAccountName) {
+          const acc = accounts.find((a) => a.id === fromAccountId);
+          if (acc) setResolvedFromAccount(acc.name);
+        }
+        if (toAccountId && !toAccountName) {
+          const acc = accounts.find((a) => a.id === toAccountId);
+          if (acc) setResolvedToAccount(acc.name);
+        }
+        if (categoryId && !categoryName) {
+          const cat = categories.find((c) => c.id === categoryId);
+          if (cat) setResolvedCategory(cat.name);
+        }
+      } catch {
+        // Fallback gracefully
+      }
+    }
+
+    loadNames();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [effectiveParams]);
+
   const formatParamValue = (key: string, value: unknown): string => {
     if (value === null || value === undefined) return "-";
     if (key === "amount" && typeof value === "number") {
@@ -100,9 +166,54 @@ export function ConfirmationCard({
     return String(value);
   };
 
-  const paramEntries = Object.entries(effectiveParams).filter(
-    ([key]) => !HIDDEN_KEYS.has(key)
+  const rawParams = { ...effectiveParams } as Record<string, unknown>;
+
+  if (!rawParams.accountName && resolvedAccount) {
+    rawParams.accountName = resolvedAccount;
+  }
+  if (!rawParams.fromAccountName && resolvedFromAccount) {
+    rawParams.fromAccountName = resolvedFromAccount;
+  }
+  if (!rawParams.toAccountName && resolvedToAccount) {
+    rawParams.toAccountName = resolvedToAccount;
+  }
+  if (!rawParams.categoryName && resolvedCategory) {
+    rawParams.categoryName = resolvedCategory;
+  }
+
+  const PRIORITY_KEYS = [
+    "type",
+    "amount",
+    "description",
+    "accountName",
+    "fromAccountName",
+    "toAccountName",
+    "categoryName",
+    "transactionAt",
+    "transferredAt",
+    "name",
+    "color",
+    "icon",
+  ];
+
+  const keysPresent = new Set(
+    Object.keys(rawParams).filter(
+      (k) => !HIDDEN_KEYS.has(k) && rawParams[k] !== undefined && rawParams[k] !== null
+    )
   );
+
+  const paramEntries: Array<[string, unknown]> = [];
+
+  for (const key of PRIORITY_KEYS) {
+    if (keysPresent.has(key)) {
+      paramEntries.push([key, rawParams[key]]);
+      keysPresent.delete(key);
+    }
+  }
+
+  for (const key of keysPresent) {
+    paramEntries.push([key, rawParams[key]]);
+  }
 
   return (
     <Card className={`shadow-sm my-2 border transition-colors ${

@@ -13,6 +13,8 @@ import { AgentToolRiskLevel } from './tools/agent-tool.interface';
 import { AiConfirmationService } from './ai-confirmation.service';
 import { AiAgentObservabilityService } from './observability/ai-agent-observability.service';
 import { ConfigService } from '@nestjs/config';
+import { AccountService } from '../../account/account.service';
+import { CategoryService } from '../../category/category.service';
 
 describe('AiAgentOrchestratorService', () => {
   let service: AiAgentOrchestratorService;
@@ -83,6 +85,18 @@ describe('AiAgentOrchestratorService', () => {
         {
           provide: AiAgentObservabilityService,
           useValue: mockObservability,
+        },
+        {
+          provide: AccountService,
+          useValue: {
+            findByUserId: jest.fn().mockResolvedValue([]),
+          },
+        },
+        {
+          provide: CategoryService,
+          useValue: {
+            findByUserId: jest.fn().mockResolvedValue([]),
+          },
         },
         {
           provide: ConfigService,
