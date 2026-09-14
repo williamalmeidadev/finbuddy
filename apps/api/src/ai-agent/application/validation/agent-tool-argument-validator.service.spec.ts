@@ -100,6 +100,40 @@ describe('AgentToolArgumentValidatorService', () => {
     });
   });
 
+  describe('get_categories validation', () => {
+    it('should pass for empty or valid type', async () => {
+      const res1 = await service.validate('get_categories', {});
+      expect(res1.valid).toBe(true);
+
+      const res2 = await service.validate('get_categories', {
+        type: 'EXPENSE',
+      });
+      expect(res2.valid).toBe(true);
+    });
+
+    it('should fail for invalid type enum', async () => {
+      const res = await service.validate('get_categories', { type: 'INVALID' });
+      expect(res.valid).toBe(false);
+    });
+  });
+
+  describe('create_category validation', () => {
+    it('should pass for valid name and type', async () => {
+      const res = await service.validate('create_category', {
+        name: 'Alimentação',
+        type: 'EXPENSE',
+      });
+      expect(res.valid).toBe(true);
+    });
+
+    it('should fail if name or type is missing', async () => {
+      const res = await service.validate('create_category', {
+        name: 'Alimentação',
+      });
+      expect(res.valid).toBe(false);
+    });
+  });
+
   describe('malformed input handling', () => {
     it('should reject invalid JSON string', async () => {
       const res = await service.validate('get_accounts', '{ bad json ');

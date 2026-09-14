@@ -14,9 +14,37 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import { AiMemoryType, TransactionType } from '../../../generated/prisma/enums';
+import {
+  CategoryType,
+  AiMemoryType,
+  TransactionType,
+} from '../../../generated/prisma/enums';
 
 export class GetAccountsArgsDto {}
+
+export class GetCategoriesArgsDto {
+  @IsOptional()
+  @IsEnum(CategoryType)
+  type?: CategoryType;
+}
+
+export class CreateCategoryArgsDto {
+  @IsString()
+  @IsNotEmpty()
+  @Length(1, 100)
+  name!: string;
+
+  @IsEnum(CategoryType)
+  type!: CategoryType;
+
+  @IsOptional()
+  @IsString()
+  icon?: string;
+
+  @IsOptional()
+  @IsString()
+  color?: string;
+}
 
 export class GetTransactionsArgsDto {
   @IsOptional()

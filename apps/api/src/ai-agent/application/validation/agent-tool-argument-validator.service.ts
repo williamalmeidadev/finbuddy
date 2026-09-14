@@ -7,6 +7,8 @@ import {
   DeleteTransactionArgsDto,
   GetAccountsArgsDto,
   GetBudgetsArgsDto,
+  GetCategoriesArgsDto,
+  CreateCategoryArgsDto,
   GetFinancialSummaryArgsDto,
   GetTransactionsArgsDto,
   SaveMemoryArgsDto,
@@ -27,6 +29,8 @@ export class AgentToolArgumentValidatorService {
 
   private readonly toolDtoMap: Record<string, ClassConstructor<object>> = {
     get_accounts: GetAccountsArgsDto,
+    get_categories: GetCategoriesArgsDto,
+    create_category: CreateCategoryArgsDto,
     get_transactions: GetTransactionsArgsDto,
     get_financial_summary: GetFinancialSummaryArgsDto,
     get_budgets: GetBudgetsArgsDto,
