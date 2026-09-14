@@ -241,10 +241,13 @@ export interface ApiFinancialSummary {
 }
 
 export interface ApiAgentConfirmation {
-  id: string;
-  tool: string;
-  riskLevel: "LOW" | "MEDIUM" | "HIGH";
-  parameters: Record<string, unknown>;
+  confirmationId?: string;
+  id?: string;
+  toolName?: string;
+  tool?: string;
+  riskLevel?: "LOW" | "MEDIUM" | "HIGH";
+  action?: Record<string, unknown>;
+  parameters?: Record<string, unknown>;
   expiresAt: string;
 }
 

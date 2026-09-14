@@ -22,6 +22,7 @@ import {
   UpdateRecurringTransactionDto,
   ApiFinancialSummary,
   ApiAgentResponse,
+  ApiAgentConfirmation,
 } from "./types";
 
 // --- AUTH SERVICE ---
@@ -219,6 +220,7 @@ export interface ConversationMessage {
   role: "user" | "assistant" | "system";
   content: string;
   createdAt: string;
+  confirmation?: ApiAgentConfirmation & { status?: string };
 }
 
 export const aiService = {
@@ -254,16 +256,22 @@ export const aiService = {
       { method: "DELETE" }
     ),
 
-  confirmAction: (confirmationId: string): Promise<{ success: boolean; message: string }> =>
+  confirmAction: (confirmationId: string, conversationId?: string): Promise<{ success: boolean; message: string }> =>
     apiClient<{ success: boolean; message: string }>(
       `/ai-agent/confirmations/${confirmationId}`,
-      { method: "POST" }
+      {
+        method: "POST",
+        body: conversationId ? JSON.stringify({ conversationId }) : undefined,
+      }
     ),
 
-  cancelAction: (confirmationId: string): Promise<{ success: boolean; message: string }> =>
+  cancelAction: (confirmationId: string, conversationId?: string): Promise<{ success: boolean; message: string }> =>
     apiClient<{ success: boolean; message: string }>(
       `/ai-agent/confirmations/${confirmationId}/cancel`,
-      { method: "POST" }
+      {
+        method: "POST",
+        body: conversationId ? JSON.stringify({ conversationId }) : undefined,
+      }
     ),
 
   listMemories: (): Promise<Array<{ id: string; key: string; value: string }>> =>
