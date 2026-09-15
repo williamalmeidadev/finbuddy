@@ -2,7 +2,6 @@ import * as React from "react";
 import { ApiUser } from "../api/types";
 import { tokenStorage } from "./token-storage";
 import { apiClient } from "../api/client";
-
 import { clearQueryCacheOnLogout } from "../query/query-client";
 
 export interface AuthContextType {
@@ -22,22 +21,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<ApiUser | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
 
-  // Restore authenticated session on initial render
+  // Restore authenticated session on initial render using the HttpOnly cookie.
+  // /auth/refresh reads the cookie automatically (credentials: "include" in apiClient).
   React.useEffect(() => {
     async function restoreSession() {
-      const token = tokenStorage.getAccessToken();
-      if (!token) {
-        setIsLoading(false);
-        return;
-      }
       try {
-        const currentUser = await apiClient<ApiUser>("/auth/me", {
-          requiresAuth: true,
-        });
-        setUser(currentUser);
-      } catch (err) {
+        const refreshData = await apiClient<{ accessToken: string; user: ApiUser }>(
+          "/auth/refresh",
+          { method: "POST", requiresAuth: false }
+        );
+        tokenStorage.setTokens(refreshData.accessToken);
+        setUser(refreshData.user);
+      } catch {
+        // No valid session — user must log in
         tokenStorage.clearTokens();
-        clearQueryCacheOnLogout();
         setUser(null);
       } finally {
         setIsLoading(false);
@@ -47,12 +44,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = React.useCallback(async (email: string, password: string) => {
-    // Clear any previous query cache on login
     clearQueryCacheOnLogout();
 
     const res = await apiClient<{
       accessToken: string;
-      refreshToken: string;
       user: ApiUser;
     }>("/auth/login", {
       method: "POST",
@@ -60,37 +55,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       requiresAuth: false,
     });
 
-    tokenStorage.setTokens(res.accessToken, res.refreshToken);
+    // Refresh token is set as HttpOnly cookie by the backend — not returned in the body.
+    tokenStorage.setTokens(res.accessToken);
     setUser(res.user);
   }, []);
 
   const register = React.useCallback(
     async (name: string, email: string, password: string) => {
-      // 1. Create user account (backend DTO strictly requires email and password)
       await apiClient<ApiUser>("/users", {
         method: "POST",
         body: JSON.stringify({ email, password }),
         requiresAuth: false,
       });
-
-      // 2. Automatically log in after registration
       await login(email, password);
     },
     [login]
   );
 
   const logout = React.useCallback(async () => {
-    const refreshToken = tokenStorage.getRefreshToken();
-    if (refreshToken) {
-      try {
-        await apiClient<{ message: string }>("/auth/logout", {
-          method: "POST",
-          body: JSON.stringify({ refreshToken }),
-          requiresAuth: false,
-        });
-      } catch {
-        // Ignore logout errors upstream
-      }
+    try {
+      // No body — the HttpOnly cookie is forwarded automatically via credentials: "include".
+      await apiClient<{ message: string }>("/auth/logout", {
+        method: "POST",
+        requiresAuth: false,
+      });
+    } catch {
+      // Best-effort: clear local state regardless
     }
     tokenStorage.clearTokens();
     clearQueryCacheOnLogout();

@@ -1,6 +1,5 @@
 import { apiClient } from "./client";
 import {
-  AuthResponse,
   ApiUser,
   ApiAccount,
   CreateAccountDto,
@@ -27,8 +26,8 @@ import {
 
 // --- AUTH SERVICE ---
 export const authService = {
-  login: (email: string, password: string): Promise<AuthResponse> =>
-    apiClient<AuthResponse>("/auth/login", {
+  login: (email: string, password: string): Promise<{ accessToken: string; user: ApiUser }> =>
+    apiClient<{ accessToken: string; user: ApiUser }>("/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
       requiresAuth: false,
@@ -43,18 +42,18 @@ export const authService = {
 
   me: (): Promise<ApiUser> => apiClient<ApiUser>("/auth/me"),
 
-  refresh: (refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> =>
-    apiClient<{ accessToken: string; refreshToken: string }>("/auth/refresh", {
+  // No body needed — HttpOnly cookie is sent automatically via credentials: "include"
+  refresh: (): Promise<{ accessToken: string; user: ApiUser }> =>
+    apiClient<{ accessToken: string; user: ApiUser }>("/auth/refresh", {
       method: "POST",
-      body: JSON.stringify({ refreshToken }),
       requiresAuth: false,
     }),
 
-  logout: (refreshToken: string): Promise<{ message: string }> =>
+  // No body needed — HttpOnly cookie is sent automatically via credentials: "include"
+  logout: (): Promise<{ message: string }> =>
     apiClient<{ message: string }>("/auth/logout", {
       method: "POST",
-      body: JSON.stringify({ refreshToken }),
-      requiresAuth: true,
+      requiresAuth: false,
     }),
 };
 
