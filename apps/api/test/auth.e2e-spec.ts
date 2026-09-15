@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
+import cookieParser from 'cookie-parser';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { DatabaseService } from '../src/database/database.service';
@@ -103,6 +104,8 @@ describe('AuthController (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
 
+    app.use(cookieParser());
+
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -157,7 +160,7 @@ describe('AuthController (e2e)', () => {
   });
 
   describe('POST /auth/refresh', () => {
-    it('should refresh the tokens', async () => {
+    it('should refresh the tokens using HttpOnly cookie', async () => {
       const email = `refresh-${Date.now()}@finbuddy.dev`;
       const password = '12345678';
 
@@ -177,38 +180,32 @@ describe('AuthController (e2e)', () => {
         })
         .expect(201);
 
-      const oldRefreshToken = loginResponse.body.refreshToken;
-
-      expect(oldRefreshToken).toEqual(expect.any(String));
+      const cookies = loginResponse.get('Set-Cookie');
+      expect(cookies).toBeDefined();
+      expect(cookies![0]).toContain('finbuddy_rt=');
 
       const refreshResponse = await request(app.getHttpServer())
         .post('/auth/refresh')
-        .send({
-          refreshToken: oldRefreshToken,
-        })
+        .set('Cookie', cookies!)
         .expect(200);
 
       expect(refreshResponse.body).toEqual({
         accessToken: expect.any(String),
-        refreshToken: expect.any(String),
         user: expect.objectContaining({
           email,
         }),
       });
 
-      expect(refreshResponse.body.refreshToken).not.toBe(oldRefreshToken);
-
+      expect(refreshResponse.get('Set-Cookie')).toBeDefined();
       expect(refreshResponse.body.accessToken).not.toBe(
         loginResponse.body.accessToken,
       );
     });
 
-    it('should reject an invalid refresh token', async () => {
+    it('should reject an invalid refresh token cookie', async () => {
       await request(app.getHttpServer())
         .post('/auth/refresh')
-        .send({
-          refreshToken: 'invalid-refresh-token',
-        })
+        .set('Cookie', ['finbuddy_rt=invalid-refresh-token'])
         .expect(401);
     });
 
@@ -232,28 +229,24 @@ describe('AuthController (e2e)', () => {
         })
         .expect(201);
 
-      const refreshToken = loginResponse.body.refreshToken;
+      const firstCookies = loginResponse.get('Set-Cookie');
 
-      await request(app.getHttpServer())
+      const firstRefreshResponse = await request(app.getHttpServer())
         .post('/auth/refresh')
-        .send({
-          refreshToken,
-        })
+        .set('Cookie', firstCookies!)
         .expect(200);
 
+      // Re-using the first refresh token cookie after rotation should fail with 401
       await request(app.getHttpServer())
         .post('/auth/refresh')
-        .send({
-          refreshToken,
-        })
+        .set('Cookie', firstCookies!)
         .expect(401);
     });
 
-    it('should reject a missing refresh token', async () => {
+    it('should reject a missing refresh token cookie', async () => {
       await request(app.getHttpServer())
         .post('/auth/refresh')
-        .send({})
-        .expect(400);
+        .expect(401);
     });
   });
 
@@ -342,7 +335,7 @@ describe('AuthController (e2e)', () => {
   });
 
   describe('POST /auth/logout', () => {
-    it('should revoke the refresh token', async () => {
+    it('should revoke the refresh token cookie', async () => {
       const email = `logout-${Date.now()}@finbuddy.dev`;
       const password = '12345678';
 
@@ -362,21 +355,17 @@ describe('AuthController (e2e)', () => {
         })
         .expect(201);
 
-      const refreshToken = loginResponse.body.refreshToken;
+      const cookies = loginResponse.get('Set-Cookie');
 
       await request(app.getHttpServer())
         .post('/auth/logout')
-        .send({
-          refreshToken,
-        })
+        .set('Cookie', cookies!)
         .expect(200);
 
-      // Verify that refreshing with the logged out token now fails
+      // Verify that refreshing with the logged out token cookie now fails
       await request(app.getHttpServer())
         .post('/auth/refresh')
-        .send({
-          refreshToken,
-        })
+        .set('Cookie', cookies!)
         .expect(401);
     });
   });

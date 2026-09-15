@@ -35,11 +35,51 @@ function onRefreshFailed(err: unknown) {
   refreshSubscribers = [];
 }
 
+let activeRefreshPromise: Promise<any> | null = null;
+
+export async function refreshTokens<T = { accessToken: string; user: any }>(): Promise<T> {
+  if (activeRefreshPromise) {
+    return activeRefreshPromise;
+  }
+
+  activeRefreshPromise = (async () => {
+    try {
+      const baseUrl = getBaseUrl();
+      const response = await fetch(`${baseUrl.replace(/\/$/, "")}/auth/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+
+      const isJson = response.headers
+        .get("content-type")
+        ?.includes("application/json");
+      const data = isJson ? await response.json() : null;
+
+      if (!response.ok) {
+        tokenStorage.clearTokens();
+        throw ApiError.fromResponse(response.status, data);
+      }
+
+      tokenStorage.setTokens(data.accessToken);
+      return data;
+    } finally {
+      activeRefreshPromise = null;
+    }
+  })();
+
+  return activeRefreshPromise;
+}
+
 export async function apiClient<T>(
   endpoint: string,
   options: RequestOptions = {}
 ): Promise<T> {
   const { requiresAuth = true, _isRetry = false, headers = {}, ...fetchOptions } = options;
+
+  if (endpoint.includes("/auth/refresh")) {
+    return refreshTokens() as Promise<T>;
+  }
 
   const baseUrl = getBaseUrl();
   const url = endpoint.startsWith("http")
@@ -72,47 +112,18 @@ export async function apiClient<T>(
 
     // Handle 401 and Token Refresh logic
     if (response.status === 401 && requiresAuth && !_isRetry && !endpoint.includes("/auth/")) {
-      if (!isRefreshing) {
-        isRefreshing = true;
-        try {
-          // No body needed — the HttpOnly cookie is forwarded automatically by credentials: "include"
-          const refreshRes = await fetch(`${baseUrl.replace(/\/$/, "")}/auth/refresh`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-          });
+      try {
+        const refreshData = await refreshTokens();
+        onRefreshed(refreshData.accessToken);
 
-          if (refreshRes.ok) {
-            const refreshData = await refreshRes.json();
-            tokenStorage.setTokens(refreshData.accessToken);
-            isRefreshing = false;
-            onRefreshed(refreshData.accessToken);
-
-            // Retry original request
-            return apiClient<T>(endpoint, {
-              ...options,
-              _isRetry: true,
-            });
-          } else {
-            isRefreshing = false;
-            tokenStorage.clearTokens();
-            const err = ApiError.fromResponse(401, data);
-            onRefreshFailed(err);
-            throw err;
-          }
-        } catch (refreshErr) {
-          isRefreshing = false;
-          tokenStorage.clearTokens();
-          onRefreshFailed(refreshErr);
-          throw refreshErr;
-        }
-      } else {
-        // Wait for active refresh
-        await subscribeTokenRefresh();
+        // Retry original request
         return apiClient<T>(endpoint, {
           ...options,
           _isRetry: true,
         });
+      } catch (refreshErr) {
+        onRefreshFailed(refreshErr);
+        throw refreshErr;
       }
     }
 
