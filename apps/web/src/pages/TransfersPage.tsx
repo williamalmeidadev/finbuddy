@@ -6,6 +6,7 @@ import {
   useDeleteTransfer,
 } from "@/lib/queries";
 import { ApiTransfer, ApiAccount } from "@/lib/api/types";
+import { useDebounce } from "@/hooks/use-debounce";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +38,7 @@ export const TransfersPage: React.FC = () => {
 
   // Search & Filter state
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const [accountFilter, setAccountFilter] = useState("ALL");
 
   const handleRefresh = () => {
@@ -120,9 +122,9 @@ export const TransfersPage: React.FC = () => {
       tr.toAccount?.id === accountFilter;
 
     if (!matchesAccount) return false;
-    if (!searchTerm) return true;
+    if (!debouncedSearchTerm) return true;
 
-    const term = searchTerm.toLowerCase();
+    const term = debouncedSearchTerm.toLowerCase();
     const descMatch = tr.description?.toLowerCase().includes(term);
     const fromMatch = (tr.fromAccount?.name || tr.sourceAccount?.name)?.toLowerCase().includes(term);
     const toMatch = (tr.toAccount?.name || tr.destinationAccount?.name)?.toLowerCase().includes(term);

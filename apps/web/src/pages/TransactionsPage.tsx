@@ -8,6 +8,7 @@ import {
   useDeleteTransaction,
 } from "@/lib/queries";
 import { ApiTransaction, ApiAccount, ApiCategory } from "@/lib/api/types";
+import { useDebounce } from "@/hooks/use-debounce";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +33,7 @@ export const TransactionsPage: React.FC = () => {
   // Filters
   const [typeFilter, setTypeFilter] = useState<string>("ALL");
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   const filterParams = typeFilter !== "ALL" ? { type: typeFilter } : undefined;
 
@@ -162,8 +164,8 @@ export const TransactionsPage: React.FC = () => {
 
   // Client-side search filtering
   const filteredTransactions = transactions.filter((tx) => {
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
+    if (!debouncedSearchTerm) return true;
+    const term = debouncedSearchTerm.toLowerCase();
     const matchesDesc = tx.description?.toLowerCase().includes(term);
     const matchesCat = tx.category?.name.toLowerCase().includes(term);
     const matchesAccount = tx.account?.name.toLowerCase().includes(term);
