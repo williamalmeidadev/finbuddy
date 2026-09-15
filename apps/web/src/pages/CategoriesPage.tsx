@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ColorPicker } from "@/components/ui/color-picker";
 import { FolderTree, PlusCircle, Trash2, Edit2, RefreshCw, AlertCircle, Tag } from "lucide-react";
 
 export const CategoriesPage: React.FC = () => {
@@ -164,13 +165,9 @@ export const CategoriesPage: React.FC = () => {
                     <Label htmlFor="color" className="text-right">
                       Cor
                     </Label>
-                    <Input
-                      id="color"
-                      type="color"
-                      value={color}
-                      onChange={(e) => setColor(e.target.value)}
-                      className="col-span-3 h-10 px-1 py-1 cursor-pointer"
-                    />
+                    <div className="col-span-3">
+                      <ColorPicker value={color} onChange={setColor} disabled={isSubmitting} />
+                    </div>
                   </div>
                 </div>
 
@@ -372,13 +369,9 @@ export const CategoriesPage: React.FC = () => {
                 <Label htmlFor="edit-color" className="text-right">
                   Cor
                 </Label>
-                <Input
-                  id="edit-color"
-                  type="color"
-                  value={editColor}
-                  onChange={(e) => setEditColor(e.target.value)}
-                  className="col-span-3 h-10 px-1 py-1 cursor-pointer"
-                />
+                <div className="col-span-3">
+                  <ColorPicker value={editColor} onChange={setEditColor} disabled={isSubmitting} />
+                </div>
               </div>
             </div>
             <DialogFooter>

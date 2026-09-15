@@ -5,6 +5,7 @@ import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter } fr
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ColorPicker } from "@/components/ui/color-picker";
 import { apiClient } from "@/lib/api/client";
 import { ApiCategory } from "@/lib/api/types";
 import { AlertCircle } from "lucide-react";
@@ -111,37 +112,9 @@ export function CreateCategoryDialog({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-2">
-            <Label htmlFor="cat-color">Color Accent</Label>
-            <div className="flex items-center gap-2">
-              <Input
-                id="cat-color"
-                type="color"
-                value={color}
-                onChange={(e) => setColor(e.target.value)}
-                disabled={isLoading}
-                className="h-9 w-12 cursor-pointer p-1"
-              />
-              <Input
-                value={color}
-                onChange={(e) => setColor(e.target.value)}
-                disabled={isLoading}
-                className="font-mono text-xs"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="cat-icon">Icon Identifier</Label>
-            <Input
-              id="cat-icon"
-              placeholder="e.g. tag, shopping-bag, home"
-              value={icon}
-              onChange={(e) => setIcon(e.target.value)}
-              disabled={isLoading}
-            />
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="cat-color">Cor Accent</Label>
+          <ColorPicker value={color} onChange={setColor} disabled={isLoading} />
         </div>
 
         <DialogFooter>

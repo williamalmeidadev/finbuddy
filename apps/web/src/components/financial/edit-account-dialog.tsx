@@ -5,6 +5,7 @@ import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter } fr
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ColorPicker } from "@/components/ui/color-picker";
 import { apiClient } from "@/lib/api/client";
 import { ApiAccount } from "@/lib/api/types";
 import { AlertCircle } from "lucide-react";
@@ -25,6 +26,7 @@ export function EditAccountDialog({
   const [name, setName] = React.useState("");
   const [type, setType] = React.useState<ApiAccount["type"]>("CHECKING");
   const [currency, setCurrency] = React.useState("BRL");
+  const [color, setColor] = React.useState("#38bdf8");
   const [isLoading, setIsLoading] = React.useState(false);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
 
@@ -33,6 +35,7 @@ export function EditAccountDialog({
       setName(account.name);
       setType(account.type);
       setCurrency(account.currency);
+      setColor(account.color || "#38bdf8");
       setErrorMsg(null);
     }
   }, [account]);
@@ -50,6 +53,7 @@ export function EditAccountDialog({
           name: name.trim() || undefined,
           type,
           currency,
+          color,
         }),
       });
 
@@ -117,6 +121,11 @@ export function EditAccountDialog({
             maxLength={3}
             required
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Account Color Accent</Label>
+          <ColorPicker value={color} onChange={setColor} disabled={isLoading} />
         </div>
 
         <DialogFooter>
