@@ -209,6 +209,7 @@ export const TransactionsPage: React.FC = () => {
                       variant={type === "EXPENSE" ? "default" : "outline"}
                       className={type === "EXPENSE" ? "bg-red-600 hover:bg-red-700 text-white" : ""}
                       onClick={() => setType("EXPENSE")}
+                      disabled={isSubmitting}
                     >
                       Despesa
                     </Button>
@@ -217,6 +218,7 @@ export const TransactionsPage: React.FC = () => {
                       variant={type === "INCOME" ? "default" : "outline"}
                       className={type === "INCOME" ? "bg-emerald-600 hover:bg-emerald-700 text-white" : ""}
                       onClick={() => setType("INCOME")}
+                      disabled={isSubmitting}
                     >
                       Receita
                     </Button>
@@ -307,7 +309,7 @@ export const TransactionsPage: React.FC = () => {
                 </div>
 
                 <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>
+                  <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)} disabled={isSubmitting}>
                     Cancelar
                   </Button>
                   <Button type="submit" disabled={isSubmitting}>
@@ -447,13 +449,15 @@ export const TransactionsPage: React.FC = () => {
                           size="xs"
                           variant="destructive"
                           onClick={() => handleDelete(tx.id)}
+                          disabled={deleteTransaction.isPending}
                         >
-                          Sim
+                          {deleteTransaction.isPending ? "Excluindo..." : "Sim"}
                         </Button>
                         <Button
                           size="xs"
                           variant="ghost"
                           onClick={() => setDeleteConfirmId(null)}
+                          disabled={deleteTransaction.isPending}
                         >
                           Não
                         </Button>
@@ -533,7 +537,7 @@ export const TransactionsPage: React.FC = () => {
               </div>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setEditingTx(null)}>
+              <Button type="button" variant="outline" onClick={() => setEditingTx(null)} disabled={isSubmitting}>
                 Cancelar
               </Button>
               <Button type="submit" disabled={isSubmitting}>

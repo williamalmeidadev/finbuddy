@@ -7,12 +7,14 @@ interface AiErrorStateProps {
   message?: string;
   statusCode?: number;
   onRetry?: () => void;
+  isLoading?: boolean;
 }
 
 export function AiErrorState({
   message = "An unexpected error occurred while communicating with FinBuddy AI.",
   statusCode,
   onRetry,
+  isLoading = false,
 }: AiErrorStateProps) {
   return (
     <Card className="border-destructive/30 bg-destructive/5 text-destructive">
@@ -33,9 +35,10 @@ export function AiErrorState({
             variant="outline"
             size="sm"
             onClick={onRetry}
+            disabled={isLoading}
             className="mt-4 border-destructive/50 text-destructive hover:bg-destructive/10"
           >
-            <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Retry Request
+            <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} /> Retry Request
           </Button>
         )}
       </CardContent>

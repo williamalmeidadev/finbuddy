@@ -165,7 +165,7 @@ export function EditTransactionDialog({
         </div>
 
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
             {isReadOnly ? "Close" : "Cancel"}
           </Button>
           {!isReadOnly && (

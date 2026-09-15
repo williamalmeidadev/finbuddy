@@ -112,6 +112,7 @@ export function CreateTransactionDialog({
                   setType("EXPENSE");
                   setCategoryId("");
                 }}
+                disabled={isLoading}
               >
                 Expense
               </button>
@@ -126,6 +127,7 @@ export function CreateTransactionDialog({
                   setType("INCOME");
                   setCategoryId("");
                 }}
+                disabled={isLoading}
               >
                 Income
               </button>
@@ -209,7 +211,7 @@ export function CreateTransactionDialog({
         </div>
 
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
             Cancel
           </Button>
           <Button type="submit" disabled={isLoading || !amount || !accountId}>

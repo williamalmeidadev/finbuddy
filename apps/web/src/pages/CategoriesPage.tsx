@@ -172,7 +172,7 @@ export const CategoriesPage: React.FC = () => {
                 </div>
 
                 <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>
+                  <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)} disabled={isSubmitting}>
                     Cancelar
                   </Button>
                   <Button type="submit" disabled={isSubmitting}>
@@ -240,13 +240,15 @@ export const CategoriesPage: React.FC = () => {
                           size="xs"
                           variant="destructive"
                           onClick={() => handleDelete(cat.id)}
+                          disabled={deleteCategory.isPending}
                         >
-                          Sim
+                          {deleteCategory.isPending ? "Excluindo..." : "Sim"}
                         </Button>
                         <Button
                           size="xs"
                           variant="ghost"
                           onClick={() => setDeleteConfirmId(null)}
+                          disabled={deleteCategory.isPending}
                         >
                           Não
                         </Button>
@@ -314,13 +316,15 @@ export const CategoriesPage: React.FC = () => {
                           size="xs"
                           variant="destructive"
                           onClick={() => handleDelete(cat.id)}
+                          disabled={deleteCategory.isPending}
                         >
-                          Sim
+                          {deleteCategory.isPending ? "Excluindo..." : "Sim"}
                         </Button>
                         <Button
                           size="xs"
                           variant="ghost"
                           onClick={() => setDeleteConfirmId(null)}
+                          disabled={deleteCategory.isPending}
                         >
                           Não
                         </Button>
@@ -375,7 +379,7 @@ export const CategoriesPage: React.FC = () => {
               </div>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setEditingCategory(null)}>
+              <Button type="button" variant="outline" onClick={() => setEditingCategory(null)} disabled={isSubmitting}>
                 Cancelar
               </Button>
               <Button type="submit" disabled={isSubmitting}>

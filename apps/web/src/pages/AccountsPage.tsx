@@ -237,7 +237,7 @@ export const AccountsPage: React.FC = () => {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting}>
                     Cancelar
                   </Button>
                   <Button type="submit" disabled={isSubmitting}>
@@ -340,13 +340,15 @@ export const AccountsPage: React.FC = () => {
                       size="xs"
                       variant="destructive"
                       onClick={() => handleDelete(acc.id)}
+                      disabled={deleteAccount.isPending}
                     >
-                      Confirmar
+                      {deleteAccount.isPending ? "Excluindo..." : "Confirmar"}
                     </Button>
                     <Button
                       size="xs"
                       variant="ghost"
                       onClick={() => setDeleteConfirmId(null)}
+                      disabled={deleteAccount.isPending}
                     >
                       Cancelar
                     </Button>
@@ -431,7 +433,7 @@ export const AccountsPage: React.FC = () => {
               </div>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)}>
+              <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)} disabled={isSubmitting}>
                 Cancelar
               </Button>
               <Button type="submit" disabled={isSubmitting}>

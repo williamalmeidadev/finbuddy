@@ -235,7 +235,7 @@ export const TransfersPage: React.FC = () => {
                 </div>
 
                 <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting}>
                     Cancelar
                   </Button>
                   <Button type="submit" disabled={isSubmitting}>
@@ -365,6 +365,7 @@ export const TransfersPage: React.FC = () => {
                           size="xs"
                           variant="ghost"
                           onClick={() => setDeleteConfirmId(null)}
+                          disabled={deleteTransfer.isPending}
                         >
                           X
                         </Button>

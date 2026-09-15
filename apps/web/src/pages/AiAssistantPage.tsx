@@ -268,7 +268,7 @@ export const AiAssistantPage: React.FC = () => {
             <Bot className="h-5 w-5 text-primary shrink-0" />
             <h2 className="font-bold text-base text-foreground">Conversas IA</h2>
           </div>
-          <Button size="sm" onClick={handleNewConversation}>
+          <Button size="sm" onClick={handleNewConversation} disabled={isConvsLoading}>
             <Plus className="h-4 w-4 mr-1" />
             Nova
           </Button>
@@ -301,6 +301,7 @@ export const AiAssistantPage: React.FC = () => {
                   size="icon"
                   className="h-6 w-6 text-muted-foreground hover:text-red-500 shrink-0"
                   onClick={(e) => handleDeleteConversation(c.id, e)}
+                  disabled={isConvsLoading}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
@@ -330,6 +331,7 @@ export const AiAssistantPage: React.FC = () => {
             variant="ghost"
             size="sm"
             className="shrink-0"
+            disabled={isConvsLoading || isMsgsLoading}
             onClick={() => {
               refetchConvs();
               if (activeConversationId) refetchMsgs();

@@ -114,6 +114,7 @@ export function CreateRecurringDialog({
                   setType("EXPENSE");
                   setCategoryId("");
                 }}
+                disabled={isLoading}
               >
                 Expense
               </button>
@@ -128,6 +129,7 @@ export function CreateRecurringDialog({
                   setType("INCOME");
                   setCategoryId("");
                 }}
+                disabled={isLoading}
               >
                 Income
               </button>
@@ -229,7 +231,7 @@ export function CreateRecurringDialog({
         </div>
 
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
             Cancel
           </Button>
           <Button type="submit" disabled={isLoading || !amount || !accountId}>

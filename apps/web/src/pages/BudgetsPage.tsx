@@ -183,7 +183,7 @@ export const BudgetsPage: React.FC = () => {
                 </div>
 
                 <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>
+                  <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)} disabled={isSubmitting}>
                     Cancelar
                   </Button>
                   <Button type="submit" disabled={isSubmitting}>
@@ -326,13 +326,15 @@ export const BudgetsPage: React.FC = () => {
                         size="xs"
                         variant="destructive"
                         onClick={() => handleDelete(b.id)}
+                        disabled={deleteBudget.isPending}
                       >
-                        Sim
+                        {deleteBudget.isPending ? "Excluindo..." : "Sim"}
                       </Button>
                       <Button
                         size="xs"
                         variant="ghost"
                         onClick={() => setDeleteConfirmId(null)}
+                        disabled={deleteBudget.isPending}
                       >
                         Não
                       </Button>
@@ -382,7 +384,7 @@ export const BudgetsPage: React.FC = () => {
               </div>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setEditingBudget(null)}>
+              <Button type="button" variant="outline" onClick={() => setEditingBudget(null)} disabled={isSubmitting}>
                 Cancelar
               </Button>
               <Button type="submit" disabled={isSubmitting}>

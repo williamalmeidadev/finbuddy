@@ -95,6 +95,7 @@ export function CreateCategoryDialog({
                   : "text-muted-foreground hover:text-foreground"
               }`}
               onClick={() => setType("EXPENSE")}
+              disabled={isLoading}
             >
               Expense
             </button>
@@ -106,6 +107,7 @@ export function CreateCategoryDialog({
                   : "text-muted-foreground hover:text-foreground"
               }`}
               onClick={() => setType("INCOME")}
+              disabled={isLoading}
             >
               Income
             </button>
@@ -118,7 +120,7 @@ export function CreateCategoryDialog({
         </div>
 
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
             Cancel
           </Button>
           <Button type="submit" disabled={isLoading || !name.trim()}>

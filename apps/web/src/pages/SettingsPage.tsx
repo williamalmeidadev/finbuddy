@@ -10,6 +10,16 @@ export const SettingsPage: React.FC = () => {
   const { user: authUser, logout } = useAuth();
   const { data: profileUser } = useProfile();
   const { theme, setTheme } = useTheme();
+  const [isLoggingOut, setIsLoggingOut] = React.useState(false);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await logout();
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
   const user = profileUser || authUser;
 
@@ -85,8 +95,8 @@ export const SettingsPage: React.FC = () => {
             <CardDescription>Revoga tokens e desconecta a conta deste dispositivo.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button variant="destructive" onClick={() => logout()}>
-              Sair da Conta FinBuddy
+            <Button variant="destructive" onClick={handleLogout} disabled={isLoggingOut}>
+              {isLoggingOut ? "Saindo..." : "Sair da Conta FinBuddy"}
             </Button>
           </CardContent>
         </Card>
