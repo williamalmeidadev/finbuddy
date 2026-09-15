@@ -9,17 +9,28 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  // Enable trust proxy for Express so client IP is properly resolved behind reverse proxies
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
+
   app.use(cookieParser());
 
   const rawSwagger = process.env.SWAGGER_ENABLED?.trim().toLowerCase();
   const swaggerEnabled =
     rawSwagger !== undefined
-      ? !['false', '0', 'off', 'no'].includes(rawSwagger)
-      : true;
+      ? ['true', '1', 'on', 'yes'].includes(rawSwagger)
+      : !isProduction;
+
   const corsOrigin = process.env.CORS_ORIGIN;
+  const resolvedOrigin = corsOrigin
+    ? corsOrigin.split(',').map((o) => o.trim())
+    : isProduction
+      ? false
+      : true;
 
   app.enableCors({
-    origin: corsOrigin ? corsOrigin.split(',').map((o) => o.trim()) : true,
+    origin: resolvedOrigin,
     credentials: true,
   });
   app.use(

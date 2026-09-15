@@ -100,7 +100,10 @@ export class AiAgentOrchestratorService {
     if (options?.memoryContext || historyItems.length > 0) {
       const items: any[] = [];
       if (options?.memoryContext) {
-        items.push({ role: 'user', content: options.memoryContext });
+        items.push({
+          role: 'user',
+          content: `<user_memory_untrusted>\n${options.memoryContext}\n</user_memory_untrusted>`,
+        });
       }
       if (historyItems.length > 0) {
         items.push(...historyItems);

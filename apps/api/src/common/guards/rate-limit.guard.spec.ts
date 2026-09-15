@@ -21,11 +21,9 @@ describe('RateLimitGuard', () => {
       expect(tracker).toBe('192.168.1.1');
     });
 
-    it('should extract first IP from X-Forwarded-For header when req.ip is absent', async () => {
+    it('should extract first IP from req.ips when req.ip is absent', async () => {
       const req = {
-        headers: {
-          'x-forwarded-for': '203.0.113.195, 70.41.3.18, 150.172.238.178',
-        },
+        ips: ['203.0.113.195', '70.41.3.18'],
       };
       const tracker = await (guard as any).getTracker(req);
       expect(tracker).toBe('203.0.113.195');
