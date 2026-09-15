@@ -7,8 +7,6 @@ export interface RequestOptions extends RequestInit {
 }
 
 export function getBaseUrl(): string {
-  // Vite exposes environment variables exclusively through import.meta.env at build time.
-  // process.env is a Node.js API and is NOT available in browser builds.
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL as string;
   }
@@ -64,6 +62,7 @@ export async function apiClient<T>(
     const response = await fetch(url, {
       ...fetchOptions,
       headers: requestHeaders,
+      credentials: "include", // always send cookies (finbuddy_rt HttpOnly cookie)
     });
 
     const isJson = response.headers
@@ -73,52 +72,47 @@ export async function apiClient<T>(
 
     // Handle 401 and Token Refresh logic
     if (response.status === 401 && requiresAuth && !_isRetry && !endpoint.includes("/auth/")) {
-      const refreshToken = tokenStorage.getRefreshToken();
-      if (refreshToken) {
-        if (!isRefreshing) {
-          isRefreshing = true;
-          try {
-            const refreshRes = await fetch(`${baseUrl.replace(/\/$/, "")}/auth/refresh`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ refreshToken }),
-            });
+      if (!isRefreshing) {
+        isRefreshing = true;
+        try {
+          // No body needed — the HttpOnly cookie is forwarded automatically by credentials: "include"
+          const refreshRes = await fetch(`${baseUrl.replace(/\/$/, "")}/auth/refresh`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+          });
 
-            if (refreshRes.ok) {
-              const refreshData = await refreshRes.json();
-              tokenStorage.setTokens(refreshData.accessToken, refreshData.refreshToken);
-              isRefreshing = false;
-              onRefreshed(refreshData.accessToken);
-              
-              // Retry original request
-              return apiClient<T>(endpoint, {
-                ...options,
-                _isRetry: true,
-              });
-            } else {
-              isRefreshing = false;
-              tokenStorage.clearTokens();
-              const err = ApiError.fromResponse(401, data);
-              onRefreshFailed(err);
-              throw err;
-            }
-          } catch (refreshErr) {
+          if (refreshRes.ok) {
+            const refreshData = await refreshRes.json();
+            tokenStorage.setTokens(refreshData.accessToken);
+            isRefreshing = false;
+            onRefreshed(refreshData.accessToken);
+
+            // Retry original request
+            return apiClient<T>(endpoint, {
+              ...options,
+              _isRetry: true,
+            });
+          } else {
             isRefreshing = false;
             tokenStorage.clearTokens();
-            onRefreshFailed(refreshErr);
-            throw refreshErr;
+            const err = ApiError.fromResponse(401, data);
+            onRefreshFailed(err);
+            throw err;
           }
-        } else {
-          // Wait for active refresh
-          await subscribeTokenRefresh();
-          return apiClient<T>(endpoint, {
-            ...options,
-            _isRetry: true,
-          });
+        } catch (refreshErr) {
+          isRefreshing = false;
+          tokenStorage.clearTokens();
+          onRefreshFailed(refreshErr);
+          throw refreshErr;
         }
       } else {
-        tokenStorage.clearTokens();
-        throw ApiError.fromResponse(401, data);
+        // Wait for active refresh
+        await subscribeTokenRefresh();
+        return apiClient<T>(endpoint, {
+          ...options,
+          _isRetry: true,
+        });
       }
     }
 
