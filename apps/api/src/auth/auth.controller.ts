@@ -5,6 +5,8 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -14,14 +16,36 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { Request, Response } from 'express';
 
 import { LoginDto } from './dto/login.dto';
-import { RefreshDto } from './dto/refresh.dto';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { AuthenticatedUserDto } from './dto/authenticated-user.dto';
 import { UserResponseDto } from '../user/dto/user-response.dto';
+
+const COOKIE_NAME = 'finbuddy_rt';
+const COOKIE_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
+
+function setRefreshCookie(res: Response, token: string): void {
+  res.cookie(COOKIE_NAME, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    path: '/auth',
+    maxAge: COOKIE_MAX_AGE_MS,
+  });
+}
+
+function clearRefreshCookie(res: Response): void {
+  res.clearCookie(COOKIE_NAME, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    path: '/auth',
+  });
+}
 
 @ApiTags('Auth')
 @ApiResponse({
@@ -35,7 +59,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Authenticate user with email and password' })
   @ApiResponse({
     status: 201,
-    description: 'User successfully authenticated and JWT tokens issued',
+    description: 'User successfully authenticated; refresh token set as HttpOnly cookie',
   })
   @ApiResponse({ status: 401, description: 'Invalid email or password' })
   @Throttle({
@@ -45,14 +69,22 @@ export class AuthController {
     },
   })
   @Post('login')
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto.email, dto.password);
+  async login(
+    @Body() dto: LoginDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { accessToken, refreshToken, user } = await this.authService.login(
+      dto.email,
+      dto.password,
+    );
+    setRefreshCookie(res, refreshToken);
+    return { accessToken, user };
   }
 
-  @ApiOperation({ summary: 'Refresh access token using a valid refresh token' })
+  @ApiOperation({ summary: 'Refresh access token using HttpOnly cookie refresh token' })
   @ApiResponse({
     status: 200,
-    description: 'New access token and rotated refresh token issued',
+    description: 'New access token issued; refresh token cookie rotated',
   })
   @ApiResponse({ status: 401, description: 'Invalid or revoked refresh token' })
   @Throttle({
@@ -63,20 +95,33 @@ export class AuthController {
   })
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  refresh(@Body() dto: RefreshDto) {
-    return this.authService.refresh(dto.refreshToken);
+  async refresh(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const refreshToken: string = req.cookies?.[COOKIE_NAME] ?? '';
+    const { accessToken, refreshToken: newRefreshToken, user } =
+      await this.authService.refresh(refreshToken);
+    setRefreshCookie(res, newRefreshToken);
+    return { accessToken, user };
   }
 
-  @ApiOperation({ summary: 'Logout and revoke refresh token' })
+  @ApiOperation({ summary: 'Logout and revoke refresh token cookie' })
   @ApiResponse({
     status: 200,
-    description: 'Refresh token revoked successfully',
+    description: 'Refresh token revoked and cookie cleared',
   })
-  @ApiResponse({ status: 401, description: 'Invalid refresh token' })
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  async logout(@Body() dto: RefreshDto) {
-    await this.authService.logout(dto.refreshToken);
+  async logout(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const refreshToken: string = req.cookies?.[COOKIE_NAME] ?? '';
+    if (refreshToken) {
+      await this.authService.logout(refreshToken);
+    }
+    clearRefreshCookie(res);
     return { message: 'Logged out successfully' };
   }
 
