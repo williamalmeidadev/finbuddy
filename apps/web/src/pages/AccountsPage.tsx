@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "@/components/ui/sonner";
 import {
   Wallet,
   Landmark,
@@ -106,8 +107,9 @@ export const AccountsPage: React.FC = () => {
       setBalance("");
       setType("CHECKING");
       setIsDialogOpen(false);
+      toast.success("Conta criada com sucesso!");
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Erro ao criar conta.");
+      toast.error(err instanceof Error ? err.message : "Erro ao criar conta.");
     } finally {
       setIsSubmitting(false);
     }
@@ -136,8 +138,9 @@ export const AccountsPage: React.FC = () => {
       });
       setIsEditOpen(false);
       setEditingAccount(null);
+      toast.success("Conta atualizada com sucesso!");
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Erro ao atualizar conta.");
+      toast.error(err instanceof Error ? err.message : "Erro ao atualizar conta.");
     } finally {
       setIsSubmitting(false);
     }
@@ -147,8 +150,9 @@ export const AccountsPage: React.FC = () => {
     try {
       await deleteAccount.mutateAsync(id);
       setDeleteConfirmId(null);
+      toast.success("Conta excluída com sucesso!");
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Erro ao excluir conta.");
+      toast.error(err instanceof Error ? err.message : "Erro ao excluir conta.");
     }
   };
 

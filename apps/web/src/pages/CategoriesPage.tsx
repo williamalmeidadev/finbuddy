@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ColorPicker } from "@/components/ui/color-picker";
+import { toast } from "@/components/ui/sonner";
 import { FolderTree, PlusCircle, Trash2, Edit2, RefreshCw, AlertCircle, Tag } from "lucide-react";
 
 export const CategoriesPage: React.FC = () => {
@@ -52,8 +53,9 @@ export const CategoriesPage: React.FC = () => {
       setType("EXPENSE");
       setColor("#3b82f6");
       setIsCreateOpen(false);
+      toast.success("Categoria criada com sucesso!");
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Erro ao criar categoria.");
+      toast.error(err instanceof Error ? err.message : "Erro ao criar categoria.");
     } finally {
       setIsSubmitting(false);
     }
@@ -78,8 +80,9 @@ export const CategoriesPage: React.FC = () => {
         },
       });
       setEditingCategory(null);
+      toast.success("Categoria atualizada com sucesso!");
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Erro ao atualizar categoria.");
+      toast.error(err instanceof Error ? err.message : "Erro ao atualizar categoria.");
     } finally {
       setIsSubmitting(false);
     }
@@ -89,8 +92,9 @@ export const CategoriesPage: React.FC = () => {
     try {
       await deleteCategory.mutateAsync(id);
       setDeleteConfirmId(null);
+      toast.success("Categoria excluída com sucesso!");
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Erro ao excluir categoria.");
+      toast.error(err instanceof Error ? err.message : "Erro ao excluir categoria.");
     }
   };
 

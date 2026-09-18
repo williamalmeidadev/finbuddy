@@ -116,9 +116,6 @@ export class RealOpenAIEvaluationRunner {
     scenarios: AgentEvaluationScenario[],
   ): Promise<EvaluationReport | null> {
     if (!this.isEnabled()) {
-      console.log(
-        '[RealOpenAIEvaluationRunner] Opt-in Real OpenAI Evaluation is DISABLED. Set AI_EVALUATION_REAL_OPENAI=true and provide OPENAI_API_KEY to enable.',
-      );
       return null;
     }
 

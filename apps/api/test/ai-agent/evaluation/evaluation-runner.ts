@@ -826,7 +826,6 @@ export class AgentEvaluationRunner {
         caughtError instanceof Error
           ? (caughtError.stack ?? caughtError.message)
           : JSON.stringify(caughtError);
-      console.log(`[SCENARIO ${scenario.id} CAUGHT ERROR]:`, errDetail);
       violations.push({
         type: 'unexpected_orchestrator_exception',
         message: `Unexpected orchestrator error: ${errDetail}`,

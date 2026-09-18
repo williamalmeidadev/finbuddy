@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { toast } from "@/components/ui/sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ExpenseCategoryChart } from "@/components/dashboard/expense-category-chart";
 import {
@@ -127,8 +128,9 @@ export const DashboardPage: React.FC = () => {
       setCategoryId("");
       setDestinationAccountId("");
       setIsDialogOpen(false);
+      toast.success(type === "TRANSFER" ? "Transferência criada com sucesso!" : "Transação criada com sucesso!");
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Erro ao criar transação.");
+      toast.error(err instanceof Error ? err.message : "Erro ao criar transação.");
     } finally {
       setIsSubmitting(false);
     }
@@ -138,8 +140,9 @@ export const DashboardPage: React.FC = () => {
     try {
       await deleteTransaction.mutateAsync(id);
       setDeleteConfirmId(null);
+      toast.success("Transação excluída com sucesso!");
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Erro ao excluir transação.");
+      toast.error(err instanceof Error ? err.message : "Erro ao excluir transação.");
     }
   };
 

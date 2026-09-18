@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { toast } from "@/components/ui/sonner";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -118,8 +119,9 @@ export const TransactionsPage: React.FC = () => {
       setAccountId("");
       setCategoryId("");
       setIsCreateOpen(false);
+      toast.success("Transação lançada com sucesso!");
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Erro ao lançar transação.");
+      toast.error(err instanceof Error ? err.message : "Erro ao lançar transação.");
     } finally {
       setIsSubmitting(false);
     }
@@ -146,8 +148,9 @@ export const TransactionsPage: React.FC = () => {
         },
       });
       setEditingTx(null);
+      toast.success("Transação atualizada com sucesso!");
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Erro ao atualizar transação.");
+      toast.error(err instanceof Error ? err.message : "Erro ao atualizar transação.");
     } finally {
       setIsSubmitting(false);
     }
@@ -157,8 +160,9 @@ export const TransactionsPage: React.FC = () => {
     try {
       await deleteTransaction.mutateAsync(id);
       setDeleteConfirmId(null);
+      toast.success("Transação excluída com sucesso!");
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Erro ao excluir transação.");
+      toast.error(err instanceof Error ? err.message : "Erro ao excluir transação.");
     }
   };
 

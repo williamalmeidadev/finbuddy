@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "@/components/ui/sonner";
 import { ArrowRightLeft, PlusCircle, Trash2, Calendar, RefreshCw, AlertCircle, Search, Filter } from "lucide-react";
 
 export const TransfersPage: React.FC = () => {
@@ -81,7 +82,7 @@ export const TransfersPage: React.FC = () => {
 
     if (!amount || !effectiveFrom || !effectiveTo) return;
     if (effectiveFrom === effectiveTo) {
-      alert("A conta de origem e destino não podem ser iguais.");
+      toast.error("A conta de origem e destino não podem ser iguais.");
       return;
     }
 
@@ -96,8 +97,9 @@ export const TransfersPage: React.FC = () => {
       setAmount("");
       setDescription("");
       setIsDialogOpen(false);
+      toast.success("Transferência realizada com sucesso!");
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Erro ao realizar transferência.");
+      toast.error(err instanceof Error ? err.message : "Erro ao realizar transferência.");
     } finally {
       setIsSubmitting(false);
     }
@@ -107,8 +109,9 @@ export const TransfersPage: React.FC = () => {
     try {
       await deleteTransfer.mutateAsync(id);
       setDeleteConfirmId(null);
+      toast.success("Transferência estornada com sucesso!");
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Erro ao estornar transferência.");
+      toast.error(err instanceof Error ? err.message : "Erro ao estornar transferência.");
     }
   };
 

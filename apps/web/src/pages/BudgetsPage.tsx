@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { toast } from "@/components/ui/sonner";
 import { Target, PlusCircle, Trash2, Edit2, RefreshCw, AlertCircle, Filter } from "lucide-react";
 
 export const BudgetsPage: React.FC = () => {
@@ -72,8 +73,9 @@ export const BudgetsPage: React.FC = () => {
       setCategoryId("");
       setAmount("");
       setIsCreateOpen(false);
+      toast.success("Orçamento criado com sucesso!");
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Erro ao criar orçamento.");
+      toast.error(err instanceof Error ? err.message : "Erro ao criar orçamento.");
     } finally {
       setIsSubmitting(false);
     }
@@ -96,8 +98,9 @@ export const BudgetsPage: React.FC = () => {
         },
       });
       setEditingBudget(null);
+      toast.success("Orçamento atualizado com sucesso!");
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Erro ao atualizar orçamento.");
+      toast.error(err instanceof Error ? err.message : "Erro ao atualizar orçamento.");
     } finally {
       setIsSubmitting(false);
     }
@@ -107,8 +110,9 @@ export const BudgetsPage: React.FC = () => {
     try {
       await deleteBudget.mutateAsync(id);
       setDeleteConfirmId(null);
+      toast.success("Orçamento excluído com sucesso!");
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Erro ao excluir orçamento.");
+      toast.error(err instanceof Error ? err.message : "Erro ao excluir orçamento.");
     }
   };
 

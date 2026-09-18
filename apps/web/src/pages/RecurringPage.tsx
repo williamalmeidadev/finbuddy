@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { toast } from "@/components/ui/sonner";
 import { Repeat, PlusCircle, Trash2, Edit2, Calendar, RefreshCw, AlertCircle } from "lucide-react";
 
 export const RecurringPage: React.FC = () => {
@@ -109,8 +110,9 @@ export const RecurringPage: React.FC = () => {
       setAccountId("");
       setCategoryId("");
       setIsCreateOpen(false);
+      toast.success("Regra de recorrência criada com sucesso!");
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Erro ao criar regra de recorrência.");
+      toast.error(err instanceof Error ? err.message : "Erro ao criar regra de recorrência.");
     } finally {
       setIsSubmitting(false);
     }
@@ -137,8 +139,9 @@ export const RecurringPage: React.FC = () => {
         },
       });
       setEditingRule(null);
+      toast.success("Regra de recorrência atualizada com sucesso!");
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Erro ao atualizar regra.");
+      toast.error(err instanceof Error ? err.message : "Erro ao atualizar regra.");
     } finally {
       setIsSubmitting(false);
     }
@@ -148,8 +151,9 @@ export const RecurringPage: React.FC = () => {
     try {
       await deleteRecurring.mutateAsync(id);
       setDeleteConfirmId(null);
+      toast.success("Regra de recorrência excluída com sucesso!");
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Erro ao excluir regra.");
+      toast.error(err instanceof Error ? err.message : "Erro ao excluir regra.");
     }
   };
 

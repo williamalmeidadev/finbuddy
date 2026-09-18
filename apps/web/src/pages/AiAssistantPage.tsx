@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmationCard } from "@/components/ai/confirmation-card";
 import { ChatMessage } from "@/components/ai/chat-message";
+import { toast } from "@/components/ui/sonner";
 import { Bot, Send, Plus, Trash2, MessageSquare, AlertCircle, RefreshCw } from "lucide-react";
 
 interface LocalMessage {
@@ -128,8 +129,9 @@ export const AiAssistantPage: React.FC = () => {
         setActiveConversationId(undefined);
         setLocalMessages([]);
       }
+      toast.success("Conversa excluída com sucesso!");
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Erro ao excluir conversa.");
+      toast.error(err instanceof Error ? err.message : "Erro ao excluir conversa.");
     } finally {
       setDeletingConvId(null);
     }
