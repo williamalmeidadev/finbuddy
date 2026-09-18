@@ -88,6 +88,8 @@ describe('AiAgentService', () => {
     };
     mockMemoryService = {
       getUserMemories: jest.fn().mockResolvedValue([]),
+      filterRelevantMemories: jest.fn().mockImplementation((m) => m),
+      autoExtractAndSavePreferences: jest.fn().mockResolvedValue([]),
       formatMemoriesForModelContext: jest.fn().mockReturnValue(null),
       saveMemory: jest.fn(),
       getMemoryById: jest.fn(),
@@ -188,9 +190,9 @@ describe('AiAgentService', () => {
     it('should throw BadRequestException when message exceeds maximum allowed length', async () => {
       const longMessage = 'a'.repeat(501);
 
-      await expect(
-        service.sendMessage('user-1', longMessage),
-      ).rejects.toThrow('User message exceeds maximum allowed length of 500 characters');
+      await expect(service.sendMessage('user-1', longMessage)).rejects.toThrow(
+        'User message exceeds maximum allowed length of 500 characters',
+      );
     });
 
     it('should rethrow error when orchestrator fails', async () => {

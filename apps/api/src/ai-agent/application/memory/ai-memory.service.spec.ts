@@ -159,11 +159,24 @@ describe('AiMemoryService', () => {
   describe('filterRelevantMemories', () => {
     it('should filter memories relevant to user query words', () => {
       const memories: any[] = [
-        { id: '1', type: 'PREFERENCE', key: 'preferred_currency', value: 'BRL' },
-        { id: '2', type: 'FINANCIAL_GOAL', key: 'monthly_savings_target', value: '500' },
+        {
+          id: '1',
+          type: 'PREFERENCE',
+          key: 'preferred_currency',
+          value: 'BRL',
+        },
+        {
+          id: '2',
+          type: 'FINANCIAL_GOAL',
+          key: 'monthly_savings_target',
+          value: '500',
+        },
       ];
 
-      const filtered = service.filterRelevantMemories(memories, 'savings target');
+      const filtered = service.filterRelevantMemories(
+        memories,
+        'savings target',
+      );
       expect(filtered.length).toBe(1);
       expect(filtered[0].key).toBe('monthly_savings_target');
     });

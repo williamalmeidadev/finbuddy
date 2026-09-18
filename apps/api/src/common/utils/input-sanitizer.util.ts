@@ -8,6 +8,7 @@ export function sanitizeString(value: unknown): unknown {
   }
   // Remove null bytes (\u0000), control characters (\u0001-\u001F, \u007F-\u009F),
   // and zero-width/invisible characters (\u200B-\u200D, \uFEFF)
+
   return value
     .replace(/[\u0000-\u001F\u007F-\u009F\u200B-\u200D\uFEFF]/g, '')
     .trim();

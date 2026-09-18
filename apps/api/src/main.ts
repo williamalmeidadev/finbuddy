@@ -12,6 +12,7 @@ async function bootstrap() {
   const isProduction = process.env.NODE_ENV === 'production';
 
   // Enable trust proxy for Express so client IP is properly resolved behind reverse proxies
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
   app.getHttpAdapter().getInstance().set('trust proxy', 1);
 
   app.use(cookieParser());

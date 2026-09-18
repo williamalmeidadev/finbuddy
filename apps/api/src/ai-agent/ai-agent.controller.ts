@@ -124,10 +124,13 @@ export class AiAgentController {
     );
   }
 
-  @ApiOperation({ summary: 'Stream AI assistant response as Server-Sent Events (SSE)' })
+  @ApiOperation({
+    summary: 'Stream AI assistant response as Server-Sent Events (SSE)',
+  })
   @ApiResponse({
     status: 200,
-    description: 'Server-Sent Events stream emitting text chunks and progress status',
+    description:
+      'Server-Sent Events stream emitting text chunks and progress status',
   })
   @Throttle({
     ai: {

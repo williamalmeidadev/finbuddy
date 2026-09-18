@@ -466,7 +466,7 @@ export class AiAgentOrchestratorService {
     try {
       if (enriched.transactionId) {
         const tx = await this.transactionService
-          .findById(enriched.transactionId, userId)
+          .findById(String(enriched.transactionId), userId)
           .catch(() => null);
         if (tx) {
           if (enriched.description === undefined && tx.description) {
@@ -511,9 +511,10 @@ export class AiAgentOrchestratorService {
         }
       }
 
-      const needAccounts =
-        enriched.accountId || enriched.fromAccountId || enriched.toAccountId;
-      const needCategories = enriched.categoryId;
+      const needAccounts = Boolean(
+        enriched.accountId || enriched.fromAccountId || enriched.toAccountId,
+      );
+      const needCategories = Boolean(enriched.categoryId);
 
       const [accounts, categories] = await Promise.all([
         needAccounts

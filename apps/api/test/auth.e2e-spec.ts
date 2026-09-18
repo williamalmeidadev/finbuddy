@@ -231,7 +231,7 @@ describe('AuthController (e2e)', () => {
 
       const firstCookies = loginResponse.get('Set-Cookie');
 
-      const firstRefreshResponse = await request(app.getHttpServer())
+      await request(app.getHttpServer())
         .post('/auth/refresh')
         .set('Cookie', firstCookies!)
         .expect(200);

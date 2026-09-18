@@ -10,7 +10,10 @@ describe("QueryClient Configuration", () => {
   });
 
   it("should not retry on 401, 403, 400, or 404 ApiErrors", () => {
-    const retryFn = queryClient.getDefaultOptions().queries?.retry as Function;
+    const retryFn = queryClient.getDefaultOptions().queries?.retry as (
+      failureCount: number,
+      error: unknown,
+    ) => boolean;
     expect(retryFn(1, new ApiError("Unauthorized", 401))).toBe(false);
     expect(retryFn(1, new ApiError("Bad Request", 400))).toBe(false);
     expect(retryFn(1, new ApiError("Forbidden", 403))).toBe(false);
