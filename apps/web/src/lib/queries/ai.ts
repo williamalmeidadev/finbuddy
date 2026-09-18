@@ -72,3 +72,14 @@ export function useDeleteMemory() {
     },
   });
 }
+
+export function useDeleteConversation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (conversationId: string) => aiService.deleteConversation(conversationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.ai.all });
+    },
+  });
+}
+

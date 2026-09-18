@@ -2,8 +2,8 @@
 import React from "react";
 import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useAccounts, useTransactions, useFinancialSummary, useCategories } from "../src/lib/queries";
-import { accountService, transactionService, financialSummaryService, categoryService } from "../src/lib/api/services";
+import { useAccounts, useTransactions, useFinancialSummary, useCategories, useDeleteConversation } from "../src/lib/queries";
+import { accountService, transactionService, financialSummaryService, categoryService, aiService } from "../src/lib/api/services";
 import { vi, describe, it, expect, beforeEach } from "vitest";
 
 vi.mock("../src/lib/api/services", () => ({
@@ -24,6 +24,9 @@ vi.mock("../src/lib/api/services", () => ({
   },
   categoryService: {
     findAll: vi.fn(),
+  },
+  aiService: {
+    deleteConversation: vi.fn(),
   },
 }));
 
@@ -76,5 +79,15 @@ describe("TanStack Query Domain Hooks", () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toEqual(mockSummary);
     expect(financialSummaryService.getSummary).toHaveBeenCalledWith("2026-09");
+  });
+
+  it("useDeleteConversation should call aiService.deleteConversation", async () => {
+    vi.mocked(aiService.deleteConversation).mockResolvedValue({ success: true, message: "Deleted" } as any);
+
+    const { result } = renderHook(() => useDeleteConversation(), { wrapper: createWrapper() });
+
+    await result.current.mutateAsync("conv-123");
+
+    expect(aiService.deleteConversation).toHaveBeenCalledWith("conv-123");
   });
 });

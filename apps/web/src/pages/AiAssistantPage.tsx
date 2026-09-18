@@ -5,6 +5,7 @@ import {
   useSendMessage,
   useApproveAiConfirmation,
   useRejectAiConfirmation,
+  useDeleteConversation,
 } from "@/lib/queries";
 import { aiService, ConversationItem, ConversationMessage } from "@/lib/api/services";
 import { ApiAgentResponse, ApiAgentConfirmation } from "@/lib/api/types";
@@ -45,11 +46,13 @@ export const AiAssistantPage: React.FC = () => {
   const sendMessageMutation = useSendMessage();
   const approveConfirmationMutation = useApproveAiConfirmation();
   const rejectConfirmationMutation = useRejectAiConfirmation();
+  const deleteConversationMutation = useDeleteConversation();
 
   const [localMessages, setLocalMessages] = useState<LocalMessage[]>([]);
   const [inputMessage, setInputMessage] = useState("");
   const [error, setError] = useState("");
   const [submittingConfirmationId, setSubmittingConfirmationId] = useState<string | null>(null);
+  const [deletingConvId, setDeletingConvId] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -115,8 +118,11 @@ export const AiAssistantPage: React.FC = () => {
 
   const handleDeleteConversation = async (convId: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (deletingConvId || deleteConversationMutation.isPending) return;
+
+    setDeletingConvId(convId);
     try {
-      await aiService.deleteConversation(convId);
+      await deleteConversationMutation.mutateAsync(convId);
       await refetchConvs();
       if (activeConversationId === convId) {
         setActiveConversationId(undefined);
@@ -124,6 +130,8 @@ export const AiAssistantPage: React.FC = () => {
       }
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Erro ao excluir conversa.");
+    } finally {
+      setDeletingConvId(null);
     }
   };
 
@@ -359,9 +367,13 @@ export const AiAssistantPage: React.FC = () => {
                   size="icon"
                   className="h-6 w-6 text-muted-foreground hover:text-red-500 shrink-0"
                   onClick={(e) => handleDeleteConversation(c.id, e)}
-                  disabled={isConvsLoading}
+                  disabled={isConvsLoading || deletingConvId === c.id || deleteConversationMutation.isPending}
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  {deletingConvId === c.id ? (
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5" />
+                  )}
                 </Button>
               </div>
             ))
