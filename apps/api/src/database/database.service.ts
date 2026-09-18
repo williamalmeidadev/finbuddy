@@ -27,7 +27,7 @@ export class DatabaseService
 
   async onModuleDestroy() {
     await this.$disconnect();
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+
     await this.pool.end();
   }
 }

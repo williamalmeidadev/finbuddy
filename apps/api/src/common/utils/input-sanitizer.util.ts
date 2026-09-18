@@ -1,3 +1,4 @@
+/* eslint-disable no-control-regex */
 /**
  * Sanitizes input strings by stripping null bytes, control characters,
  * and invisible zero-width unicode characters to prevent injection/truncation attacks.
