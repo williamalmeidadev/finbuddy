@@ -12,7 +12,10 @@ import { AgentToolAuthorizationService } from './authorization/agent-tool-author
 import { AgentToolArgumentValidatorService } from './validation/agent-tool-argument-validator.service';
 import { AiConfirmationService } from './ai-confirmation.service';
 import { getFinbuddyAgentInstructions } from './prompts/finbuddy-agent.instructions';
-import { AgentResponse, AgentConfirmationDetail } from '../domain/agent-response';
+import {
+  AgentResponse,
+  AgentConfirmationDetail,
+} from '../domain/agent-response';
 import {
   AgentToolContext,
   AgentToolResult,
@@ -154,7 +157,9 @@ export class AiAgentOrchestratorService {
       let response: OpenAIResponseOutput;
       try {
         response = await this.openAiClient.createRawResponse({
-          instructions: getFinbuddyAgentInstructions(context.currentDateIso ?? new Date().toISOString()),
+          instructions: getFinbuddyAgentInstructions(
+            context.currentDateIso ?? new Date().toISOString(),
+          ),
           input: currentInput,
           tools: tools.length > 0 ? tools : undefined,
           previousResponseId,

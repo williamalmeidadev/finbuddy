@@ -21,7 +21,11 @@ export class RateLimitGuard extends ThrottlerGuard {
 
   protected getTracker(req: Record<string, unknown>): Promise<string> {
     const r = req as unknown as RequestWithUser;
-    const ip = r.ip || (r.ips && r.ips.length > 0 ? r.ips[0] : undefined) || r.socket?.remoteAddress || '127.0.0.1';
+    const ip =
+      r.ip ||
+      (r.ips && r.ips.length > 0 ? r.ips[0] : undefined) ||
+      r.socket?.remoteAddress ||
+      '127.0.0.1';
     const userId = r.user?.id || r.user?.sub;
 
     const tracker = userId ? `${userId}:${ip}` : ip;

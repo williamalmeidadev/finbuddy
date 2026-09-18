@@ -47,22 +47,33 @@ describe('AuthController', () => {
       expect(res.cookie).toHaveBeenCalledWith(
         'finbuddy_rt',
         'refresh-token',
-        expect.objectContaining({ httpOnly: true, sameSite: 'strict', path: '/auth' }),
+        expect.objectContaining({
+          httpOnly: true,
+          sameSite: 'strict',
+          path: '/auth',
+        }),
       );
-      expect(result).toEqual({ accessToken: 'access-token', user: serviceResult.user });
+      expect(result).toEqual({
+        accessToken: 'access-token',
+        user: serviceResult.user,
+      });
       expect(result).not.toHaveProperty('refreshToken');
     });
 
     it('should propagate service errors', async () => {
       const dto = { email: 'test@finbuddy.dev', password: 'wrong-password' };
       authService.login.mockRejectedValue(new Error('Invalid credentials'));
-      await expect(controller.login(dto, res as Response)).rejects.toThrow('Invalid credentials');
+      await expect(controller.login(dto, res as Response)).rejects.toThrow(
+        'Invalid credentials',
+      );
     });
   });
 
   describe('refresh', () => {
     it('should refresh token from cookie and set new cookie', async () => {
-      const req = { cookies: { finbuddy_rt: 'old-refresh-token' } } as unknown as Request;
+      const req = {
+        cookies: { finbuddy_rt: 'old-refresh-token' },
+      } as unknown as Request;
       const serviceResult = {
         accessToken: 'new-access-token',
         refreshToken: 'new-refresh-token',
@@ -77,22 +88,35 @@ describe('AuthController', () => {
       expect(res.cookie).toHaveBeenCalledWith(
         'finbuddy_rt',
         'new-refresh-token',
-        expect.objectContaining({ httpOnly: true, sameSite: 'strict', path: '/auth' }),
+        expect.objectContaining({
+          httpOnly: true,
+          sameSite: 'strict',
+          path: '/auth',
+        }),
       );
-      expect(result).toEqual({ accessToken: 'new-access-token', user: serviceResult.user });
+      expect(result).toEqual({
+        accessToken: 'new-access-token',
+        user: serviceResult.user,
+      });
       expect(result).not.toHaveProperty('refreshToken');
     });
 
     it('should propagate service errors on refresh', async () => {
-      const req = { cookies: { finbuddy_rt: 'invalid-token' } } as unknown as Request;
+      const req = {
+        cookies: { finbuddy_rt: 'invalid-token' },
+      } as unknown as Request;
       authService.refresh.mockRejectedValue(new Error('Invalid refresh token'));
-      await expect(controller.refresh(req, res as Response)).rejects.toThrow('Invalid refresh token');
+      await expect(controller.refresh(req, res as Response)).rejects.toThrow(
+        'Invalid refresh token',
+      );
     });
   });
 
   describe('logout', () => {
     it('should revoke token from cookie and clear cookie', async () => {
-      const req = { cookies: { finbuddy_rt: 'refresh-token' } } as unknown as Request;
+      const req = {
+        cookies: { finbuddy_rt: 'refresh-token' },
+      } as unknown as Request;
       authService.logout.mockResolvedValue(undefined);
 
       const result = await controller.logout(req, res as Response);
@@ -100,7 +124,11 @@ describe('AuthController', () => {
       expect(authService.logout).toHaveBeenCalledWith('refresh-token');
       expect(res.clearCookie).toHaveBeenCalledWith(
         'finbuddy_rt',
-        expect.objectContaining({ httpOnly: true, sameSite: 'strict', path: '/auth' }),
+        expect.objectContaining({
+          httpOnly: true,
+          sameSite: 'strict',
+          path: '/auth',
+        }),
       );
       expect(result).toEqual({ message: 'Logged out successfully' });
     });
@@ -116,16 +144,24 @@ describe('AuthController', () => {
     });
 
     it('should propagate service errors on logout', async () => {
-      const req = { cookies: { finbuddy_rt: 'invalid-token' } } as unknown as Request;
+      const req = {
+        cookies: { finbuddy_rt: 'invalid-token' },
+      } as unknown as Request;
       authService.logout.mockRejectedValue(new Error('Some error'));
-      await expect(controller.logout(req, res as Response)).rejects.toThrow('Some error');
+      await expect(controller.logout(req, res as Response)).rejects.toThrow(
+        'Some error',
+      );
     });
   });
 
   describe('me', () => {
     it('should call authService.me and return the user', async () => {
       const user = { id: 'user-id', email: 'test@finbuddy.dev' };
-      const response = { id: 'user-id', email: 'test@finbuddy.dev', status: 'ACTIVE' };
+      const response = {
+        id: 'user-id',
+        email: 'test@finbuddy.dev',
+        status: 'ACTIVE',
+      };
       authService.me.mockResolvedValue(response);
       const result = await controller.me(user);
       expect(authService.me).toHaveBeenCalledWith(user.id);
@@ -135,7 +171,9 @@ describe('AuthController', () => {
     it('should propagate service errors', async () => {
       const user = { id: 'user-id', email: 'test@finbuddy.dev' };
       authService.me.mockRejectedValue(new Error('User no longer exists'));
-      await expect(controller.me(user)).rejects.toThrow('User no longer exists');
+      await expect(controller.me(user)).rejects.toThrow(
+        'User no longer exists',
+      );
     });
   });
 });

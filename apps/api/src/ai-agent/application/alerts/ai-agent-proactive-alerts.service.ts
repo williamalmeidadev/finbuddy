@@ -80,7 +80,7 @@ export class AiAgentProactiveAlertsService {
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_9AM)
-  async runScheduledBudgetHealthChecks(): Promise<void> {
+  runScheduledBudgetHealthChecks(): void {
     this.logger.log('Executing daily proactive budget health check cron job');
   }
 }

@@ -13,7 +13,6 @@ export function getBaseUrl(): string {
   return "http://localhost:3000";
 }
 
-let isRefreshing = false;
 let refreshSubscribers: Array<{
   resolve: (token: string) => void;
   reject: (err: unknown) => void;

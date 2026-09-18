@@ -59,7 +59,8 @@ export class AuthController {
   @ApiOperation({ summary: 'Authenticate user with email and password' })
   @ApiResponse({
     status: 201,
-    description: 'User successfully authenticated; refresh token set as HttpOnly cookie',
+    description:
+      'User successfully authenticated; refresh token set as HttpOnly cookie',
   })
   @ApiResponse({ status: 401, description: 'Invalid email or password' })
   @Throttle({
@@ -81,7 +82,9 @@ export class AuthController {
     return { accessToken, user };
   }
 
-  @ApiOperation({ summary: 'Refresh access token using HttpOnly cookie refresh token' })
+  @ApiOperation({
+    summary: 'Refresh access token using HttpOnly cookie refresh token',
+  })
   @ApiResponse({
     status: 200,
     description: 'New access token issued; refresh token cookie rotated',
@@ -100,8 +103,11 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const refreshToken: string = req.cookies?.[COOKIE_NAME] ?? '';
-    const { accessToken, refreshToken: newRefreshToken, user } =
-      await this.authService.refresh(refreshToken);
+    const {
+      accessToken,
+      refreshToken: newRefreshToken,
+      user,
+    } = await this.authService.refresh(refreshToken);
     setRefreshCookie(res, newRefreshToken);
     return { accessToken, user };
   }
@@ -113,10 +119,7 @@ export class AuthController {
   })
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  async logout(
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-  ) {
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const refreshToken: string = req.cookies?.[COOKIE_NAME] ?? '';
     if (refreshToken) {
       await this.authService.logout(refreshToken);

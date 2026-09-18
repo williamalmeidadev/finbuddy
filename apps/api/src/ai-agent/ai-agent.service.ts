@@ -7,7 +7,7 @@ import {
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { Observable, Subject } from 'rxjs';
+import { Observable } from 'rxjs';
 import { AiAgentOrchestratorService } from './application/ai-agent-orchestrator.service';
 import { AiConfirmationService } from './application/ai-confirmation.service';
 import { AgentToolRegistryService } from './application/tools/agent-tool-registry.service';
@@ -237,7 +237,7 @@ export class AiAgentService {
     options?: RequestCorrelationOptions,
   ): Observable<MessageEvent> {
     return new Observable<MessageEvent>((subscriber) => {
-      (async () => {
+      void (async () => {
         try {
           subscriber.next({
             data: JSON.stringify({
@@ -247,7 +247,11 @@ export class AiAgentService {
             }),
           });
 
-          const agentResponse = await this.sendMessage(userId, message, options);
+          const agentResponse = await this.sendMessage(
+            userId,
+            message,
+            options,
+          );
 
           if (agentResponse.type === 'confirmation_required') {
             subscriber.next({

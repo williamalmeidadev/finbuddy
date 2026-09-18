@@ -244,9 +244,7 @@ describe('AuthController (e2e)', () => {
     });
 
     it('should reject a missing refresh token cookie', async () => {
-      await request(app.getHttpServer())
-        .post('/auth/refresh')
-        .expect(401);
+      await request(app.getHttpServer()).post('/auth/refresh').expect(401);
     });
   });
 
