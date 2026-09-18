@@ -254,6 +254,91 @@ export class AiMemoryService {
     return count;
   }
 
+  filterRelevantMemories(memories: AiMemory[], query?: string): AiMemory[] {
+    if (!memories || memories.length === 0) {
+      return [];
+    }
+    if (!query || query.trim().length === 0) {
+      return memories;
+    }
+
+    const queryWords = query
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((w) => w.length > 2);
+    if (queryWords.length === 0) {
+      return memories;
+    }
+
+    const scored = memories.map((m) => {
+      const text = `${m.type} ${m.key} ${m.value}`.toLowerCase();
+      let score = 0;
+      for (const word of queryWords) {
+        if (text.includes(word)) {
+          score += 1;
+        }
+      }
+      return { memory: m, score };
+    });
+
+    const matching = scored
+      .filter((s) => s.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map((s) => s.memory);
+
+    return matching.length > 0 ? matching : memories;
+  }
+
+  async autoExtractAndSavePreferences(
+    userId: string,
+    userText: string,
+  ): Promise<AiMemory[]> {
+    const extracted: AiMemory[] = [];
+    if (!userText || userText.trim().length === 0) {
+      return extracted;
+    }
+
+    const lower = userText.toLowerCase();
+
+    const savingsMatch = lower.match(
+      /meta\s+de\s+(economizar|poupar|guardar)\s+(?:r\$\s*)?(\d+(?:[.,]\d{1,2})?)/i,
+    );
+    if (savingsMatch && savingsMatch[2]) {
+      const value = savingsMatch[2].replace(',', '.');
+      try {
+        const mem = await this.saveMemory(
+          userId,
+          'FINANCIAL_GOAL',
+          'monthly_savings_target',
+          value,
+        );
+        extracted.push(mem);
+      } catch {
+        // Ignored if validation or limit fails
+      }
+    }
+
+    const emergencyMatch = lower.match(
+      /(fundo|reserva)\s+de\s+emerg[êe]ncia\s+(?:de\s+)?(?:r\$\s*)?(\d+(?:[.,]\d{1,2})?)/i,
+    );
+    if (emergencyMatch && emergencyMatch[2]) {
+      const value = emergencyMatch[2].replace(',', '.');
+      try {
+        const mem = await this.saveMemory(
+          userId,
+          'FINANCIAL_GOAL',
+          'emergency_fund_target',
+          value,
+        );
+        extracted.push(mem);
+      } catch {
+        // Ignored if validation or limit fails
+      }
+    }
+
+    return extracted;
+  }
+
   formatMemoriesForModelContext(memories: AiMemory[]): string {
     if (!memories || memories.length === 0) {
       return '';

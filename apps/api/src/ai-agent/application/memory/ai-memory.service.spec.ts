@@ -155,4 +155,38 @@ describe('AiMemoryService', () => {
       expect(formatted).toContain('untrusted data');
     });
   });
+
+  describe('filterRelevantMemories', () => {
+    it('should filter memories relevant to user query words', () => {
+      const memories: any[] = [
+        { id: '1', type: 'PREFERENCE', key: 'preferred_currency', value: 'BRL' },
+        { id: '2', type: 'FINANCIAL_GOAL', key: 'monthly_savings_target', value: '500' },
+      ];
+
+      const filtered = service.filterRelevantMemories(memories, 'savings target');
+      expect(filtered.length).toBe(1);
+      expect(filtered[0].key).toBe('monthly_savings_target');
+    });
+  });
+
+  describe('autoExtractAndSavePreferences', () => {
+    it('should extract savings target from natural Portuguese message', async () => {
+      mockRepository.findByKeyForUser.mockResolvedValue(null);
+      mockRepository.countForUser.mockResolvedValue(0);
+      mockRepository.upsertForUser.mockResolvedValue({
+        id: 'm-extracted',
+        userId: 'u-1',
+        type: 'FINANCIAL_GOAL',
+        key: 'monthly_savings_target',
+        value: '500',
+      });
+
+      const extracted = await service.autoExtractAndSavePreferences(
+        'u-1',
+        'Minha meta de economizar 500 reais por mês',
+      );
+      expect(extracted.length).toBe(1);
+      expect(extracted[0].key).toBe('monthly_savings_target');
+    });
+  });
 });

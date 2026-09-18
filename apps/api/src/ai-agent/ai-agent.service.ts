@@ -143,14 +143,22 @@ export class AiAgentService {
           message.length;
       }
 
-      // 3. Load user memories for context injection & memory context budget check
+      // 3. Auto-extract explicit user preferences & load relevant memories
+      await this.memoryService
+        .autoExtractAndSavePreferences(userId, message)
+        .catch(() => []);
+
       const userMemories = await this.memoryService.getUserMemories(
         userId,
         undefined,
         options,
       );
+      const relevantMemories = this.memoryService.filterRelevantMemories(
+        userMemories,
+        message,
+      );
       let memoryContext =
-        this.memoryService.formatMemoriesForModelContext(userMemories);
+        this.memoryService.formatMemoriesForModelContext(relevantMemories);
 
       const maxMemoryChars =
         this.configService.get<number>('AI_MAX_MEMORY_CONTEXT_CHARS') ?? 2000;
