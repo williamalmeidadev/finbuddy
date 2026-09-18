@@ -3,9 +3,11 @@ import {
   ForbiddenException,
   Injectable,
   Logger,
+  MessageEvent,
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { Observable, Subject } from 'rxjs';
 import { AiAgentOrchestratorService } from './application/ai-agent-orchestrator.service';
 import { AiConfirmationService } from './application/ai-confirmation.service';
 import { AgentToolRegistryService } from './application/tools/agent-tool-registry.service';
@@ -219,6 +221,67 @@ export class AiAgentService {
     options?: RequestCorrelationOptions,
   ): Promise<AgentResponse> {
     return this.sendMessage(userId, message, options);
+  }
+
+  streamMessage(
+    userId: string,
+    message: string,
+    options?: RequestCorrelationOptions,
+  ): Observable<MessageEvent> {
+    return new Observable<MessageEvent>((subscriber) => {
+      (async () => {
+        try {
+          subscriber.next({
+            data: JSON.stringify({
+              type: 'status',
+              status: 'processing',
+              timestamp: new Date().toISOString(),
+            }),
+          });
+
+          const agentResponse = await this.sendMessage(userId, message, options);
+
+          if (agentResponse.type === 'confirmation_required') {
+            subscriber.next({
+              data: JSON.stringify({
+                type: 'confirmation_required',
+                confirmation: agentResponse.confirmation,
+                confirmations: agentResponse.confirmations,
+                conversationId: agentResponse.conversationId,
+                timestamp: new Date().toISOString(),
+              }),
+            });
+          }
+
+          subscriber.next({
+            data: JSON.stringify({
+              type: 'text_chunk',
+              text: agentResponse.message,
+              conversationId: agentResponse.conversationId,
+              timestamp: new Date().toISOString(),
+            }),
+          });
+
+          subscriber.next({
+            data: JSON.stringify({
+              type: 'done',
+              conversationId: agentResponse.conversationId,
+              timestamp: new Date().toISOString(),
+            }),
+          });
+          subscriber.complete();
+        } catch (err) {
+          subscriber.next({
+            data: JSON.stringify({
+              type: 'error',
+              error: err instanceof Error ? err.message : 'Processing failed',
+              timestamp: new Date().toISOString(),
+            }),
+          });
+          subscriber.error(err);
+        }
+      })();
+    });
   }
 
   async createConversation(

@@ -5,14 +5,17 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  MessageEvent,
   Param,
   ParseUUIDPipe,
   Patch,
   Post,
   Query,
   Req,
+  Sse,
   UseGuards,
 } from '@nestjs/common';
+import { Observable } from 'rxjs';
 import { Request } from 'express';
 import {
   ApiBearerAuth,
@@ -119,6 +122,30 @@ export class AiAgentController {
       result.conversationId,
       result.confirmations,
     );
+  }
+
+  @ApiOperation({ summary: 'Stream AI assistant response as Server-Sent Events (SSE)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Server-Sent Events stream emitting text chunks and progress status',
+  })
+  @Throttle({
+    ai: {
+      ttl: Number(process.env.AI_THROTTLE_TTL) || 60000,
+      limit: Number(process.env.AI_THROTTLE_LIMIT) || 20,
+    },
+  })
+  @Sse('messages/stream')
+  streamMessage(
+    @CurrentUser() user: AuthenticatedUserDto,
+    @Query() dto: SendAgentMessageDto,
+    @Req() req: Request,
+  ): Observable<MessageEvent> {
+    const options = this.getCorrelationOptions(req);
+    return this.aiAgentService.streamMessage(user.id, dto.message, {
+      ...options,
+      conversationId: dto.conversationId,
+    });
   }
 
   @ApiOperation({ summary: 'Create a new AI conversation session' })

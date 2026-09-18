@@ -201,6 +201,26 @@ describe('AiAgentService', () => {
         service.sendMessage('user-1', 'Give me advice'),
       ).rejects.toThrow('Orchestrator failure');
     });
+
+    it('should emit SSE stream events when streamMessage is called', (done) => {
+      const mockResponse = new AgentResponse('Streamed advice');
+      mockOrchestrator.processUserMessage.mockResolvedValue(mockResponse);
+
+      const events: any[] = [];
+      const stream$ = service.streamMessage('user-1', 'Hello SSE');
+
+      stream$.subscribe({
+        next: (event) => {
+          events.push(JSON.parse(event.data as string));
+        },
+        complete: () => {
+          expect(events.length).toBeGreaterThanOrEqual(2);
+          expect(events[0].type).toBe('status');
+          expect(events[events.length - 1].type).toBe('done');
+          done();
+        },
+      });
+    });
   });
 
   describe('confirmAction', () => {
