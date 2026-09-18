@@ -7,6 +7,11 @@ import { PasswordService } from '../password/password.service';
 import { UserResponseDto } from '../user/dto/user-response.dto';
 import { RefreshTokenService } from './refresh-token.service';
 import { UserStatus } from '../generated/prisma/enums';
+import {
+  isValidEmail,
+  sanitizeEmail,
+  sanitizeString,
+} from '../common/utils/input-sanitizer.util';
 
 @Injectable()
 export class AuthService {
@@ -18,7 +23,13 @@ export class AuthService {
   ) {}
 
   async login(email: string, password: string) {
-    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedEmail = sanitizeEmail(email) as string;
+
+    if (!isValidEmail(normalizedEmail)) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const cleanPassword = sanitizeString(password) as string;
 
     const user = await this.userRepository.findByEmail(normalizedEmail);
 
@@ -28,7 +39,7 @@ export class AuthService {
 
     const isPasswordValid = await this.passwordService.verify(
       user.passwordHash,
-      password,
+      cleanPassword,
     );
 
     if (!isPasswordValid) {

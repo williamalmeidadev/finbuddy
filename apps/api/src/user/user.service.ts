@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -11,6 +12,11 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { UserRepository } from './user.repository';
 import { UserStatus } from '../generated/prisma/enums';
+import {
+  isValidEmail,
+  sanitizeEmail,
+  sanitizeString,
+} from '../common/utils/input-sanitizer.util';
 
 @Injectable()
 export class UserService {
@@ -20,9 +26,14 @@ export class UserService {
   ) {}
 
   async create(dto: CreateUserDto): Promise<UserResponseDto> {
-    const email = dto.email.trim().toLowerCase();
+    const email = sanitizeEmail(dto.email) as string;
 
-    const passwordHash = await this.passwordService.hash(dto.password);
+    if (!isValidEmail(email)) {
+      throw new BadRequestException('Invalid email address format');
+    }
+
+    const cleanPassword = sanitizeString(dto.password) as string;
+    const passwordHash = await this.passwordService.hash(cleanPassword);
 
     try {
       const user = await this.userRepository.create({
@@ -58,7 +69,11 @@ export class UserService {
   }
 
   async findByEmail(email: string): Promise<UserResponseDto | null> {
-    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedEmail = sanitizeEmail(email) as string;
+
+    if (!isValidEmail(normalizedEmail)) {
+      return null;
+    }
 
     const user = await this.userRepository.findByEmail(normalizedEmail);
 
