@@ -12,7 +12,7 @@ import { AgentToolAuthorizationService } from './authorization/agent-tool-author
 import { AgentToolArgumentValidatorService } from './validation/agent-tool-argument-validator.service';
 import { AiConfirmationService } from './ai-confirmation.service';
 import { getFinbuddyAgentInstructions } from './prompts/finbuddy-agent.instructions';
-import { AgentResponse } from '../domain/agent-response';
+import { AgentResponse, AgentConfirmationDetail } from '../domain/agent-response';
 import {
   AgentToolContext,
   AgentToolResult,
