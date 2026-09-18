@@ -118,8 +118,8 @@ export const AiAssistantPage: React.FC = () => {
     e.preventDefault();
     if (!inputMessage.trim() || sendMessageMutation.isPending) return;
 
-    if (inputMessage.trim().length > 1000) {
-      setError("A mensagem não pode exceder 1000 caracteres.");
+    if (inputMessage.trim().length > 500) {
+      setError("A mensagem não pode exceder 500 caracteres.");
       return;
     }
 
@@ -400,24 +400,24 @@ export const AiAssistantPage: React.FC = () => {
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 disabled={sendMessageMutation.isPending}
-                maxLength={1000}
+                maxLength={500}
                 className="flex-1 pr-20"
               />
               <span
                 className={`absolute right-3 text-xs select-none font-mono ${
-                  inputMessage.length >= 1000
+                  inputMessage.length >= 500
                     ? "text-red-500 font-semibold"
-                    : inputMessage.length >= 800
+                    : inputMessage.length >= 400
                     ? "text-amber-500"
                     : "text-muted-foreground/60"
                 }`}
               >
-                {inputMessage.length}/1000
+                {inputMessage.length}/500
               </span>
             </div>
             <Button
               type="submit"
-              disabled={sendMessageMutation.isPending || !inputMessage.trim() || inputMessage.length > 1000}
+              disabled={sendMessageMutation.isPending || !inputMessage.trim() || inputMessage.length > 500}
             >
               {sendMessageMutation.isPending ? (
                 <RefreshCw className="h-4 w-4 animate-spin" />

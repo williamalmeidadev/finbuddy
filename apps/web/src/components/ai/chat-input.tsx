@@ -18,7 +18,7 @@ export function ChatInput({
   isLoading = false,
   placeholder = "Ask FinBuddy about your finances...",
   className,
-  maxLength = 1000,
+  maxLength = 500,
 }: ChatInputProps) {
   const [value, setValue] = React.useState("");
 
