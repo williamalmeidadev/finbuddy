@@ -135,7 +135,7 @@ describe('AiAgentService', () => {
           provide: ConfigService,
           useValue: {
             get: jest.fn((key: string, defaultValue?: any) => {
-              if (key === 'AI_MAX_INPUT_CHARS') return 2000;
+              if (key === 'AI_MAX_INPUT_CHARS') return 1000;
               if (key === 'AI_MAX_CONTEXT_CHARS') return 15000;
               if (key === 'AI_MAX_MEMORY_CONTEXT_CHARS') return 2000;
               if (key === 'AI_MAX_CONCURRENT_REQUESTS_PER_USER') return 3;
@@ -183,6 +183,14 @@ describe('AiAgentService', () => {
       );
       expect(result.message).toBe('Financial advice response');
       expect(result.conversationId).toBe('c-1');
+    });
+
+    it('should throw BadRequestException when message exceeds maximum allowed length', async () => {
+      const longMessage = 'a'.repeat(1001);
+
+      await expect(
+        service.sendMessage('user-1', longMessage),
+      ).rejects.toThrow('User message exceeds maximum allowed length of 1000 characters');
     });
 
     it('should rethrow error when orchestrator fails', async () => {

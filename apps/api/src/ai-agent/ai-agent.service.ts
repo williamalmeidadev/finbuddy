@@ -70,7 +70,7 @@ export class AiAgentService {
   ): Promise<AgentResponse> {
     // 0. Input size check
     const maxInputChars =
-      this.configService.get<number>('AI_MAX_INPUT_CHARS') ?? 2000;
+      this.configService.get<number>('AI_MAX_INPUT_CHARS') ?? 1000;
     if (message && message.length > maxInputChars) {
       this.metricsService.increment('ai_requests_failed_total');
       throw new BadRequestException(
@@ -195,6 +195,7 @@ export class AiAgentService {
         response.type,
         response.confirmation,
         conversationId,
+        response.confirmations,
       );
     } catch (err) {
       this.metricsService.increment('ai_requests_failed_total');

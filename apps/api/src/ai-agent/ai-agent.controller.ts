@@ -117,6 +117,7 @@ export class AiAgentController {
       result.type,
       result.confirmation,
       result.conversationId,
+      result.confirmations,
     );
   }
 

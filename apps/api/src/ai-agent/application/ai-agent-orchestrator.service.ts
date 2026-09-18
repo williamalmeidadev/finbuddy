@@ -201,6 +201,7 @@ export class AiAgentOrchestratorService {
 
       previousResponseId = response.id;
       const toolOutputs: Array<Record<string, unknown>> = [];
+      const pendingConfirmations: AgentConfirmationDetail[] = [];
 
       for (const call of response.functionCalls) {
         this.metricsService.increment('ai_tool_calls_total');
@@ -299,7 +300,7 @@ export class AiAgentOrchestratorService {
               !tool.readOnly &&
               (tool.requiresConfirmation ?? tool.name === 'create_transaction')
             ) {
-              // 3. Write tool detected: create confirmation & halt tool execution loop
+              // 3. Write tool detected: create confirmation record
               this.metricsService.increment('ai_confirmation_total');
               const enrichedAction = await this.enrichConfirmationAction(
                 context.userId,
@@ -313,21 +314,21 @@ export class AiAgentOrchestratorService {
                   { requestId, aiRequestId },
                 );
 
-              const durationMs = Date.now() - startTime;
-              this.logger.log(
-                `Financial write proposed, awaiting user confirmation: tool=${tool.name}, confirmationId=${confirmation.id}, durationMs=${durationMs}`,
-              );
+              pendingConfirmations.push({
+                confirmationId: confirmation.id,
+                toolName: tool.name,
+                action: enrichedAction,
+                expiresAt: confirmation.expiresAt.toISOString(),
+              });
 
-              return new AgentResponse(
-                `Esta operação financeira requer a sua confirmação. Por favor, confira os detalhes abaixo para autorizar ou cancelar.`,
-                'confirmation_required',
-                {
+              result = {
+                success: true,
+                data: {
+                  status: 'confirmation_required',
                   confirmationId: confirmation.id,
                   toolName: tool.name,
-                  action: enrichedAction,
-                  expiresAt: confirmation.expiresAt.toISOString(),
                 },
-              );
+              };
             } else {
               // 4. Read tool execution via Application Service
               await this.observability.recordEvent({
@@ -396,6 +397,36 @@ export class AiAgentOrchestratorService {
           call_id: call.callId,
           output: JSON.stringify(result),
         });
+      }
+
+      if (pendingConfirmations.length > 0) {
+        const totalDurationMs = Date.now() - startTime;
+        const count = pendingConfirmations.length;
+        this.logger.log(
+          `Financial write(s) proposed, awaiting user confirmation: count=${count}, durationMs=${totalDurationMs}`,
+        );
+
+        await this.observability.recordEvent({
+          event: AiEventName.REQUEST_COMPLETED,
+          requestId,
+          aiRequestId,
+          userId,
+          durationMs: totalDurationMs,
+          success: true,
+        });
+
+        const messageText =
+          count === 1
+            ? 'Esta operação financeira requer a sua confirmação. Por favor, confira os detalhes abaixo para autorizar ou cancelar.'
+            : `Foram solicitadas ${count} operações financeiras que requerem a sua confirmação. Por favor, confira os detalhes abaixo para autorizá-las ou cancelá-las.`;
+
+        return new AgentResponse(
+          messageText,
+          'confirmation_required',
+          pendingConfirmations[0],
+          undefined,
+          pendingConfirmations,
+        );
       }
 
       currentInput = toolOutputs;

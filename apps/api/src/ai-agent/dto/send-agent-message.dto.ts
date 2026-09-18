@@ -11,11 +11,13 @@ export class SendAgentMessageDto {
   @ApiProperty({
     description: 'User message or prompt for the AI assistant',
     example: 'Hello FinBuddy, how can you help me with my finances?',
-    maxLength: 2000,
+    maxLength: 1000,
   })
   @IsString()
   @IsNotEmpty()
-  @MaxLength(2000)
+  @MaxLength(1000, {
+    message: 'A mensagem não pode exceder 1000 caracteres.',
+  })
   message: string;
 
   @ApiPropertyOptional({

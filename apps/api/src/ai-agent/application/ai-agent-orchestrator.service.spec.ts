@@ -276,6 +276,81 @@ describe('AiAgentOrchestratorService', () => {
       expect(response.message).toBe('Accounts and budgets checked.');
     });
 
+    it('should return multiple confirmations when model invokes multiple write tools in a single turn', async () => {
+      mockToolRegistry.getToolDefinitions.mockReturnValue([
+        { type: 'function', name: 'create_transaction' },
+      ]);
+
+      const mockWriteTool = {
+        name: 'create_transaction',
+        capability: AgentCapability.CREATE_TRANSACTION,
+        riskLevel: AgentToolRiskLevel.MEDIUM,
+        readOnly: false,
+        requiresConfirmation: true,
+      };
+
+      mockToolRegistry.getTool.mockReturnValue(mockWriteTool);
+
+      mockOpenAiClient.createRawResponse.mockResolvedValueOnce({
+        id: 'resp-1',
+        outputText: '',
+        functionCalls: [
+          {
+            callId: 'call-1',
+            name: 'create_transaction',
+            arguments: {
+              accountId: '123e4567-e89b-12d3-a456-426614174000',
+              type: 'EXPENSE',
+              amount: 50,
+              description: 'Almoço',
+            },
+          },
+          {
+            callId: 'call-2',
+            name: 'create_transaction',
+            arguments: {
+              accountId: '123e4567-e89b-12d3-a456-426614174000',
+              type: 'EXPENSE',
+              amount: 30,
+              description: 'Jantar',
+            },
+          },
+        ],
+      });
+
+      mockAiConfirmationService.createConfirmation
+        .mockResolvedValueOnce({
+          id: 'conf-1',
+          userId: 'user-123',
+          toolName: 'create_transaction',
+          argumentsJson: { amount: 50, description: 'Almoço' },
+          status: 'PENDING',
+          createdAt: new Date(),
+          expiresAt: new Date(Date.now() + 300000),
+        })
+        .mockResolvedValueOnce({
+          id: 'conf-2',
+          userId: 'user-123',
+          toolName: 'create_transaction',
+          argumentsJson: { amount: 30, description: 'Jantar' },
+          status: 'PENDING',
+          createdAt: new Date(),
+          expiresAt: new Date(Date.now() + 300000),
+        });
+
+      const response = await service.processUserMessage(
+        'user-123',
+        'Registre um almoço de 50 e um jantar de 30',
+      );
+
+      expect(response.type).toBe('confirmation_required');
+      expect(response.confirmations).toHaveLength(2);
+      expect(response.confirmations?.[0].confirmationId).toBe('conf-1');
+      expect(response.confirmations?.[1].confirmationId).toBe('conf-2');
+      expect(response.confirmation?.confirmationId).toBe('conf-1');
+      expect(response.message).toContain('2 operações financeiras');
+    });
+
     it('should return safe tool error if requested tool is unknown', async () => {
       mockToolRegistry.getToolDefinitions.mockReturnValue([]);
       mockToolRegistry.getTool.mockReturnValue(undefined);

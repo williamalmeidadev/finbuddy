@@ -118,6 +118,11 @@ export const AiAssistantPage: React.FC = () => {
     e.preventDefault();
     if (!inputMessage.trim() || sendMessageMutation.isPending) return;
 
+    if (inputMessage.trim().length > 1000) {
+      setError("A mensagem não pode exceder 1000 caracteres.");
+      return;
+    }
+
     const userText = inputMessage.trim();
     setInputMessage("");
     setError("");
@@ -388,15 +393,32 @@ export const AiAssistantPage: React.FC = () => {
 
         {/* Input Bar */}
         <div className="p-4 border-t bg-card">
-          <form onSubmit={handleSendMessage} className="flex gap-2">
-            <Input
-              placeholder="Digite sua pergunta ou instrução financeira..."
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              disabled={sendMessageMutation.isPending}
-              className="flex-1"
-            />
-            <Button type="submit" disabled={sendMessageMutation.isPending || !inputMessage.trim()}>
+          <form onSubmit={handleSendMessage} className="flex gap-2 items-center">
+            <div className="flex-1 relative flex items-center">
+              <Input
+                placeholder="Digite sua pergunta ou instrução financeira..."
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                disabled={sendMessageMutation.isPending}
+                maxLength={1000}
+                className="flex-1 pr-20"
+              />
+              <span
+                className={`absolute right-3 text-xs select-none font-mono ${
+                  inputMessage.length >= 1000
+                    ? "text-red-500 font-semibold"
+                    : inputMessage.length >= 800
+                    ? "text-amber-500"
+                    : "text-muted-foreground/60"
+                }`}
+              >
+                {inputMessage.length}/1000
+              </span>
+            </div>
+            <Button
+              type="submit"
+              disabled={sendMessageMutation.isPending || !inputMessage.trim() || inputMessage.length > 1000}
+            >
               {sendMessageMutation.isPending ? (
                 <RefreshCw className="h-4 w-4 animate-spin" />
               ) : (

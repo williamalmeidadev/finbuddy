@@ -22,6 +22,13 @@ export class AgentResponseDto {
   confirmation?: AgentConfirmationDetail;
 
   @ApiPropertyOptional({
+    description:
+      'List of all structured confirmation action details when multiple actions require confirmation',
+    type: [Object],
+  })
+  confirmations?: AgentConfirmationDetail[];
+
+  @ApiPropertyOptional({
     description: 'UUID of the conversation associated with this message',
     example: '123e4567-e89b-12d3-a456-426614174000',
   })
@@ -32,10 +39,12 @@ export class AgentResponseDto {
     type: 'response' | 'confirmation_required' = 'response',
     confirmation?: AgentConfirmationDetail,
     conversationId?: string,
+    confirmations?: AgentConfirmationDetail[],
   ) {
     this.message = message;
     this.type = type;
     this.confirmation = confirmation;
     this.conversationId = conversationId;
+    this.confirmations = confirmations;
   }
 }
