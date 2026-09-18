@@ -158,6 +158,19 @@ export function validate(config: Record<string, any>) {
     throw new Error(`Config validation error: ${errors.toString()}`);
   }
 
+  // Production Security Hardening
+  if (validatedConfig.NODE_ENV === 'production') {
+    if (
+      validatedConfig.JWT_SECRET === 'your_jwt_secret_here' ||
+      validatedConfig.JWT_SECRET === 'supersecretjwtkey' ||
+      validatedConfig.JWT_SECRET.length < 32
+    ) {
+      throw new Error(
+        'Config validation error: JWT_SECRET must be at least 32 characters long and cannot use default placeholders in production',
+      );
+    }
+  }
+
   // Production Hardening Validations
   if (
     validatedConfig.OPENAI_TIMEOUT_MS !== undefined &&

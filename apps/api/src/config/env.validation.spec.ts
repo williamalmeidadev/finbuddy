@@ -54,6 +54,7 @@ describe('Environment Validation', () => {
   it('should accept custom values for optional fields', () => {
     const customConfig = {
       ...validMinimalConfig,
+      JWT_SECRET: 'a_very_strong_production_jwt_secret_key_1234567890',
       NODE_ENV: 'production',
       SWAGGER_ENABLED: false,
       CORS_ORIGIN: 'https://app.finbuddy.com',

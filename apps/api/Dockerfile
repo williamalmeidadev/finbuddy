@@ -23,6 +23,7 @@ COPY apps/web/package*.json ./apps/web/
 RUN npm ci --omit=dev
 
 COPY --from=builder --chown=node:node /app/apps/api/dist ./apps/api/dist
+COPY --from=builder --chown=node:node /app/apps/api/src/generated/prisma ./apps/api/src/generated/prisma
 COPY --from=builder --chown=node:node /app/apps/api/prisma ./apps/api/prisma
 COPY --from=builder --chown=node:node /app/node_modules ./node_modules
 

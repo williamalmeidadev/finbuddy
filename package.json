@@ -25,7 +25,8 @@
     "lint:web": "npm run lint --workspace=@finbuddy/web",
     "prisma:generate": "npm run prisma:generate --workspace=@finbuddy/api",
     "prisma:validate": "npm run prisma:validate --workspace=@finbuddy/api",
-    "prisma:migrate": "npm run prisma:migrate --workspace=@finbuddy/api"
+    "prisma:migrate": "npm run prisma:migrate --workspace=@finbuddy/api",
+    "prisma:deploy": "npm run prisma:deploy --workspace=@finbuddy/api"
   },
   "devDependencies": {
     "prettier": "^3.4.2"
