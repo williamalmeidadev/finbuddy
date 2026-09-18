@@ -269,39 +269,35 @@ export const AiAssistantPage: React.FC = () => {
       });
 
       setLocalMessages((prev) =>
-        prev.map((m) => {
-          let updatedConfirmation = m.confirmation;
-          let updatedConfirmations = m.confirmations;
+        prev
+          .map((m) => {
+            let updatedConfirmation = m.confirmation;
+            let updatedConfirmations = m.confirmations;
 
-          if (
-            m.confirmation &&
-            (m.confirmation.confirmationId === confirmationId ||
-              m.confirmation.id === confirmationId)
-          ) {
-            updatedConfirmation = {
-              ...m.confirmation,
-              status: "cancelled" as const,
-            };
-          }
+            if (
+              m.confirmation &&
+              (m.confirmation.confirmationId === confirmationId ||
+                m.confirmation.id === confirmationId)
+            ) {
+              updatedConfirmation = {
+                ...m.confirmation,
+                status: "cancelled" as const,
+              };
+            }
 
-          if (m.confirmations) {
-            updatedConfirmations = m.confirmations.map((c) =>
-              c.confirmationId === confirmationId || c.id === confirmationId
-                ? { ...c, status: "cancelled" as const }
-                : c
-            );
-          }
+            if (m.confirmations) {
+              updatedConfirmations = m.confirmations.map((c) =>
+                c.confirmationId === confirmationId || c.id === confirmationId
+                  ? { ...c, status: "cancelled" as const }
+                  : c
+              );
+            }
 
-          if (updatedConfirmation || updatedConfirmations) {
-            return {
-              ...m,
-              confirmation: updatedConfirmation,
-              confirmations: updatedConfirmations,
-            };
-          }
-          return m;
-        })
-      );
+            if (updatedConfirmation || updatedConfirmations) {
+              return {
+                ...m,
+                confirmation: updatedConfirmation,
+                confirmations: updatedConfirmations,
               };
             }
             return m;
