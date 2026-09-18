@@ -100,9 +100,13 @@ export class AiAgentOrchestratorService {
     if (options?.memoryContext || historyItems.length > 0) {
       const items: any[] = [];
       if (options?.memoryContext) {
+        const sanitizedMemoryContext = options.memoryContext.replace(
+          /<\/?user_memory[^>]*>/gi,
+          '',
+        );
         items.push({
           role: 'user',
-          content: `<user_memory_untrusted>\n${options.memoryContext}\n</user_memory_untrusted>`,
+          content: `<user_memory_untrusted>\n${sanitizedMemoryContext}\n</user_memory_untrusted>`,
         });
       }
       if (historyItems.length > 0) {
