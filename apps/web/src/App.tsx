@@ -24,7 +24,7 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="system" storageKey="finbuddy-theme">
-        <Toaster richColors closeButton position="top-right" />
+        <Toaster richColors closeButton position="bottom-right" />
         <AuthProvider>
         <BrowserRouter>
           <Routes>
