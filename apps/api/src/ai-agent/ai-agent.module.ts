@@ -34,6 +34,7 @@ import { DeleteTransferTool } from './application/tools/impl/delete-transfer.too
 import { CategoryModule } from '../category/category.module';
 import { GetCategoriesTool } from './application/tools/impl/get-categories.tool';
 import { CreateCategoryTool } from './application/tools/impl/create-category.tool';
+import { AiAgentProactiveAlertsService } from './application/alerts/ai-agent-proactive-alerts.service';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { CreateCategoryTool } from './application/tools/impl/create-category.too
     AiMemoryRepository,
     AiMemoryPolicyService,
     AiMemoryService,
+    AiAgentProactiveAlertsService,
     OpenAIClient,
     GetAccountsTool,
     GetTransactionsTool,
@@ -80,6 +82,7 @@ import { CreateCategoryTool } from './application/tools/impl/create-category.too
     AiAgentObservabilityService,
     AiConversationService,
     AiMemoryService,
+    AiAgentProactiveAlertsService,
   ],
 })
 export class AiAgentModule {}
