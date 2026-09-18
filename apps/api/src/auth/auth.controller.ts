@@ -102,7 +102,7 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const refreshToken: string = req.cookies?.[COOKIE_NAME] ?? '';
+    const refreshToken = String(req.cookies?.[COOKIE_NAME] ?? '');
     const {
       accessToken,
       refreshToken: newRefreshToken,
@@ -120,7 +120,7 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const refreshToken: string = req.cookies?.[COOKIE_NAME] ?? '';
+    const refreshToken = String(req.cookies?.[COOKIE_NAME] ?? '');
     if (refreshToken) {
       await this.authService.logout(refreshToken);
     }
