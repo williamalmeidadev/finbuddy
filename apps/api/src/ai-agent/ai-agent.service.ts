@@ -177,9 +177,12 @@ export class AiAgentService {
         },
       );
 
-      const assistantContent = response.confirmation
-        ? `${response.message} <!--CONFIRMATION:${JSON.stringify(response.confirmation)}-->`
-        : response.message;
+      const assistantContent =
+        response.confirmations && response.confirmations.length > 0
+          ? `${response.message} <!--CONFIRMATIONS:${JSON.stringify(response.confirmations)}-->`
+          : response.confirmation
+            ? `${response.message} <!--CONFIRMATION:${JSON.stringify(response.confirmation)}-->`
+            : response.message;
 
       // Persist assistant message
       await this.conversationService.appendMessage(
@@ -251,11 +254,75 @@ export class AiAgentService {
       result.items.map(async (msg) => {
         let content = msg.content;
         let confirmation: Record<string, unknown> | undefined = undefined;
+        let confirmations: Record<string, unknown>[] | undefined = undefined;
 
-        const match = content.match(/<!--CONFIRMATION:([\s\S]*?)-->/);
-        if (match && match[1]) {
+        const matchPlural = content.match(/<!--CONFIRMATIONS:([\s\S]*?)-->/);
+        const matchSingular = content.match(/<!--CONFIRMATION:([\s\S]*?)-->/);
+
+        if (matchPlural && matchPlural[1]) {
           try {
-            const rawConf = JSON.parse(match[1]) as Record<string, unknown>;
+            const rawConfs = JSON.parse(matchPlural[1]) as Record<
+              string,
+              unknown
+            >[];
+            content = content
+              .replace(/<!--CONFIRMATIONS:[\s\S]*?-->/g, '')
+              .replace(/<!--CONFIRMATION:[\s\S]*?-->/g, '')
+              .trim();
+
+            confirmations = await Promise.all(
+              rawConfs.map(async (rawConf) => {
+                const confId =
+                  typeof rawConf.confirmationId === 'string'
+                    ? rawConf.confirmationId
+                    : typeof rawConf.id === 'string'
+                      ? rawConf.id
+                      : undefined;
+                let status = 'pending';
+
+                if (confId) {
+                  const dbConf = await this.prisma.aiConfirmation.findUnique({
+                    where: { id: confId },
+                  });
+                  if (dbConf) {
+                    if (dbConf.status === AiConfirmationStatus.CONSUMED) {
+                      status = 'confirmed';
+                    } else if (
+                      dbConf.status === AiConfirmationStatus.CANCELLED
+                    ) {
+                      status = 'cancelled';
+                    } else if (
+                      dbConf.status === AiConfirmationStatus.EXPIRED ||
+                      dbConf.expiresAt <= new Date()
+                    ) {
+                      status = 'expired';
+                    } else {
+                      status = 'pending';
+                    }
+                  } else {
+                    status = 'cancelled';
+                  }
+                }
+
+                return {
+                  ...rawConf,
+                  status,
+                };
+              }),
+            );
+
+            if (confirmations.length > 0) {
+              confirmation = confirmations[0];
+            }
+          } catch {
+            // Ignore JSON parse errors
+          }
+        } else if (matchSingular && matchSingular[1]) {
+          try {
+            const rawConf = JSON.parse(matchSingular[1]) as Record<
+              string,
+              unknown
+            >;
             content = content
               .replace(/<!--CONFIRMATION:[\s\S]*?-->/g, '')
               .trim();
@@ -293,6 +360,7 @@ export class AiAgentService {
               ...rawConf,
               status,
             };
+            confirmations = [confirmation];
           } catch {
             // Ignore JSON parse errors
           }
@@ -302,6 +370,7 @@ export class AiAgentService {
           ...msg,
           content,
           confirmation,
+          confirmations,
         };
       }),
     );

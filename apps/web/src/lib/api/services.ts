@@ -222,6 +222,11 @@ export interface ConversationMessage {
   confirmation?: ApiAgentConfirmation & {
     status?: "pending" | "confirmed" | "cancelled" | "executing" | "expired";
   };
+  confirmations?: Array<
+    ApiAgentConfirmation & {
+      status?: "pending" | "confirmed" | "cancelled" | "executing" | "expired";
+    }
+  >;
 }
 
 export const aiService = {

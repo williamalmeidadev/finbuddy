@@ -257,4 +257,5 @@ export interface ApiAgentResponse {
   message: string;
   conversationId?: string;
   confirmation?: ApiAgentConfirmation;
+  confirmations?: ApiAgentConfirmation[];
 }

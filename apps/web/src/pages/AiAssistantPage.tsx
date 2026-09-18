@@ -23,6 +23,11 @@ interface LocalMessage {
   confirmation?: ApiAgentConfirmation & {
     status?: "pending" | "confirmed" | "cancelled" | "executing" | "expired";
   };
+  confirmations?: Array<
+    ApiAgentConfirmation & {
+      status?: "pending" | "confirmed" | "cancelled" | "executing" | "expired";
+    }
+  >;
 }
 
 export const AiAssistantPage: React.FC = () => {
@@ -64,12 +69,20 @@ export const AiAssistantPage: React.FC = () => {
             "Esta operação financeira requereu sua confirmação para ser concluída."
           );
         }
+        const confirmations =
+          m.confirmations && m.confirmations.length > 0
+            ? m.confirmations
+            : m.confirmation
+            ? [m.confirmation]
+            : undefined;
+
         return {
           id: m.id,
           role: String(m.role).toLowerCase() === "user" ? "user" : "assistant",
           content,
           timestamp: new Date(m.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
           confirmation: m.confirmation,
+          confirmations,
         };
       });
       setLocalMessages(items);
@@ -157,12 +170,20 @@ export const AiAssistantPage: React.FC = () => {
         await refetchConvs();
       }
 
+      const confirmations =
+        response.type === "confirmation_required" && response.confirmations?.length
+          ? response.confirmations
+          : response.type === "confirmation_required" && response.confirmation
+          ? [response.confirmation]
+          : undefined;
+
       const assistantMsg: LocalMessage = {
         id: "assistant-" + Date.now(),
         role: "assistant",
         content: response.message,
         timestamp: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
         confirmation: response.type === "confirmation_required" ? response.confirmation : undefined,
+        confirmations,
       };
 
       setLocalMessages((prev) =>
@@ -192,17 +213,33 @@ export const AiAssistantPage: React.FC = () => {
       setLocalMessages((prev) =>
         prev
           .map((m) => {
+            let updatedConfirmation = m.confirmation;
+            let updatedConfirmations = m.confirmations;
+
             if (
               m.confirmation &&
               (m.confirmation.confirmationId === confirmationId ||
                 m.confirmation.id === confirmationId)
             ) {
+              updatedConfirmation = {
+                ...m.confirmation,
+                status: "confirmed" as const,
+              };
+            }
+
+            if (m.confirmations) {
+              updatedConfirmations = m.confirmations.map((c) =>
+                c.confirmationId === confirmationId || c.id === confirmationId
+                  ? { ...c, status: "confirmed" as const }
+                  : c
+              );
+            }
+
+            if (updatedConfirmation || updatedConfirmations) {
               return {
                 ...m,
-                confirmation: {
-                  ...m.confirmation,
-                  status: "confirmed" as const,
-                },
+                confirmation: updatedConfirmation,
+                confirmations: updatedConfirmations,
               };
             }
             return m;
@@ -232,19 +269,39 @@ export const AiAssistantPage: React.FC = () => {
       });
 
       setLocalMessages((prev) =>
-        prev
-          .map((m) => {
-            if (
-              m.confirmation &&
-              (m.confirmation.confirmationId === confirmationId ||
-                m.confirmation.id === confirmationId)
-            ) {
-              return {
-                ...m,
-                confirmation: {
-                  ...m.confirmation,
-                  status: "cancelled" as const,
-                },
+        prev.map((m) => {
+          let updatedConfirmation = m.confirmation;
+          let updatedConfirmations = m.confirmations;
+
+          if (
+            m.confirmation &&
+            (m.confirmation.confirmationId === confirmationId ||
+              m.confirmation.id === confirmationId)
+          ) {
+            updatedConfirmation = {
+              ...m.confirmation,
+              status: "cancelled" as const,
+            };
+          }
+
+          if (m.confirmations) {
+            updatedConfirmations = m.confirmations.map((c) =>
+              c.confirmationId === confirmationId || c.id === confirmationId
+                ? { ...c, status: "cancelled" as const }
+                : c
+            );
+          }
+
+          if (updatedConfirmation || updatedConfirmations) {
+            return {
+              ...m,
+              confirmation: updatedConfirmation,
+              confirmations: updatedConfirmations,
+            };
+          }
+          return m;
+        })
+      );
               };
             }
             return m;
@@ -366,8 +423,24 @@ export const AiAssistantPage: React.FC = () => {
                   isThinking={msg.isThinking}
                 />
 
-                {/* Confirmation Card Overlay */}
-                {msg.confirmation && (
+                {/* Confirmation Cards Overlay */}
+                {msg.confirmations && msg.confirmations.length > 0 ? (
+                  <div className="pl-11 space-y-3 max-w-xl">
+                    {msg.confirmations.map((conf, idx) => {
+                      const cId = conf.confirmationId || conf.id || `conf-${idx}`;
+                      return (
+                        <ConfirmationCard
+                          key={cId}
+                          {...conf}
+                          confirmationId={cId}
+                          onConfirm={() => handleConfirmAction(cId)}
+                          onCancel={() => handleCancelAction(cId)}
+                          isSubmitting={submittingConfirmationId === cId}
+                        />
+                      );
+                    })}
+                  </div>
+                ) : msg.confirmation ? (
                   <div className="pl-11 max-w-xl">
                     <ConfirmationCard
                       {...msg.confirmation}
@@ -377,7 +450,7 @@ export const AiAssistantPage: React.FC = () => {
                       isSubmitting={submittingConfirmationId === (msg.confirmation.confirmationId || msg.confirmation.id)}
                     />
                   </div>
-                )}
+                ) : null}
               </div>
             ))
           )}

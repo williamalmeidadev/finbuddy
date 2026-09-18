@@ -100,6 +100,9 @@ export class ConversationMessageResponseDto {
 
   @ApiPropertyOptional()
   confirmation?: Record<string, any>;
+
+  @ApiPropertyOptional({ type: [Object] })
+  confirmations?: Record<string, any>[];
 }
 
 export class PaginatedConversationsResponseDto {
