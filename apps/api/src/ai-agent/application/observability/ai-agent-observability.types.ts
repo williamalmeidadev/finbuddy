@@ -45,6 +45,7 @@ export const AiEventName = {
   MEMORY_DELETED: 'ai.memory.deleted',
   MEMORY_REJECTED: 'ai.memory.rejected',
   MEMORY_LOADED: 'ai.memory.loaded',
+  GUARDRAIL_BLOCKED: 'ai.guardrail.blocked',
 } as const;
 
 export const AiErrorCode = {
@@ -56,6 +57,7 @@ export const AiErrorCode = {
   CONFIRMATION_ALREADY_CONSUMED: 'CONFIRMATION_ALREADY_CONSUMED',
   TOOL_NOT_FOUND: 'TOOL_NOT_FOUND',
   TOOL_EXECUTION_ERROR: 'TOOL_EXECUTION_ERROR',
+  GUARDRAIL_BLOCKED: 'GUARDRAIL_BLOCKED',
   LLM_ERROR: 'LLM_ERROR',
   TIMEOUT: 'TIMEOUT',
   INTERNAL_ERROR: 'INTERNAL_ERROR',

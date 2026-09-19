@@ -35,6 +35,8 @@ import {
 
 import { ConfigService } from '@nestjs/config';
 
+import { AgentDomainGuardrailService } from './application/guardrails/agent-domain-guardrail.service';
+
 export interface ConfirmationExecutionResult {
   success: boolean;
   message: string;
@@ -61,6 +63,7 @@ export class AiAgentService {
     private readonly observability: AiAgentObservabilityService,
     private readonly conversationService: AiConversationService,
     private readonly memoryService: AiMemoryService,
+    private readonly domainGuardrail: AgentDomainGuardrailService,
     private readonly configService: ConfigService,
     private readonly prisma: DatabaseService,
   ) {}
@@ -70,7 +73,66 @@ export class AiAgentService {
     message: string,
     options?: RequestCorrelationOptions,
   ): Promise<AgentResponse> {
-    // 0. Input size check
+    // 0. Input domain guardrail pre-execution check
+    const guardrailResult = this.domainGuardrail.validateInput(message);
+    if (!guardrailResult.allowed) {
+      this.metricsService.increment('ai_guardrail_blocked_total');
+      this.logger.warn(
+        `Guardrail intercepted disallowed message: reason=${guardrailResult.reason}`,
+      );
+
+      await this.observability.recordEvent({
+        event: AiEventName.GUARDRAIL_BLOCKED,
+        requestId: options?.requestId || 'N/A',
+        aiRequestId: options?.aiRequestId,
+        userId,
+        success: false,
+        errorCode: AiErrorCode.GUARDRAIL_BLOCKED,
+        meta: { reason: guardrailResult.reason },
+      });
+
+      let conversationId: string;
+      if (options?.conversationId) {
+        await this.conversationService.getConversation(
+          options.conversationId,
+          userId,
+        );
+        conversationId = options.conversationId;
+      } else {
+        const titleSnippet =
+          message.length > 50 ? `${message.slice(0, 47)}...` : message;
+        const newConv = await this.conversationService.createConversation(
+          userId,
+          titleSnippet,
+          options,
+        );
+        conversationId = newConv.id;
+      }
+
+      const refusalText =
+        guardrailResult.refusalMessage ||
+        'Sou o FinBuddy, assistente focado exclusivamente em finanças pessoais.';
+
+      await this.conversationService.appendMessage(
+        conversationId,
+        userId,
+        ConversationMessageRole.USER,
+        message,
+        options,
+      );
+
+      await this.conversationService.appendMessage(
+        conversationId,
+        userId,
+        ConversationMessageRole.ASSISTANT,
+        refusalText,
+        options,
+      );
+
+      return new AgentResponse(refusalText, 'text', undefined, conversationId);
+    }
+
+    // 0.1 Input size check
     const maxInputChars =
       this.configService.get<number>('AI_MAX_INPUT_CHARS') ?? 500;
     if (message && message.length > maxInputChars) {

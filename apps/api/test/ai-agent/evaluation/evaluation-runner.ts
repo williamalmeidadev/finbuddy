@@ -5,6 +5,7 @@ import { AiAgentOrchestratorService } from '../../../src/ai-agent/application/ai
 import { AgentToolRegistryService } from '../../../src/ai-agent/application/tools/agent-tool-registry.service';
 import { AgentToolAuthorizationService } from '../../../src/ai-agent/application/authorization/agent-tool-authorization.service';
 import { AgentToolArgumentValidatorService } from '../../../src/ai-agent/application/validation/agent-tool-argument-validator.service';
+import { AgentDomainGuardrailService } from '../../../src/ai-agent/application/guardrails/agent-domain-guardrail.service';
 import { AiConfirmationService } from '../../../src/ai-agent/application/ai-confirmation.service';
 import { OpenAIClient } from '../../../src/ai-agent/infrastructure/openai/openai.client';
 import { MetricsService } from '../../../src/common/metrics/metrics.service';
@@ -710,6 +711,7 @@ export class AgentEvaluationRunner {
         AgentToolRegistryService,
         AgentToolAuthorizationService,
         AgentToolArgumentValidatorService,
+        AgentDomainGuardrailService,
         AiConfirmationService,
         AiConversationRepository,
         AiConversationService,

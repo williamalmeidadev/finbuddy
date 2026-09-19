@@ -13,6 +13,8 @@ import { AiMemoryService } from './application/memory/ai-memory.service';
 import { ConfigService } from '@nestjs/config';
 import { DatabaseService } from '../database/database.service';
 
+import { AgentDomainGuardrailService } from './application/guardrails/agent-domain-guardrail.service';
+
 describe('AiAgentService', () => {
   let service: AiAgentService;
   let mockOrchestrator: {
@@ -133,6 +135,7 @@ describe('AiAgentService', () => {
           provide: AiMemoryService,
           useValue: mockMemoryService,
         },
+        AgentDomainGuardrailService,
         {
           provide: ConfigService,
           useValue: {

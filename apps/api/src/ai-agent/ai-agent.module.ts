@@ -38,6 +38,7 @@ import { CreateBudgetTool } from './application/tools/impl/create-budget.tool';
 import { UpdateBudgetTool } from './application/tools/impl/update-budget.tool';
 import { DeleteBudgetTool } from './application/tools/impl/delete-budget.tool';
 import { AiAgentProactiveAlertsService } from './application/alerts/ai-agent-proactive-alerts.service';
+import { AgentDomainGuardrailService } from './application/guardrails/agent-domain-guardrail.service';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { AiAgentProactiveAlertsService } from './application/alerts/ai-agent-pro
     AgentToolRegistryService,
     AgentToolAuthorizationService,
     AgentToolArgumentValidatorService,
+    AgentDomainGuardrailService,
     AiConfirmationService,
     AiAgentObservabilityService,
     AiConversationRepository,
@@ -89,6 +91,7 @@ import { AiAgentProactiveAlertsService } from './application/alerts/ai-agent-pro
     AiConversationService,
     AiMemoryService,
     AiAgentProactiveAlertsService,
+    AgentDomainGuardrailService,
   ],
 })
 export class AiAgentModule {}
