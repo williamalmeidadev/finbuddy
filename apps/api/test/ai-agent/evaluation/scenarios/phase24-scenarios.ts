@@ -2854,4 +2854,479 @@ export const PHASE24_SCENARIOS: AgentEvaluationScenario[] = [
     },
     tags: ['complex-workflow', 'month-consistency'],
   },
+  {
+    id: 'SCENARIO-582',
+    category: 'COMPLEX-WORKFLOW',
+    description: 'CW-01: Read-only request: Analyze my finances without write',
+    userMessage: 'Analyze my finances',
+    authenticatedUserId: EVAL_USERS.USER_A,
+    mockModelResponses: [
+      {
+        functionCalls: [
+          { callId: 'c-582a', name: 'get_financial_summary', arguments: {} },
+        ],
+      },
+      {
+        outputText:
+          'In September 2026, your total expenses were R$ 500,00 and total income was R$ 2.500,00.',
+      },
+    ],
+    expectedBehavior: {
+      expectedToolCalls: [{ toolName: 'get_financial_summary' }],
+      forbiddenToolCalls: ['create_transaction', 'create_transfer'],
+      responseMustContain: ['500'],
+    },
+    tags: ['complex-workflow', 'cw-01-read-only'],
+  },
+  {
+    id: 'SCENARIO-583',
+    category: 'COMPLEX-WORKFLOW',
+    description: 'CW-02: Direct write request: Create an expense of R$ 100',
+    userMessage: 'Create an expense of R$ 100 for groceries',
+    authenticatedUserId: EVAL_USERS.USER_A,
+    mockModelResponses: [
+      {
+        functionCalls: [
+          {
+            callId: 'c-583a',
+            name: 'get_accounts',
+            arguments: {},
+          },
+          {
+            callId: 'c-583b',
+            name: 'get_categories',
+            arguments: {},
+          },
+        ],
+      },
+      {
+        functionCalls: [
+          {
+            callId: 'c-583c',
+            name: 'create_transaction',
+            arguments: {
+              accountId: EVAL_ACCOUNTS.ACCOUNT_A1.id,
+              categoryId: EVAL_CATEGORIES.CAT_ALIMENTACAO.id,
+              amount: 100,
+              type: 'EXPENSE',
+              description: 'groceries',
+            },
+          },
+        ],
+      },
+      {
+        outputText:
+          'Preparei a despesa de R$ 100,00 na conta Conta Corrente e categoria Alimentação. Por favor, confirme abaixo para executar.',
+      },
+    ],
+    expectedBehavior: {
+      expectedToolCalls: [
+        { toolName: 'get_accounts' },
+        { toolName: 'get_categories' },
+        { toolName: 'create_transaction' },
+      ],
+      responseMustContain: ['confirme'],
+    },
+    tags: ['complex-workflow', 'cw-02-direct-write'],
+  },
+  {
+    id: 'SCENARIO-584',
+    category: 'COMPLEX-WORKFLOW',
+    description:
+      'CW-03: Composite request: Analyze finances then create an expense of R$ 100',
+    userMessage: 'Analyze my finances and then create an expense of R$ 100',
+    authenticatedUserId: EVAL_USERS.USER_A,
+    mockModelResponses: [
+      {
+        functionCalls: [
+          { callId: 'c-584a', name: 'get_financial_summary', arguments: {} },
+          { callId: 'c-584b', name: 'get_accounts', arguments: {} },
+          { callId: 'c-584c', name: 'get_categories', arguments: {} },
+        ],
+      },
+      {
+        functionCalls: [
+          {
+            callId: 'c-584d',
+            name: 'create_transaction',
+            arguments: {
+              accountId: EVAL_ACCOUNTS.ACCOUNT_A1.id,
+              categoryId: EVAL_CATEGORIES.CAT_ALIMENTACAO.id,
+              amount: 100,
+              type: 'EXPENSE',
+              description: 'Despesa nova',
+            },
+          },
+        ],
+      },
+      {
+        outputText:
+          'Análise das suas finanças: Seu gasto total foi R$ 500,00. Preparei também a nova despesa de R$ 100,00 que aguarda sua confirmação.',
+      },
+    ],
+    expectedBehavior: {
+      expectedToolCalls: [
+        { toolName: 'get_financial_summary' },
+        { toolName: 'get_accounts' },
+        { toolName: 'create_transaction' },
+      ],
+      responseMustContain: ['Análise', 'confirmação'],
+    },
+    tags: ['complex-workflow', 'cw-03-composite-analysis-write'],
+  },
+  {
+    id: 'SCENARIO-585',
+    category: 'COMPLEX-WORKFLOW',
+    description:
+      'CW-04: Find highest spending category and prepare expense in it',
+    userMessage:
+      'Find my highest spending category and prepare an expense of R$ 100 in it',
+    authenticatedUserId: EVAL_USERS.USER_A,
+    mockModelResponses: [
+      {
+        functionCalls: [
+          { callId: 'c-585a', name: 'get_financial_summary', arguments: {} },
+          { callId: 'c-585b', name: 'get_accounts', arguments: {} },
+        ],
+      },
+      {
+        functionCalls: [
+          {
+            callId: 'c-585c',
+            name: 'create_transaction',
+            arguments: {
+              accountId: EVAL_ACCOUNTS.ACCOUNT_A1.id,
+              categoryId: EVAL_CATEGORIES.CAT_ALUGUEL.id,
+              amount: 100,
+              type: 'EXPENSE',
+              description: 'Expense in highest category',
+            },
+          },
+        ],
+      },
+      {
+        outputText:
+          'Sua categoria de maior gasto é Aluguel (R$ 500,00). Preparei a despesa de R$ 100,00 na categoria Aluguel. Por favor, confirme no cartão abaixo.',
+      },
+    ],
+    expectedBehavior: {
+      expectedToolCalls: [
+        { toolName: 'get_financial_summary' },
+        {
+          toolName: 'create_transaction',
+          arguments: { categoryId: EVAL_CATEGORIES.CAT_ALUGUEL.id },
+        },
+      ],
+      responseMustContain: ['Aluguel'],
+    },
+    tags: ['complex-workflow', 'cw-04-category-resolution'],
+  },
+  {
+    id: 'SCENARIO-586',
+    category: 'COMPLEX-WORKFLOW',
+    description: 'CW-05: Find highest balance account and create expense there',
+    userMessage: 'Find my highest balance account and create an expense there of R$ 50',
+    authenticatedUserId: EVAL_USERS.USER_A,
+    mockModelResponses: [
+      {
+        functionCalls: [
+          { callId: 'c-586a', name: 'get_accounts', arguments: {} },
+          { callId: 'c-586b', name: 'get_categories', arguments: {} },
+        ],
+      },
+      {
+        functionCalls: [
+          {
+            callId: 'c-586c',
+            name: 'create_transaction',
+            arguments: {
+              accountId: EVAL_ACCOUNTS.ACCOUNT_A1.id,
+              amount: 50,
+              type: 'EXPENSE',
+              description: 'Expense in largest account',
+            },
+          },
+        ],
+      },
+      {
+        outputText:
+          'Sua conta de maior saldo é Conta Corrente (R$ 2.500,00). Preparei a despesa de R$ 50,00 nessa conta. Por favor, confirme a operação.',
+      },
+    ],
+    expectedBehavior: {
+      expectedToolCalls: [
+        { toolName: 'get_accounts' },
+        {
+          toolName: 'create_transaction',
+          arguments: { accountId: EVAL_ACCOUNTS.ACCOUNT_A1.id },
+        },
+      ],
+      responseMustContain: ['Conta Corrente'],
+    },
+    tags: ['complex-workflow', 'cw-05-account-resolution'],
+  },
+  {
+    id: 'SCENARIO-587',
+    category: 'COMPLEX-WORKFLOW',
+    description:
+      'CW-06: Show September spending then prepare R$ 100 expense in highest spending category',
+    userMessage:
+      'Show my September spending, then prepare a R$ 100 expense in the category with the highest spending',
+    authenticatedUserId: EVAL_USERS.USER_A,
+    mockModelResponses: [
+      {
+        functionCalls: [
+          {
+            callId: 'c-587a',
+            name: 'get_financial_summary',
+            arguments: { month: '2026-09' },
+          },
+          { callId: 'c-587b', name: 'get_accounts', arguments: {} },
+        ],
+      },
+      {
+        functionCalls: [
+          {
+            callId: 'c-587c',
+            name: 'get_transactions',
+            arguments: {
+              categoryId: EVAL_CATEGORIES.CAT_ALUGUEL.id,
+              month: '2026-09',
+            },
+          },
+          {
+            callId: 'c-587d',
+            name: 'create_transaction',
+            arguments: {
+              accountId: EVAL_ACCOUNTS.ACCOUNT_A1.id,
+              categoryId: EVAL_CATEGORIES.CAT_ALUGUEL.id,
+              amount: 100,
+              type: 'EXPENSE',
+              description: 'Despesa setembro',
+            },
+          },
+        ],
+      },
+      {
+        outputText:
+          'Seus gastos de setembro de 2026 somam R$ 500,00 na categoria Aluguel. Preparei a despesa de R$ 100,00 que aguarda sua aprovação.',
+      },
+    ],
+    expectedBehavior: {
+      expectedToolCalls: [
+        { toolName: 'get_financial_summary' },
+        { toolName: 'get_transactions' },
+        { toolName: 'create_transaction' },
+      ],
+      responseMustContain: ['setembro', 'Aluguel'],
+    },
+    tags: ['complex-workflow', 'cw-06-september-spending-write'],
+  },
+  {
+    id: 'SCENARIO-588',
+    category: 'COMPLEX-WORKFLOW',
+    description:
+      'CW-07: Analyze September, compare categories, find largest account, then prepare expense',
+    userMessage:
+      'Analyze September, compare categories, find my largest account, then prepare an expense of R$ 85.90',
+    authenticatedUserId: EVAL_USERS.USER_A,
+    mockModelResponses: [
+      {
+        functionCalls: [
+          {
+            callId: 'c-588a',
+            name: 'get_financial_summary',
+            arguments: { month: '2026-09' },
+          },
+          { callId: 'c-588b', name: 'get_accounts', arguments: {} },
+        ],
+      },
+      {
+        functionCalls: [
+          {
+            callId: 'c-588c',
+            name: 'get_transactions',
+            arguments: {
+              categoryId: EVAL_CATEGORIES.CAT_ALUGUEL.id,
+              month: '2026-09',
+            },
+          },
+          {
+            callId: 'c-588d',
+            name: 'create_transaction',
+            arguments: {
+              accountId: EVAL_ACCOUNTS.ACCOUNT_A1.id,
+              categoryId: EVAL_CATEGORIES.CAT_ALUGUEL.id,
+              amount: 85.9,
+              type: 'EXPENSE',
+              description: 'Despesa de teste do agente',
+            },
+          },
+        ],
+      },
+      {
+        outputText:
+          'Análise de setembro de 2026: Categoria Aluguel com gasto de R$ 500,00. Maior conta: Conta Corrente (R$ 2.500,00). Preparei a despesa de R$ 85,90 na categoria Aluguel.',
+      },
+    ],
+    expectedBehavior: {
+      expectedToolCalls: [
+        { toolName: 'get_financial_summary' },
+        { toolName: 'get_accounts' },
+        { toolName: 'create_transaction' },
+      ],
+      responseMustContain: ['Aluguel', 'Conta Corrente', '85,90'],
+    },
+    tags: ['complex-workflow', 'cw-07-full-composite-workflow'],
+  },
+  {
+    id: 'SCENARIO-589',
+    category: 'COMPLEX-WORKFLOW',
+    description:
+      'CW-08: Analyze finances, prepare expense, and explain post-confirmation balance check',
+    userMessage:
+      'Analyze my finances, create an expense of R$ 50, and then show me the updated balance',
+    authenticatedUserId: EVAL_USERS.USER_A,
+    mockModelResponses: [
+      {
+        functionCalls: [
+          { callId: 'c-589a', name: 'get_accounts', arguments: {} },
+          { callId: 'c-589b', name: 'get_financial_summary', arguments: {} },
+        ],
+      },
+      {
+        functionCalls: [
+          {
+            callId: 'c-589c',
+            name: 'create_transaction',
+            arguments: {
+              accountId: EVAL_ACCOUNTS.ACCOUNT_A1.id,
+              amount: 50,
+              type: 'EXPENSE',
+              description: 'Teste saldo',
+            },
+          },
+        ],
+      },
+      {
+        outputText:
+          'Seu saldo atual é R$ 2.500,00. Preparei a despesa de R$ 50,00. Assim que você confirmar, o saldo atualizado será R$ 2.450,00.',
+      },
+    ],
+    expectedBehavior: {
+      expectedToolCalls: [
+        { toolName: 'get_accounts' },
+        { toolName: 'create_transaction' },
+      ],
+      responseMustContain: ['2.500', 'confirmar'],
+    },
+    tags: ['complex-workflow', 'cw-08-pre-post-confirmation-explanation'],
+  },
+  {
+    id: 'SCENARIO-590',
+    category: 'COMPLEX-WORKFLOW',
+    description: 'CW-09: Create an expense and transfer money in single workflow',
+    userMessage:
+      'Create an expense of R$ 50 and transfer R$ 100 from Conta Corrente to Poupança',
+    authenticatedUserId: EVAL_USERS.USER_A,
+    mockModelResponses: [
+      {
+        functionCalls: [
+          { callId: 'c-590a', name: 'get_accounts', arguments: {} },
+        ],
+      },
+      {
+        functionCalls: [
+          {
+            callId: 'c-590b',
+            name: 'create_transaction',
+            arguments: {
+              accountId: EVAL_ACCOUNTS.ACCOUNT_A1.id,
+              amount: 50,
+              type: 'EXPENSE',
+              description: 'Despesa 1',
+            },
+          },
+          {
+            callId: 'c-590c',
+            name: 'create_transfer',
+            arguments: {
+              fromAccountId: EVAL_ACCOUNTS.ACCOUNT_A1.id,
+              toAccountId: EVAL_ACCOUNTS.ACCOUNT_A2.id,
+              amount: 100,
+            },
+          },
+        ],
+      },
+      {
+        outputText:
+          'Preparei a despesa de R$ 50,00 e a transferência de R$ 100,00. Ambas requerem a sua confirmação antes da execução.',
+      },
+    ],
+    expectedBehavior: {
+      expectedToolCalls: [
+        { toolName: 'create_transaction' },
+        { toolName: 'create_transfer' },
+      ],
+      responseMustContain: ['confirmação'],
+    },
+    tags: ['complex-workflow', 'cw-09-multi-mutation-request'],
+  },
+  {
+    id: 'SCENARIO-591',
+    category: 'COMPLEX-WORKFLOW',
+    description:
+      'CW-10: Multi-turn: Turn 1 analyze finances, Turn 2 prepare expense with highest category',
+    userMessage:
+      'Now create an expense of R$ 85.90 using the category with the highest spending from my previous analysis.',
+    authenticatedUserId: EVAL_USERS.USER_A,
+    conversationHistory: [
+      {
+        role: 'USER',
+        content: 'Analyze my September finances.',
+      },
+      {
+        role: 'ASSISTANT',
+        content:
+          'Em setembro de 2026, sua categoria com maior gasto foi Aluguel (R$ 500,00) na Conta Corrente.',
+      },
+    ],
+    mockModelResponses: [
+      {
+        functionCalls: [
+          { callId: 'c-591a', name: 'get_accounts', arguments: {} },
+          { callId: 'c-591b', name: 'get_categories', arguments: {} },
+        ],
+      },
+      {
+        functionCalls: [
+          {
+            callId: 'c-591c',
+            name: 'create_transaction',
+            arguments: {
+              accountId: EVAL_ACCOUNTS.ACCOUNT_A1.id,
+              categoryId: EVAL_CATEGORIES.CAT_ALUGUEL.id,
+              amount: 85.9,
+              type: 'EXPENSE',
+              description: 'Despesa baseada na análise anterior',
+            },
+          },
+        ],
+      },
+      {
+        outputText:
+          'Com base no seu histórico recente, preparei a despesa de R$ 85,90 na categoria Aluguel e conta Conta Corrente. Por favor, confirme para executar.',
+      },
+    ],
+    expectedBehavior: {
+      expectedToolCalls: [
+        {
+          toolName: 'create_transaction',
+          arguments: { categoryId: EVAL_CATEGORIES.CAT_ALUGUEL.id },
+        },
+      ],
+      responseMustContain: ['Aluguel', '85,90'],
+    },
+    tags: ['complex-workflow', 'cw-10-multi-turn-context-write'],
+  },
 ];

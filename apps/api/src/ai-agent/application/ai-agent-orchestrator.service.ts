@@ -118,13 +118,15 @@ export class AiAgentOrchestratorService {
       items.push({ role: 'user', content: userMessage });
       currentInput = items;
     }
+
     let previousResponseId: string | undefined = undefined;
+    const accumulatedConfirmations: AgentConfirmationDetail[] = [];
 
     while (iterations < maxToolIterations) {
       if (modelCalls >= maxModelCalls) {
         const totalDurationMs = Date.now() - startTime;
         this.logger.error(
-          `Maximum model calls (${maxModelCalls}) reached for request`,
+          `Maximum LLM calls (${maxModelCalls}) reached for request`,
         );
 
         await this.observability.recordEvent({
@@ -186,7 +188,7 @@ export class AiAgentOrchestratorService {
         throw err;
       }
 
-      if (response.functionCalls.length === 0) {
+      if (!response || !response.functionCalls || response.functionCalls.length === 0) {
         const totalDurationMs = Date.now() - startTime;
         this.logger.log(
           `AI request completed: iterations=${iterations}, totalToolCalls=${totalToolCalls}, durationMs=${totalDurationMs}`,
@@ -201,12 +203,32 @@ export class AiAgentOrchestratorService {
           success: true,
         });
 
-        return new AgentResponse(response.outputText);
+        if (accumulatedConfirmations.length > 0) {
+          const count = accumulatedConfirmations.length;
+          const defaultText =
+            count === 1
+              ? 'Esta operação financeira requer a sua confirmação. Por favor, confira os detalhes abaixo para autorizar ou cancelar.'
+              : `Foram solicitadas ${count} operações financeiras que requerem a sua confirmação. Por favor, confira os detalhes abaixo para autorizá-las ou cancelá-las.`;
+
+          const responseText =
+            response?.outputText && response.outputText.trim().length > 0
+              ? response.outputText
+              : defaultText;
+
+          return new AgentResponse(
+            responseText,
+            'confirmation_required',
+            accumulatedConfirmations[0],
+            undefined,
+            accumulatedConfirmations,
+          );
+        }
+
+        return new AgentResponse(response?.outputText ?? '');
       }
 
       previousResponseId = response.id;
       const toolOutputs: Array<Record<string, unknown>> = [];
-      const pendingConfirmations: AgentConfirmationDetail[] = [];
 
       for (const call of response.functionCalls) {
         this.metricsService.increment('ai_tool_calls_total');
@@ -319,7 +341,7 @@ export class AiAgentOrchestratorService {
                   { requestId, aiRequestId },
                 );
 
-              pendingConfirmations.push({
+              accumulatedConfirmations.push({
                 confirmationId: confirmation.id,
                 toolName: tool.name,
                 action: enrichedAction,
@@ -404,37 +426,33 @@ export class AiAgentOrchestratorService {
         });
       }
 
-      if (pendingConfirmations.length > 0) {
-        const totalDurationMs = Date.now() - startTime;
-        const count = pendingConfirmations.length;
-        this.logger.log(
-          `Financial write(s) proposed, awaiting user confirmation: count=${count}, durationMs=${totalDurationMs}`,
-        );
-
-        await this.observability.recordEvent({
-          event: AiEventName.REQUEST_COMPLETED,
-          requestId,
-          aiRequestId,
-          userId,
-          durationMs: totalDurationMs,
-          success: true,
-        });
-
-        const messageText =
-          count === 1
-            ? 'Esta operação financeira requer a sua confirmação. Por favor, confira os detalhes abaixo para autorizar ou cancelar.'
-            : `Foram solicitadas ${count} operações financeiras que requerem a sua confirmação. Por favor, confira os detalhes abaixo para autorizá-las ou cancelá-las.`;
-
-        return new AgentResponse(
-          messageText,
-          'confirmation_required',
-          pendingConfirmations[0],
-          undefined,
-          pendingConfirmations,
-        );
-      }
-
       currentInput = toolOutputs;
+    }
+
+    if (accumulatedConfirmations.length > 0) {
+      const totalDurationMs = Date.now() - startTime;
+      const count = accumulatedConfirmations.length;
+      const defaultText =
+        count === 1
+          ? 'Esta operação financeira requer a sua confirmação. Por favor, confira os detalhes abaixo para autorizar ou cancelar.'
+          : `Foram solicitadas ${count} operações financeiras que requerem a sua confirmação. Por favor, confira os detalhes abaixo para autorizá-las ou cancelá-las.`;
+
+      await this.observability.recordEvent({
+        event: AiEventName.REQUEST_COMPLETED,
+        requestId,
+        aiRequestId,
+        userId,
+        durationMs: totalDurationMs,
+        success: true,
+      });
+
+      return new AgentResponse(
+        defaultText,
+        'confirmation_required',
+        accumulatedConfirmations[0],
+        undefined,
+        accumulatedConfirmations,
+      );
     }
 
     const totalDurationMs = Date.now() - startTime;
