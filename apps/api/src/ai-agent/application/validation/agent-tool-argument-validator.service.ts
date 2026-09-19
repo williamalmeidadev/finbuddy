@@ -15,6 +15,9 @@ import {
   UpdateTransactionArgsDto,
   UpdateTransferArgsDto,
   DeleteTransferArgsDto,
+  CreateBudgetArgsDto,
+  UpdateBudgetArgsDto,
+  DeleteBudgetArgsDto,
 } from './tool-argument.dtos';
 
 export interface ToolValidationResult {
@@ -34,6 +37,9 @@ export class AgentToolArgumentValidatorService {
     get_transactions: GetTransactionsArgsDto,
     get_financial_summary: GetFinancialSummaryArgsDto,
     get_budgets: GetBudgetsArgsDto,
+    create_budget: CreateBudgetArgsDto,
+    update_budget: UpdateBudgetArgsDto,
+    delete_budget: DeleteBudgetArgsDto,
     create_transaction: CreateTransactionArgsDto,
     create_transfer: CreateTransferArgsDto,
     save_memory: SaveMemoryArgsDto,

@@ -14,6 +14,9 @@ import { DeleteTransferTool } from './impl/delete-transfer.tool';
 
 import { GetCategoriesTool } from './impl/get-categories.tool';
 import { CreateCategoryTool } from './impl/create-category.tool';
+import { CreateBudgetTool } from './impl/create-budget.tool';
+import { UpdateBudgetTool } from './impl/update-budget.tool';
+import { DeleteBudgetTool } from './impl/delete-budget.tool';
 
 @Injectable()
 export class AgentToolRegistryService implements OnModuleInit {
@@ -24,6 +27,9 @@ export class AgentToolRegistryService implements OnModuleInit {
     private readonly getTransactionsTool: GetTransactionsTool,
     private readonly getFinancialSummaryTool: GetFinancialSummaryTool,
     private readonly getBudgetsTool: GetBudgetsTool,
+    private readonly createBudgetTool: CreateBudgetTool,
+    private readonly updateBudgetTool: UpdateBudgetTool,
+    private readonly deleteBudgetTool: DeleteBudgetTool,
     private readonly getCategoriesTool: GetCategoriesTool,
     private readonly createCategoryTool: CreateCategoryTool,
     private readonly createTransactionTool: CreateTransactionTool,
@@ -40,6 +46,9 @@ export class AgentToolRegistryService implements OnModuleInit {
     this.registerTool(this.getTransactionsTool);
     this.registerTool(this.getFinancialSummaryTool);
     this.registerTool(this.getBudgetsTool);
+    this.registerTool(this.createBudgetTool);
+    this.registerTool(this.updateBudgetTool);
+    this.registerTool(this.deleteBudgetTool);
     this.registerTool(this.getCategoriesTool);
     this.registerTool(this.createCategoryTool);
     this.registerTool(this.createTransactionTool);

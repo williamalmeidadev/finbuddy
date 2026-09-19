@@ -14,6 +14,9 @@ export class AgentToolPolicy {
     AgentCapability.CREATE_TRANSFER,
     AgentCapability.UPDATE_TRANSFER,
     AgentCapability.DELETE_TRANSFER,
+    AgentCapability.CREATE_BUDGET,
+    AgentCapability.UPDATE_BUDGET,
+    AgentCapability.DELETE_BUDGET,
     AgentCapability.MANAGE_MEMORY,
   ]);
 

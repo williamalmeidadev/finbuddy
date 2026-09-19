@@ -14,6 +14,10 @@ import { DeleteTransferTool } from './impl/delete-transfer.tool';
 import { GetCategoriesTool } from './impl/get-categories.tool';
 import { CreateCategoryTool } from './impl/create-category.tool';
 
+import { CreateBudgetTool } from './impl/create-budget.tool';
+import { UpdateBudgetTool } from './impl/update-budget.tool';
+import { DeleteBudgetTool } from './impl/delete-budget.tool';
+
 describe('AgentToolRegistryService', () => {
   let service: AgentToolRegistryService;
 
@@ -44,6 +48,27 @@ describe('AgentToolRegistryService', () => {
     inputSchema: { type: 'object', properties: {} },
     execute: jest.fn(),
   } as unknown as GetBudgetsTool;
+
+  const mockCreateBudgetTool = {
+    name: 'create_budget',
+    description: 'Create budget',
+    inputSchema: { type: 'object', properties: {} },
+    execute: jest.fn(),
+  } as unknown as CreateBudgetTool;
+
+  const mockUpdateBudgetTool = {
+    name: 'update_budget',
+    description: 'Update budget',
+    inputSchema: { type: 'object', properties: {} },
+    execute: jest.fn(),
+  } as unknown as UpdateBudgetTool;
+
+  const mockDeleteBudgetTool = {
+    name: 'delete_budget',
+    description: 'Delete budget',
+    inputSchema: { type: 'object', properties: {} },
+    execute: jest.fn(),
+  } as unknown as DeleteBudgetTool;
 
   const mockGetCategoriesTool = {
     name: 'get_categories',
@@ -119,6 +144,9 @@ describe('AgentToolRegistryService', () => {
           useValue: mockGetFinancialSummaryTool,
         },
         { provide: GetBudgetsTool, useValue: mockGetBudgetsTool },
+        { provide: CreateBudgetTool, useValue: mockCreateBudgetTool },
+        { provide: UpdateBudgetTool, useValue: mockUpdateBudgetTool },
+        { provide: DeleteBudgetTool, useValue: mockDeleteBudgetTool },
         { provide: GetCategoriesTool, useValue: mockGetCategoriesTool },
         { provide: CreateCategoryTool, useValue: mockCreateCategoryTool },
         { provide: CreateTransactionTool, useValue: mockCreateTransactionTool },
@@ -139,16 +167,19 @@ describe('AgentToolRegistryService', () => {
   });
 
   describe('onModuleInit', () => {
-    it('should register all thirteen tools on initialization', () => {
+    it('should register all sixteen tools on initialization', () => {
       service.onModuleInit();
       const tools = service.getTools();
-      expect(tools).toHaveLength(13);
+      expect(tools).toHaveLength(16);
       expect(service.getTool('get_accounts')).toBe(mockGetAccountsTool);
       expect(service.getTool('get_transactions')).toBe(mockGetTransactionsTool);
       expect(service.getTool('get_financial_summary')).toBe(
         mockGetFinancialSummaryTool,
       );
       expect(service.getTool('get_budgets')).toBe(mockGetBudgetsTool);
+      expect(service.getTool('create_budget')).toBe(mockCreateBudgetTool);
+      expect(service.getTool('update_budget')).toBe(mockUpdateBudgetTool);
+      expect(service.getTool('delete_budget')).toBe(mockDeleteBudgetTool);
       expect(service.getTool('get_categories')).toBe(mockGetCategoriesTool);
       expect(service.getTool('create_category')).toBe(mockCreateCategoryTool);
       expect(service.getTool('create_transaction')).toBe(
@@ -175,6 +206,7 @@ describe('AgentToolRegistryService', () => {
     it('should return registered tool by name', () => {
       service.onModuleInit();
       expect(service.getTool('get_accounts')).toBe(mockGetAccountsTool);
+      expect(service.getTool('create_budget')).toBe(mockCreateBudgetTool);
       expect(service.getTool('get_categories')).toBe(mockGetCategoriesTool);
       expect(service.getTool('create_category')).toBe(mockCreateCategoryTool);
       expect(service.getTool('create_transaction')).toBe(
@@ -202,7 +234,7 @@ describe('AgentToolRegistryService', () => {
       service.onModuleInit();
 
       const definitions = service.getToolDefinitions();
-      expect(definitions).toHaveLength(13);
+      expect(definitions).toHaveLength(16);
       expect(definitions[0]).toEqual({
         type: 'function',
         name: 'get_accounts',

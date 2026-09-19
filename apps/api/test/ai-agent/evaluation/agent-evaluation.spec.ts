@@ -60,6 +60,12 @@ describe('AI Agent Evaluation Harness (Deterministic Suite)', () => {
         await import('../../../src/ai-agent/application/tools/impl/get-financial-summary.tool');
       const { GetBudgetsTool } =
         await import('../../../src/ai-agent/application/tools/impl/get-budgets.tool');
+      const { CreateBudgetTool } =
+        await import('../../../src/ai-agent/application/tools/impl/create-budget.tool');
+      const { UpdateBudgetTool } =
+        await import('../../../src/ai-agent/application/tools/impl/update-budget.tool');
+      const { DeleteBudgetTool } =
+        await import('../../../src/ai-agent/application/tools/impl/delete-budget.tool');
       const { GetCategoriesTool } =
         await import('../../../src/ai-agent/application/tools/impl/get-categories.tool');
       const { CreateCategoryTool } =
@@ -124,6 +130,42 @@ describe('AI Agent Evaluation Harness (Deterministic Suite)', () => {
               capability: 'read',
               riskLevel: 'LOW',
               readOnly: true,
+            },
+          },
+          {
+            provide: CreateBudgetTool,
+            useValue: {
+              name: 'create_budget',
+              description: 'desc',
+              inputSchema: {},
+              capability: 'write',
+              riskLevel: 'MEDIUM',
+              readOnly: false,
+              requiresConfirmation: true,
+            },
+          },
+          {
+            provide: UpdateBudgetTool,
+            useValue: {
+              name: 'update_budget',
+              description: 'desc',
+              inputSchema: {},
+              capability: 'write',
+              riskLevel: 'MEDIUM',
+              readOnly: false,
+              requiresConfirmation: true,
+            },
+          },
+          {
+            provide: DeleteBudgetTool,
+            useValue: {
+              name: 'delete_budget',
+              description: 'desc',
+              inputSchema: {},
+              capability: 'write',
+              riskLevel: 'HIGH',
+              readOnly: false,
+              requiresConfirmation: true,
             },
           },
           {
@@ -239,7 +281,7 @@ describe('AI Agent Evaluation Harness (Deterministic Suite)', () => {
       registry.onModuleInit();
       const tools = registry.getTools();
 
-      expect(tools.length).toBe(13);
+      expect(tools.length).toBe(16);
       for (const tool of tools) {
         expect(tool.name).toBeDefined();
         expect(tool.description).toBeDefined();

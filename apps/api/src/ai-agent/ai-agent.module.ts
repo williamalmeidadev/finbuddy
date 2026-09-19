@@ -34,6 +34,9 @@ import { DeleteTransferTool } from './application/tools/impl/delete-transfer.too
 import { CategoryModule } from '../category/category.module';
 import { GetCategoriesTool } from './application/tools/impl/get-categories.tool';
 import { CreateCategoryTool } from './application/tools/impl/create-category.tool';
+import { CreateBudgetTool } from './application/tools/impl/create-budget.tool';
+import { UpdateBudgetTool } from './application/tools/impl/update-budget.tool';
+import { DeleteBudgetTool } from './application/tools/impl/delete-budget.tool';
 import { AiAgentProactiveAlertsService } from './application/alerts/ai-agent-proactive-alerts.service';
 
 @Module({
@@ -66,6 +69,9 @@ import { AiAgentProactiveAlertsService } from './application/alerts/ai-agent-pro
     GetTransactionsTool,
     GetFinancialSummaryTool,
     GetBudgetsTool,
+    CreateBudgetTool,
+    UpdateBudgetTool,
+    DeleteBudgetTool,
     GetCategoriesTool,
     CreateCategoryTool,
     CreateTransactionTool,

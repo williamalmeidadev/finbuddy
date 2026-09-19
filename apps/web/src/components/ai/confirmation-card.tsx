@@ -27,6 +27,9 @@ const TOOL_LABELS: Record<string, string> = {
   update_transfer: "Atualizar Transferência",
   delete_transfer: "Excluir Transferência",
   create_category: "Criar Categoria",
+  create_budget: "Criar Orçamento",
+  update_budget: "Atualizar Orçamento",
+  delete_budget: "Excluir Orçamento",
 };
 
 const FIELD_LABELS: Record<string, string> = {
@@ -39,6 +42,7 @@ const FIELD_LABELS: Record<string, string> = {
   categoryName: "Categoria",
   transactionAt: "Data",
   transferredAt: "Data de Transferência",
+  month: "Mês",
   name: "Nome",
   color: "Cor",
   icon: "Ícone",
@@ -47,6 +51,7 @@ const FIELD_LABELS: Record<string, string> = {
 const HIDDEN_KEYS = new Set([
   "accountId",
   "categoryId",
+  "budgetId",
   "transactionId",
   "transferId",
   "fromAccountId",

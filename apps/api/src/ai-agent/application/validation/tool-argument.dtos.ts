@@ -255,3 +255,47 @@ export class DeleteTransferArgsDto {
   @IsNotEmpty()
   transferId!: string;
 }
+
+export class CreateBudgetArgsDto {
+  @IsUUID()
+  @IsNotEmpty()
+  categoryId!: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  @IsPositive({ message: 'amount must be a positive number' })
+  @Min(0.01)
+  @Max(999999999999.99)
+  amount!: number;
+
+  @IsString()
+  @IsNotEmpty()
+  @Matches(/^\d{4}-(0[1-9]|1[0-2])(-01)?$/, {
+    message: 'month must be in YYYY-MM or YYYY-MM-01 format (e.g. 2026-09)',
+  })
+  month!: string;
+
+  @IsOptional()
+  @IsString()
+  categoryName?: string;
+}
+
+export class UpdateBudgetArgsDto {
+  @IsUUID()
+  @IsNotEmpty()
+  budgetId!: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  @IsPositive({ message: 'amount must be a positive number' })
+  @Min(0.01)
+  @Max(999999999999.99)
+  amount!: number;
+}
+
+export class DeleteBudgetArgsDto {
+  @IsUUID()
+  @IsNotEmpty()
+  budgetId!: string;
+}
+

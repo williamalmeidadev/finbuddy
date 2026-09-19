@@ -35,6 +35,9 @@ import { DeleteTransferTool } from '../../../src/ai-agent/application/tools/impl
 import { CategoryService } from '../../../src/category/category.service';
 import { GetCategoriesTool } from '../../../src/ai-agent/application/tools/impl/get-categories.tool';
 import { CreateCategoryTool } from '../../../src/ai-agent/application/tools/impl/create-category.tool';
+import { CreateBudgetTool } from '../../../src/ai-agent/application/tools/impl/create-budget.tool';
+import { UpdateBudgetTool } from '../../../src/ai-agent/application/tools/impl/update-budget.tool';
+import { DeleteBudgetTool } from '../../../src/ai-agent/application/tools/impl/delete-budget.tool';
 import { TransferService } from '../../../src/transfer/transfer.service';
 
 import { calculateModelCost } from '../../../src/ai-agent/application/evaluation/pricing/model-pricing.config';
@@ -717,6 +720,9 @@ export class AgentEvaluationRunner {
         GetTransactionsTool,
         GetFinancialSummaryTool,
         GetBudgetsTool,
+        CreateBudgetTool,
+        UpdateBudgetTool,
+        DeleteBudgetTool,
         GetCategoriesTool,
         CreateCategoryTool,
         CreateTransactionTool,
