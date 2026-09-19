@@ -8,15 +8,17 @@ import { BudgetModel as Budget } from '../generated/prisma/models/Budget';
 export class BudgetRepository {
   constructor(private readonly prisma: DatabaseService) {}
 
-  async create(data: Prisma.BudgetUncheckedCreateInput): Promise<Budget> {
+  async create(data: Prisma.BudgetUncheckedCreateInput): Promise<any> {
     return this.prisma.budget.create({
       data,
+      include: { category: true },
     });
   }
 
-  async findByIdAndUserId(id: string, userId: string): Promise<Budget | null> {
+  async findByIdAndUserId(id: string, userId: string): Promise<any> {
     return this.prisma.budget.findFirst({
       where: { id, userId },
+      include: { category: true },
     });
   }
 
@@ -24,26 +26,28 @@ export class BudgetRepository {
     categoryId: string,
     month: Date,
     userId: string,
-  ): Promise<Budget | null> {
+  ): Promise<any> {
     return this.prisma.budget.findFirst({
       where: {
         categoryId,
         userId,
         month,
       },
+      include: { category: true },
     });
   }
 
   async findByUserId(
     userId: string,
     options?: { categoryId?: string; month?: Date },
-  ): Promise<Budget[]> {
+  ): Promise<any[]> {
     return this.prisma.budget.findMany({
       where: {
         userId,
         ...(options?.categoryId ? { categoryId: options.categoryId } : {}),
         ...(options?.month ? { month: options.month } : {}),
       },
+      include: { category: true },
       orderBy: { month: 'desc' },
     });
   }
@@ -52,7 +56,7 @@ export class BudgetRepository {
     id: string,
     userId: string,
     data: Prisma.BudgetUpdateInput,
-  ): Promise<Budget | null> {
+  ): Promise<any> {
     const existing = await this.findByIdAndUserId(id, userId);
     if (!existing) {
       return null;
@@ -60,16 +64,18 @@ export class BudgetRepository {
     return this.prisma.budget.update({
       where: { id },
       data,
+      include: { category: true },
     });
   }
 
-  async delete(id: string, userId: string): Promise<Budget | null> {
+  async delete(id: string, userId: string): Promise<any> {
     const existing = await this.findByIdAndUserId(id, userId);
     if (!existing) {
       return null;
     }
     return this.prisma.budget.delete({
       where: { id },
+      include: { category: true },
     });
   }
 

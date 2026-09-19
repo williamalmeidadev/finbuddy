@@ -24,6 +24,11 @@ export function useSendMessage() {
       aiService.sendMessage(message, conversationId),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.ai.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.transfers.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.financialSummary.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.budgets.all });
     },
   });
 }

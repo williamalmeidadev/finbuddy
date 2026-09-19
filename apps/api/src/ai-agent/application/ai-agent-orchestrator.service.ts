@@ -188,7 +188,11 @@ export class AiAgentOrchestratorService {
         throw err;
       }
 
-      if (!response || !response.functionCalls || response.functionCalls.length === 0) {
+      if (
+        !response ||
+        !response.functionCalls ||
+        response.functionCalls.length === 0
+      ) {
         const totalDurationMs = Date.now() - startTime;
         this.logger.log(
           `AI request completed: iterations=${iterations}, totalToolCalls=${totalToolCalls}, durationMs=${totalDurationMs}`,

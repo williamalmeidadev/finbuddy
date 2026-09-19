@@ -59,6 +59,12 @@ export class BudgetResponseDto {
   })
   updatedAt: Date;
 
+  @ApiProperty({
+    description: 'Category associated with budget',
+    required: false,
+  })
+  category?: { id: string; name: string; type?: string; color?: string };
+
   constructor(
     budget: {
       id: string;
@@ -67,6 +73,7 @@ export class BudgetResponseDto {
       month: Date | string;
       createdAt: Date;
       updatedAt: Date;
+      category?: { id: string; name: string; type?: string; color?: string | null };
     },
     spent = 0,
   ) {
@@ -81,6 +88,15 @@ export class BudgetResponseDto {
       this.month = budget.month.toISOString().split('T')[0];
     } else {
       this.month = String(budget.month).split('T')[0];
+    }
+
+    if (budget.category) {
+      this.category = {
+        id: budget.category.id,
+        name: budget.category.name,
+        type: budget.category.type,
+        color: budget.category.color ?? undefined,
+      };
     }
 
     const spentNum = typeof spent === 'number' ? spent : 0;

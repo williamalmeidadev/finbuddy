@@ -3025,7 +3025,8 @@ export const PHASE24_SCENARIOS: AgentEvaluationScenario[] = [
     id: 'SCENARIO-586',
     category: 'COMPLEX-WORKFLOW',
     description: 'CW-05: Find highest balance account and create expense there',
-    userMessage: 'Find my highest balance account and create an expense there of R$ 50',
+    userMessage:
+      'Find my highest balance account and create an expense there of R$ 50',
     authenticatedUserId: EVAL_USERS.USER_A,
     mockModelResponses: [
       {
@@ -3225,7 +3226,8 @@ export const PHASE24_SCENARIOS: AgentEvaluationScenario[] = [
   {
     id: 'SCENARIO-590',
     category: 'COMPLEX-WORKFLOW',
-    description: 'CW-09: Create an expense and transfer money in single workflow',
+    description:
+      'CW-09: Create an expense and transfer money in single workflow',
     userMessage:
       'Create an expense of R$ 50 and transfer R$ 100 from Conta Corrente to Poupança',
     authenticatedUserId: EVAL_USERS.USER_A,

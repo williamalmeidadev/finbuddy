@@ -27,6 +27,7 @@ export function useCreateTransfer() {
       queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.financialSummary.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.budgets.all });
     },
   });
 }
@@ -41,6 +42,7 @@ export function useUpdateTransfer() {
       queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.financialSummary.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.budgets.all });
     },
   });
 }
@@ -54,6 +56,7 @@ export function useDeleteTransfer() {
       queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.financialSummary.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.budgets.all });
     },
   });
 }

@@ -61,7 +61,7 @@ describe('BudgetRepository', () => {
 
       const result = await repository.create(data);
 
-      expect(prismaMock.budget.create).toHaveBeenCalledWith({ data });
+      expect(prismaMock.budget.create).toHaveBeenCalledWith({ data, include: { category: true } });
       expect(result).toEqual(created);
     });
   });
@@ -82,6 +82,7 @@ describe('BudgetRepository', () => {
 
       expect(prismaMock.budget.findFirst).toHaveBeenCalledWith({
         where: { id: 'budget-1', userId: 'user-1' },
+        include: { category: true },
       });
       expect(result).toEqual(budget);
     });
@@ -116,6 +117,7 @@ describe('BudgetRepository', () => {
 
       expect(prismaMock.budget.findFirst).toHaveBeenCalledWith({
         where: { categoryId: 'cat-1', userId: 'user-1', month },
+        include: { category: true },
       });
       expect(result).toEqual(budget);
     });
@@ -139,6 +141,7 @@ describe('BudgetRepository', () => {
 
       expect(prismaMock.budget.findMany).toHaveBeenCalledWith({
         where: { userId: 'user-1' },
+        include: { category: true },
         orderBy: { month: 'desc' },
       });
       expect(result).toEqual(budgets);
@@ -190,6 +193,7 @@ describe('BudgetRepository', () => {
 
       expect(prismaMock.budget.delete).toHaveBeenCalledWith({
         where: { id: 'budget-1' },
+        include: { category: true },
       });
       expect(result).toEqual(existing);
     });

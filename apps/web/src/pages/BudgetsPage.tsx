@@ -27,6 +27,7 @@ export const BudgetsPage: React.FC = () => {
   const { data: allCategories = [], isLoading: isCatLoading, refetch: refetchCat } = useCategories();
 
   const categories = allCategories.filter((c) => c.type === "EXPENSE");
+  const categoryMap = React.useMemo(() => new Map(allCategories.map((c) => [c.id, c.name])), [allCategories]);
 
   const createBudget = useCreateBudget();
   const updateBudget = useUpdateBudget();
@@ -265,16 +266,17 @@ export const BudgetsPage: React.FC = () => {
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {budgets.map((b) => {
-            const spent = b.spentAmount || 0;
+            const spent = b.spentAmount ?? b.spent ?? 0;
             const progress = b.amount > 0 ? Math.min(100, (spent / b.amount) * 100) : 0;
             const isExceeded = spent > b.amount;
+            const categoryName = b.category?.name || categoryMap.get(b.categoryId) || "Categoria";
 
             return (
               <Card key={b.id} className="shadow-sm flex flex-col justify-between">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <div>
                     <CardTitle className="text-base font-bold">
-                      {b.category?.name || "Categoria"}
+                      {categoryName}
                     </CardTitle>
                     <CardDescription className="text-xs">
                       Mês: {b.month}
@@ -367,7 +369,7 @@ export const BudgetsPage: React.FC = () => {
           <DialogHeader>
             <DialogTitle>Editar Teto de Orçamento</DialogTitle>
             <DialogDescription>
-              Categoria: {editingBudget?.category?.name} ({editingBudget?.month})
+              Categoria: {editingBudget?.category?.name || (editingBudget ? categoryMap.get(editingBudget.categoryId) : "") || "Categoria"} ({editingBudget?.month})
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEditSubmit}>
