@@ -91,7 +91,7 @@ describe('OpenAIClient', () => {
       });
     });
 
-    it('should default timeout to 30000 if OPENAI_TIMEOUT_MS is not configured', async () => {
+    it('should default timeout to 60000 if OPENAI_TIMEOUT_MS is not configured', async () => {
       jest.spyOn(configService, 'get').mockImplementation((key: string) => {
         if (key === 'OPENAI_API_KEY') return 'test-key';
         if (key === 'OPENAI_TIMEOUT_MS') return undefined;
@@ -106,7 +106,7 @@ describe('OpenAIClient', () => {
 
       expect(mockOpenAIConstructor).toHaveBeenCalledWith({
         apiKey: 'test-key',
-        timeout: 30000,
+        timeout: 60000,
       });
     });
 
@@ -138,7 +138,7 @@ describe('OpenAIClient', () => {
         model: 'gpt-5.5',
         instructions: 'You are a financial advisor',
         input: 'Analyze spending',
-        max_output_tokens: 1000,
+        max_output_tokens: 2500,
         tools: undefined,
       });
     });
@@ -159,7 +159,7 @@ describe('OpenAIClient', () => {
         model: 'gpt-4o-mini',
         instructions: 'You are a financial advisor',
         input: 'Analyze spending',
-        max_output_tokens: 1000,
+        max_output_tokens: 2500,
         tools: undefined,
       });
     });
@@ -181,7 +181,7 @@ describe('OpenAIClient', () => {
         model: 'gpt-5.5',
         instructions: 'Use tools if needed',
         input: 'Check balance',
-        max_output_tokens: 1000,
+        max_output_tokens: 2500,
         tools,
       });
     });
@@ -201,7 +201,7 @@ describe('OpenAIClient', () => {
         model: 'gpt-5.5',
         instructions: 'Instructions',
         input: 'Check balance',
-        max_output_tokens: 1000,
+        max_output_tokens: 2500,
         tools: undefined,
       });
     });

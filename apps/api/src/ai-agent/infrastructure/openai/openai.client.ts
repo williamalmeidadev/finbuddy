@@ -47,7 +47,7 @@ export class OpenAIClient {
 
     if (!this.sdkClient) {
       const timeout =
-        this.configService.get<number>('OPENAI_TIMEOUT_MS') ?? 30000;
+        this.configService.get<number>('OPENAI_TIMEOUT_MS') ?? 60000;
       this.sdkClient = new OpenAI({
         apiKey,
         timeout,
@@ -90,7 +90,7 @@ export class OpenAIClient {
       this.configService.get<string>('OPENAI_MODEL') ?? 'gpt-5.5';
     const model = options.model || defaultModel;
     const maxTokens =
-      this.configService.get<number>('OPENAI_MAX_OUTPUT_TOKENS') ?? 1000;
+      this.configService.get<number>('OPENAI_MAX_OUTPUT_TOKENS') ?? 2500;
 
     try {
       const payload: Record<string, unknown> = {

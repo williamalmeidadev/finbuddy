@@ -84,9 +84,9 @@ export class AiAgentOrchestratorService {
     };
 
     const maxToolIterations =
-      this.configService.get<number>('OPENAI_MAX_TOOL_ITERATIONS') ?? 5;
+      this.configService.get<number>('OPENAI_MAX_TOOL_ITERATIONS') ?? 15;
     const maxModelCalls =
-      this.configService.get<number>('OPENAI_MAX_MODEL_CALLS') ?? 10;
+      this.configService.get<number>('OPENAI_MAX_MODEL_CALLS') ?? 25;
 
     let iterations = 0;
     let modelCalls = 0;

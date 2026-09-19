@@ -95,7 +95,7 @@ class EnvironmentVariables {
 
   @IsNumber()
   @IsOptional()
-  OPENAI_TIMEOUT_MS?: number = 30000;
+  OPENAI_TIMEOUT_MS?: number = 60000;
 
   @IsNumber()
   @IsOptional()
@@ -111,23 +111,23 @@ class EnvironmentVariables {
 
   @IsNumber()
   @IsOptional()
-  OPENAI_MAX_TOOL_ITERATIONS?: number = 5;
+  OPENAI_MAX_TOOL_ITERATIONS?: number = 15;
 
   @IsNumber()
   @IsOptional()
-  OPENAI_MAX_MODEL_CALLS?: number = 10;
+  OPENAI_MAX_MODEL_CALLS?: number = 25;
 
   @IsNumber()
   @IsOptional()
-  OPENAI_MAX_OUTPUT_TOKENS?: number = 1000;
+  OPENAI_MAX_OUTPUT_TOKENS?: number = 2500;
 
   @IsNumber()
   @IsOptional()
-  AI_MAX_INPUT_CHARS?: number = 2000;
+  AI_MAX_INPUT_CHARS?: number = 4000;
 
   @IsNumber()
   @IsOptional()
-  AI_MAX_CONTEXT_CHARS?: number = 15000;
+  AI_MAX_CONTEXT_CHARS?: number = 30000;
 
   @IsNumber()
   @IsOptional()

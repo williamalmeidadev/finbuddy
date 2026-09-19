@@ -35,7 +35,7 @@ describe('Environment Validation', () => {
     });
 
     expect(config.OPENAI_MODEL).toBe('gpt-4o-mini');
-    expect(config.OPENAI_TIMEOUT_MS).toBe(30000);
+    expect(config.OPENAI_TIMEOUT_MS).toBe(60000);
   });
 
   it('should accept custom values for OpenAI configuration', () => {
