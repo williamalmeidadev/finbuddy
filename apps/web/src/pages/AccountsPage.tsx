@@ -21,7 +21,8 @@ import {
   Banknote,
   PiggyBank,
   PlusCircle,
-  Trash2,
+  Power,
+  PowerOff,
   AlertTriangle,
   Edit2,
   RefreshCw,
@@ -51,8 +52,8 @@ export const AccountsPage: React.FC = () => {
   const [editType, setEditType] = useState<AccountTypeUI>("CHECKING");
   const [editIsActive, setEditIsActive] = useState<boolean>(true);
 
-  // Delete State
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  // Toggle Active/Inactive State
+  const [toggleConfirmId, setToggleConfirmId] = useState<string | null>(null);
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -146,13 +147,17 @@ export const AccountsPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleToggleActive = async (acc: ApiAccount) => {
+    const newStatus = !acc.isActive;
     try {
-      await deleteAccount.mutateAsync(id);
-      setDeleteConfirmId(null);
-      toast.success("Conta excluída com sucesso!");
+      await updateAccount.mutateAsync({
+        id: acc.id,
+        dto: { isActive: newStatus },
+      });
+      setToggleConfirmId(null);
+      toast.success(newStatus ? "Conta ativada com sucesso!" : "Conta desativada com sucesso!");
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Erro ao excluir conta.");
+      toast.error(err instanceof Error ? err.message : "Erro ao alterar status da conta.");
     }
   };
 
@@ -298,13 +303,24 @@ export const AccountsPage: React.FC = () => {
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {accounts.map((acc) => (
-            <Card key={acc.id} className="shadow-sm flex flex-col justify-between overflow-hidden">
+            <Card
+              key={acc.id}
+              className={`shadow-sm flex flex-col justify-between overflow-hidden transition-all ${
+                !acc.isActive ? "opacity-60 bg-muted/20" : ""
+              }`}
+            >
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <CardTitle className="text-lg font-bold">{acc.name}</CardTitle>
-                    {!acc.isActive && (
-                      <Badge variant="secondary" className="text-[10px]">Inativa</Badge>
+                    {acc.isActive ? (
+                      <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-500/30 bg-emerald-500/10 font-semibold">
+                        Ativa
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-[10px] text-muted-foreground font-medium">
+                        Inativa
+                      </Badge>
                     )}
                   </div>
                   <CardDescription className="text-xs">
@@ -338,21 +354,21 @@ export const AccountsPage: React.FC = () => {
                   Editar
                 </Button>
 
-                {deleteConfirmId === acc.id ? (
+                {toggleConfirmId === acc.id ? (
                   <div className="flex items-center gap-1">
                     <Button
                       size="xs"
-                      variant="destructive"
-                      onClick={() => handleDelete(acc.id)}
-                      disabled={deleteAccount.isPending}
+                      variant={acc.isActive ? "destructive" : "default"}
+                      onClick={() => handleToggleActive(acc)}
+                      disabled={updateAccount.isPending}
                     >
-                      {deleteAccount.isPending ? "Excluindo..." : "Confirmar"}
+                      {updateAccount.isPending ? "Salvando..." : acc.isActive ? "Desativar" : "Ativar"}
                     </Button>
                     <Button
                       size="xs"
                       variant="ghost"
-                      onClick={() => setDeleteConfirmId(null)}
-                      disabled={deleteAccount.isPending}
+                      onClick={() => setToggleConfirmId(null)}
+                      disabled={updateAccount.isPending}
                     >
                       Cancelar
                     </Button>
@@ -361,11 +377,24 @@ export const AccountsPage: React.FC = () => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-xs text-muted-foreground hover:text-red-500"
-                    onClick={() => setDeleteConfirmId(acc.id)}
+                    className={`text-xs ${
+                      acc.isActive
+                        ? "text-muted-foreground hover:text-amber-600"
+                        : "text-emerald-600 hover:text-emerald-700 font-medium"
+                    }`}
+                    onClick={() => setToggleConfirmId(acc.id)}
                   >
-                    <Trash2 className="h-3.5 w-3.5 mr-1" />
-                    Excluir
+                    {acc.isActive ? (
+                      <>
+                        <PowerOff className="h-3.5 w-3.5 mr-1" />
+                        Desativar
+                      </>
+                    ) : (
+                      <>
+                        <Power className="h-3.5 w-3.5 mr-1" />
+                        Ativar
+                      </>
+                    )}
                   </Button>
                 )}
               </CardFooter>
