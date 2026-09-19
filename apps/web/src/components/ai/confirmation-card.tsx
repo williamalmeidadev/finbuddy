@@ -339,16 +339,29 @@ export function ConfirmationCard({
 
         {paramEntries.length > 0 ? (
           <div className="rounded-md bg-background/80 p-2.5 border space-y-1.5">
-            {paramEntries.map(([key, val]) => (
-              <div key={key} className="flex items-start justify-between gap-2 text-[11px]">
-                <span className="text-muted-foreground shrink-0 font-medium">
-                  {FIELD_LABELS[key] || key}:
-                </span>
-                <span className="text-foreground font-semibold text-right break-all">
-                  {formatParamValue(key, val)}
-                </span>
-              </div>
-            ))}
+            {paramEntries.map(([key, val]) => {
+              const formattedVal = formatParamValue(key, val);
+              const isColor = key === "color" || (typeof val === "string" && /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val.trim()));
+              const hexColor = typeof val === "string" && val.trim().startsWith("#") ? val.trim() : null;
+
+              return (
+                <div key={key} className="flex items-center justify-between gap-2 text-[11px]">
+                  <span className="text-muted-foreground shrink-0 font-medium">
+                    {FIELD_LABELS[key] || key}:
+                  </span>
+                  <span className="text-foreground font-semibold text-right break-all flex items-center justify-end gap-1.5">
+                    {isColor && hexColor && (
+                      <span
+                        className="inline-block h-3.5 w-3.5 rounded-full border border-black/10 dark:border-white/20 shadow-xs shrink-0"
+                        style={{ backgroundColor: hexColor }}
+                        aria-hidden="true"
+                      />
+                    )}
+                    {formattedVal}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div className="rounded-md bg-background/80 p-2.5 border text-xs text-muted-foreground italic">
