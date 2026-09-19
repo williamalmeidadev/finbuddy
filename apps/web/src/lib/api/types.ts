@@ -52,6 +52,18 @@ export interface UpdateAccountDto {
   isActive?: boolean;
 }
 
+export interface ApiBudgetAlert {
+  budgetId: string;
+  userId: string;
+  categoryId: string;
+  categoryName?: string;
+  amountLimit: number;
+  currentSpending: number;
+  percentageUsed: number;
+  alertLevel: "INFO" | "WARNING" | "CRITICAL" | "EXCEEDED";
+  message: string;
+}
+
 export interface ApiTransaction {
   id: string;
   userId: string;
@@ -68,6 +80,7 @@ export interface ApiTransaction {
   updatedAt: string;
   account?: { name: string; type?: string };
   category?: { name: string; type?: string };
+  budgetAlert?: ApiBudgetAlert | null;
 }
 
 export interface CreateTransactionDto {

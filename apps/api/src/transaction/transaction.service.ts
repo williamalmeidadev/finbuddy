@@ -15,6 +15,7 @@ interface PrismaDecimal {
   toNumber(): number;
 }
 
+import { BudgetAlertsService } from '../budget-alerts/budget-alerts.service';
 import { TransactionQueryDto } from './dto/transaction-query.dto';
 
 @Injectable()
@@ -23,6 +24,7 @@ export class TransactionService {
     private readonly transactionRepository: TransactionRepository,
     private readonly accountRepository: AccountRepository,
     private readonly categoryRepository: CategoryRepository,
+    private readonly budgetAlertsService: BudgetAlertsService,
   ) {}
 
   async create(
@@ -82,7 +84,16 @@ export class TransactionService {
         balanceDelta,
       );
 
-    return new TransactionResponseDto(transaction);
+    let budgetAlert = null;
+    if (dto.type === TransactionType.EXPENSE && dto.categoryId) {
+      budgetAlert = await this.budgetAlertsService.evaluateTransactionAlert(
+        userId,
+        dto.categoryId,
+        dto.transactionAt,
+      );
+    }
+
+    return new TransactionResponseDto(transaction, budgetAlert);
   }
 
   async findByUserId(
@@ -277,7 +288,16 @@ export class TransactionService {
       throw new NotFoundException('Transaction not found');
     }
 
-    return new TransactionResponseDto(updated);
+    let budgetAlert = null;
+    if (updated.type === TransactionType.EXPENSE && updated.categoryId) {
+      budgetAlert = await this.budgetAlertsService.evaluateTransactionAlert(
+        userId,
+        updated.categoryId,
+        updated.transactionAt,
+      );
+    }
+
+    return new TransactionResponseDto(updated, budgetAlert);
   }
 
   async delete(id: string, userId: string): Promise<TransactionResponseDto> {

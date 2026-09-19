@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { transactionService } from "@/lib/api/services";
-import { CreateTransactionDto, UpdateTransactionDto } from "@/lib/api/types";
+import { CreateTransactionDto, UpdateTransactionDto, ApiTransaction } from "@/lib/api/types";
 import { queryKeys } from "@/lib/query/query-keys";
+import { toast } from "@/components/ui/sonner";
 
 export function useTransactions(filters?: Record<string, string>) {
   return useQuery({
@@ -18,15 +19,29 @@ export function useTransaction(id?: string) {
   });
 }
 
+const handleBudgetAlertToast = (transactionData?: ApiTransaction) => {
+  if (transactionData?.budgetAlert) {
+    const { alertLevel, message } = transactionData.budgetAlert;
+    if (alertLevel === "EXCEEDED") {
+      toast.error(message);
+    } else if (alertLevel === "CRITICAL" || alertLevel === "WARNING") {
+      toast.warning(message);
+    } else {
+      toast.info(message);
+    }
+  }
+};
+
 export function useCreateTransaction() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (dto: CreateTransactionDto) => transactionService.create(dto),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.financialSummary.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.budgets.all });
+      handleBudgetAlertToast(data);
     },
   });
 }
@@ -36,11 +51,12 @@ export function useUpdateTransaction() {
   return useMutation({
     mutationFn: ({ id, dto }: { id: string; dto: UpdateTransactionDto }) =>
       transactionService.update(id, dto),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.financialSummary.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.budgets.all });
+      handleBudgetAlertToast(data);
     },
   });
 }

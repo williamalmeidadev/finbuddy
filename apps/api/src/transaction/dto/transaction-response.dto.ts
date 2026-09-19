@@ -4,6 +4,8 @@ import {
   TransactionType,
 } from '../../generated/prisma/enums';
 
+import { BudgetAlertDto } from '../../budget-alerts/dto/budget-alert.dto';
+
 interface PrismaDecimal {
   toNumber(): number;
 }
@@ -80,20 +82,31 @@ export class TransactionResponseDto {
   })
   updatedAt: Date;
 
-  constructor(transaction: {
-    id: string;
-    accountId: string;
-    categoryId?: string | null;
-    category?: { id: string; name: string } | null;
-    categoryName?: string | null;
-    type: TransactionType;
-    amount: PrismaDecimal | number;
-    description: string | null;
-    source: TransactionSource;
-    transactionAt: Date;
-    createdAt: Date;
-    updatedAt: Date;
-  }) {
+  @ApiProperty({
+    description: 'Triggered budget alert details (if threshold reached)',
+    required: false,
+    nullable: true,
+    type: BudgetAlertDto,
+  })
+  budgetAlert?: BudgetAlertDto | null;
+
+  constructor(
+    transaction: {
+      id: string;
+      accountId: string;
+      categoryId?: string | null;
+      category?: { id: string; name: string } | null;
+      categoryName?: string | null;
+      type: TransactionType;
+      amount: PrismaDecimal | number;
+      description: string | null;
+      source: TransactionSource;
+      transactionAt: Date;
+      createdAt: Date;
+      updatedAt: Date;
+    },
+    budgetAlert?: BudgetAlertDto | null,
+  ) {
     this.id = transaction.id;
     this.accountId = transaction.accountId;
     this.categoryId = transaction.categoryId ?? null;
@@ -110,5 +123,6 @@ export class TransactionResponseDto {
     this.transactionAt = transaction.transactionAt;
     this.createdAt = transaction.createdAt;
     this.updatedAt = transaction.updatedAt;
+    this.budgetAlert = budgetAlert ?? null;
   }
 }

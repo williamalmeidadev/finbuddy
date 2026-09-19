@@ -7,6 +7,7 @@ import {
   TransactionSource,
   TransactionType,
 } from '../generated/prisma/enums';
+import { BudgetAlertsService } from '../budget-alerts/budget-alerts.service';
 import { TransactionResponseDto } from './dto/transaction-response.dto';
 import { TransactionRepository } from './transaction.repository';
 import { TransactionService } from './transaction.service';
@@ -60,6 +61,12 @@ describe('TransactionService', () => {
         {
           provide: CategoryRepository,
           useValue: categoryRepository,
+        },
+        {
+          provide: BudgetAlertsService,
+          useValue: {
+            evaluateTransactionAlert: jest.fn().mockResolvedValue(null),
+          },
         },
       ],
     }).compile();

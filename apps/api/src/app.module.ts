@@ -11,6 +11,7 @@ import { TransactionModule } from './transaction/transaction.module';
 import { TransferModule } from './transfer/transfer.module';
 import { CategoryModule } from './category/category.module';
 import { BudgetModule } from './budget/budget.module';
+import { BudgetAlertsModule } from './budget-alerts/budget-alerts.module';
 import { FinancialSummaryModule } from './financial-summary/financial-summary.module';
 import { RecurringTransactionModule } from './recurring-transaction/recurring-transaction.module';
 import { RecurringTransactionExecutionModule } from './recurring-transaction-execution/recurring-transaction-execution.module';
@@ -59,6 +60,7 @@ import { validate } from './config/env.validation';
     TransferModule,
     CategoryModule,
     BudgetModule,
+    BudgetAlertsModule,
     FinancialSummaryModule,
     RecurringTransactionModule,
     RecurringTransactionExecutionModule,
