@@ -68,6 +68,7 @@ export class TransactionRepository {
     options?: {
       accountId?: string;
       categoryId?: string;
+      month?: string;
       limit?: number;
       offset?: number;
     },
@@ -77,6 +78,25 @@ export class TransactionRepository {
     const take = Math.min(options?.limit ?? 50, 100);
     const skip = options?.offset ?? 0;
 
+    let dateFilter: Prisma.TransactionWhereInput = {};
+    if (options?.month) {
+      const match = options.month.match(/^(\d{4})-(0[1-9]|1[0-2])$/);
+      if (match) {
+        const year = parseInt(match[1], 10);
+        const monthIdx = parseInt(match[2], 10) - 1;
+        const monthStart = new Date(Date.UTC(year, monthIdx, 1, 0, 0, 0, 0));
+        const nextMonthStart = new Date(
+          Date.UTC(year, monthIdx + 1, 1, 0, 0, 0, 0),
+        );
+        dateFilter = {
+          transactionAt: {
+            gte: monthStart,
+            lt: nextMonthStart,
+          },
+        };
+      }
+    }
+
     return this.prisma.transaction.findMany({
       where: {
         account: {
@@ -84,6 +104,7 @@ export class TransactionRepository {
         },
         ...(options?.accountId ? { accountId: options.accountId } : {}),
         ...(options?.categoryId ? { categoryId: options.categoryId } : {}),
+        ...dateFilter,
       },
       include: {
         category: {

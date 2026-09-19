@@ -61,6 +61,7 @@ describe('GetTransactionsTool', () => {
       {
         accountId: 'acc-1',
         categoryId: undefined,
+        month: undefined,
         limit: 10,
         offset: 0,
       },
@@ -89,7 +90,28 @@ describe('GetTransactionsTool', () => {
       {
         accountId: undefined,
         categoryId: 'cat-777',
+        month: undefined,
         limit: 10,
+        offset: undefined,
+      },
+    );
+  });
+
+  it('should pass month filter to service when provided in YYYY-MM format', async () => {
+    mockTransactionService.findByUserId.mockResolvedValue([]);
+
+    await tool.execute(
+      { userId: 'user-123' },
+      { month: '2026-09', categoryId: 'cat-777' },
+    );
+
+    expect(mockTransactionService.findByUserId).toHaveBeenCalledWith(
+      'user-123',
+      {
+        accountId: undefined,
+        categoryId: 'cat-777',
+        month: '2026-09',
+        limit: undefined,
         offset: undefined,
       },
     );
@@ -103,6 +125,8 @@ describe('GetTransactionsTool', () => {
       'user-123',
       {
         accountId: undefined,
+        categoryId: undefined,
+        month: undefined,
         limit: 100,
         offset: undefined,
       },
@@ -113,6 +137,8 @@ describe('GetTransactionsTool', () => {
       'user-123',
       {
         accountId: undefined,
+        categoryId: undefined,
+        month: undefined,
         limit: 1,
         offset: undefined,
       },

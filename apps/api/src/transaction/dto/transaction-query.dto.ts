@@ -1,6 +1,13 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsUUID, Max, Min } from 'class-validator';
+import {
+  IsInt,
+  IsOptional,
+  IsUUID,
+  Matches,
+  Max,
+  Min,
+} from 'class-validator';
 
 export class TransactionQueryDto {
   @ApiPropertyOptional({
@@ -18,6 +25,16 @@ export class TransactionQueryDto {
   @IsUUID()
   @IsOptional()
   categoryId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Filter transactions by calendar month in YYYY-MM format',
+    example: '2026-09',
+  })
+  @Matches(/^\d{4}-(0[1-9]|1[0-2])$/, {
+    message: 'month must be in YYYY-MM format',
+  })
+  @IsOptional()
+  month?: string;
 
   @ApiPropertyOptional({
     description: 'Maximum number of transactions to return (1-100)',

@@ -178,6 +178,37 @@ describe('TransactionRepository', () => {
       });
       expect(result).toEqual(mockList);
     });
+
+    it('should filter transactions by month when month is provided', async () => {
+      const mockList = [{ id: 'tx-2' }];
+      databaseService.transaction.findMany.mockResolvedValue(mockList);
+
+      const result = await repository.findByUserId('user-1', {
+        month: '2026-09',
+      });
+
+      expect(databaseService.transaction.findMany).toHaveBeenCalledWith({
+        where: {
+          account: { userId: 'user-1' },
+          transactionAt: {
+            gte: new Date(Date.UTC(2026, 8, 1, 0, 0, 0, 0)),
+            lt: new Date(Date.UTC(2026, 9, 1, 0, 0, 0, 0)),
+          },
+        },
+        include: {
+          category: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+        orderBy: { transactionAt: 'desc' },
+        take: 50,
+        skip: 0,
+      });
+      expect(result).toEqual(mockList);
+    });
   });
 
   describe('updateWithBalanceUpdate', () => {

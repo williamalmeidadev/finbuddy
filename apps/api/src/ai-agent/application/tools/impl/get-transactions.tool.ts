@@ -27,6 +27,12 @@ export class GetTransactionsTool implements AgentTool {
         type: 'string',
         description: 'Optional category UUID filter',
       },
+      month: {
+        type: 'string',
+        pattern: '^\\d{4}-(0[1-9]|1[0-2])$',
+        description:
+          'Optional calendar month filter in YYYY-MM format (e.g. 2026-09)',
+      },
       limit: {
         type: 'integer',
         minimum: 1,
@@ -65,6 +71,11 @@ export class GetTransactionsTool implements AgentTool {
           ? params.categoryId.trim()
           : undefined;
 
+      const month =
+        typeof params.month === 'string' && params.month.trim() !== ''
+          ? params.month.trim()
+          : undefined;
+
       const limit =
         typeof params.limit === 'number' && Number.isInteger(params.limit)
           ? Math.min(Math.max(params.limit, 1), 100)
@@ -80,6 +91,7 @@ export class GetTransactionsTool implements AgentTool {
         {
           accountId,
           categoryId,
+          month,
           limit,
           offset,
         },

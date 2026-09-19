@@ -114,6 +114,7 @@ export class TransactionService {
     const transactions = await this.transactionRepository.findByUserId(userId, {
       accountId: query?.accountId,
       categoryId: query?.categoryId,
+      month: query?.month,
       limit: query?.limit,
       offset: query?.offset,
     });
