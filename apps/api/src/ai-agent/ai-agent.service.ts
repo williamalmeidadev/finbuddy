@@ -129,7 +129,7 @@ export class AiAgentService {
         options,
       );
 
-      return new AgentResponse(refusalText, 'text', undefined, conversationId);
+      return new AgentResponse(refusalText, 'response', undefined, conversationId);
     }
 
     // 0.1 Input size check
