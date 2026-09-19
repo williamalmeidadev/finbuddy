@@ -1,5 +1,6 @@
 import { AgentEvaluationScenario } from '../evaluation-types';
 import { PHASE23_SCENARIOS } from './phase23-scenarios';
+import { PHASE24_SCENARIOS } from './phase24-scenarios';
 import {
   EVAL_ACCOUNTS,
   EVAL_CATEGORIES,
@@ -9951,4 +9952,5 @@ export const BASE_EVALUATION_SCENARIOS: AgentEvaluationScenario[] = [
 export const EVALUATION_SCENARIOS: AgentEvaluationScenario[] = [
   ...BASE_EVALUATION_SCENARIOS,
   ...PHASE23_SCENARIOS,
+  ...PHASE24_SCENARIOS,
 ];
