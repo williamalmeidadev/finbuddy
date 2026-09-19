@@ -16,6 +16,7 @@ interface PrismaDecimal {
 }
 
 import { BudgetAlertsService } from '../budget-alerts/budget-alerts.service';
+import { BudgetAlertDto } from '../budget-alerts/dto/budget-alert.dto';
 import { TransactionQueryDto } from './dto/transaction-query.dto';
 
 @Injectable()
@@ -84,7 +85,7 @@ export class TransactionService {
         balanceDelta,
       );
 
-    let budgetAlert = null;
+    let budgetAlert: BudgetAlertDto | null = null;
     if (dto.type === TransactionType.EXPENSE && dto.categoryId) {
       budgetAlert = await this.budgetAlertsService.evaluateTransactionAlert(
         userId,
@@ -288,7 +289,7 @@ export class TransactionService {
       throw new NotFoundException('Transaction not found');
     }
 
-    let budgetAlert = null;
+    let budgetAlert: BudgetAlertDto | null = null;
     if (updated.type === TransactionType.EXPENSE && updated.categoryId) {
       budgetAlert = await this.budgetAlertsService.evaluateTransactionAlert(
         userId,
