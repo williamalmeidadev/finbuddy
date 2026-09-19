@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { ConfirmationCard } from "@/components/ai/confirmation-card";
 import { ChatMessage } from "@/components/ai/chat-message";
 import { toast } from "@/components/ui/sonner";
-import { Bot, Send, Plus, Trash2, MessageSquare, AlertCircle, RefreshCw } from "lucide-react";
+import { Bot, Send, Plus, Trash2, MessageSquare, AlertCircle, RefreshCw, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
 interface LocalMessage {
   id: string;
@@ -33,6 +33,7 @@ interface LocalMessage {
 }
 
 export const AiAssistantPage: React.FC = () => {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const { data: conversationsRes, isLoading: isConvsLoading, refetch: refetchConvs } = useConversations();
   const conversations: ConversationItem[] = conversationsRes?.items || conversationsRes?.data || [];
 
@@ -330,16 +331,32 @@ export const AiAssistantPage: React.FC = () => {
   return (
     <div className="flex-1 flex flex-col md:flex-row h-[calc(100vh-4rem)] overflow-hidden min-w-0">
       {/* Sidebar: Conversation List */}
-      <div className="w-full md:w-80 border-r bg-card flex flex-col shrink-0">
+      <div
+        className={`w-full md:w-80 border-r bg-card flex-col shrink-0 transition-all duration-200 ${
+          isSidebarOpen ? "flex" : "hidden"
+        }`}
+      >
         <div className="h-16 px-4 border-b flex items-center justify-between shrink-0 bg-card">
           <div className="flex items-center gap-2">
             <Bot className="h-5 w-5 text-primary shrink-0" />
             <h2 className="font-bold text-base text-foreground">Conversas IA</h2>
           </div>
-          <Button size="sm" onClick={handleNewConversation} disabled={isConvsLoading}>
-            <Plus className="h-4 w-4 mr-1" />
-            Nova
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button size="sm" onClick={handleNewConversation} disabled={isConvsLoading}>
+              <Plus className="h-4 w-4 mr-1" />
+              Nova
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              onClick={() => setIsSidebarOpen(false)}
+              title="Ocultar conversas"
+              aria-label="Ocultar conversas"
+            >
+              <PanelLeftClose className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
@@ -388,6 +405,18 @@ export const AiAssistantPage: React.FC = () => {
         {/* Chat Header */}
         <div className="h-16 px-4 border-b bg-card flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3 min-w-0 pr-2">
+            {!isSidebarOpen && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0"
+                onClick={() => setIsSidebarOpen(true)}
+                title="Mostrar conversas"
+                aria-label="Mostrar conversas"
+              >
+                <PanelLeftOpen className="h-4 w-4" />
+              </Button>
+            )}
             <div className="p-2 rounded-xl bg-primary/10 text-primary shrink-0">
               <Bot className="h-5 w-5" />
             </div>

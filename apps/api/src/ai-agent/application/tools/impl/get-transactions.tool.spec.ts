@@ -60,14 +60,39 @@ describe('GetTransactionsTool', () => {
       'user-123',
       {
         accountId: 'acc-1',
+        categoryId: undefined,
         limit: 10,
         offset: 0,
       },
     );
     expect(result).toEqual({
       success: true,
-      data: mockTx,
+      data: [
+        {
+          ...mockTx[0],
+          categoryName: null,
+        },
+      ],
     });
+  });
+
+  it('should pass categoryId filter to service when provided', async () => {
+    mockTransactionService.findByUserId.mockResolvedValue([]);
+
+    await tool.execute(
+      { userId: 'user-123' },
+      { categoryId: 'cat-777', limit: 10 },
+    );
+
+    expect(mockTransactionService.findByUserId).toHaveBeenCalledWith(
+      'user-123',
+      {
+        accountId: undefined,
+        categoryId: 'cat-777',
+        limit: 10,
+        offset: undefined,
+      },
+    );
   });
 
   it('should enforce limit bounds (1 to 100)', async () => {

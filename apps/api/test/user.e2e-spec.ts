@@ -85,7 +85,7 @@ describe('UserController (e2e)', () => {
 
     // Push the schema to the test database explicitly passing --url
     execSync(
-      `npx prisma db push --accept-data-loss --url "${process.env.DATABASE_URL}"`,
+      `DATABASE_URL="${process.env.DATABASE_URL}" npx prisma db push --accept-data-loss --schema=prisma/schema.prisma`,
       {
         stdio: 'inherit',
         env: {
@@ -312,12 +312,11 @@ describe('UserController (e2e)', () => {
     const response = await request(app.getHttpServer())
       .get(`/users/${userId}`)
       .set('Authorization', `Bearer ${accessToken}`)
-      .expect(404);
+      .expect(401);
 
     expect(response.body).toMatchObject({
-      statusCode: 404,
-      message: 'User not found',
-      error: 'Not Found',
+      statusCode: 401,
+      message: 'User is inactive or no longer exists',
     });
   });
 

@@ -12,6 +12,14 @@ export class TransactionQueryDto {
   accountId?: string;
 
   @ApiPropertyOptional({
+    description: 'Filter transactions by category UUID',
+    example: 'c1d2e3f4-a5b6-7890-abcd-ef1234567890',
+  })
+  @IsUUID()
+  @IsOptional()
+  categoryId?: string;
+
+  @ApiPropertyOptional({
     description: 'Maximum number of transactions to return (1-100)',
     example: 20,
     minimum: 1,

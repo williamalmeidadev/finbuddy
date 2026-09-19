@@ -86,7 +86,7 @@ describe('AuthController (e2e)', () => {
 
     // Push the schema to the test database explicitly passing --url
     execSync(
-      `npx prisma db push --accept-data-loss --url "${process.env.DATABASE_URL}"`,
+      `DATABASE_URL="${process.env.DATABASE_URL}" npx prisma db push --accept-data-loss --schema=prisma/schema.prisma`,
       {
         stdio: 'inherit',
         env: {

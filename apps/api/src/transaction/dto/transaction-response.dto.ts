@@ -29,6 +29,13 @@ export class TransactionResponseDto {
   categoryId: string | null;
 
   @ApiProperty({
+    description: 'Category name (or null if uncategorized)',
+    nullable: true,
+    example: 'Alimentação',
+  })
+  categoryName?: string | null;
+
+  @ApiProperty({
     description: 'Transaction type',
     enum: TransactionType,
     example: 'EXPENSE',
@@ -77,6 +84,8 @@ export class TransactionResponseDto {
     id: string;
     accountId: string;
     categoryId?: string | null;
+    category?: { id: string; name: string } | null;
+    categoryName?: string | null;
     type: TransactionType;
     amount: PrismaDecimal | number;
     description: string | null;
@@ -88,6 +97,9 @@ export class TransactionResponseDto {
     this.id = transaction.id;
     this.accountId = transaction.accountId;
     this.categoryId = transaction.categoryId ?? null;
+    this.categoryName =
+      transaction.categoryName ??
+      (transaction.category ? transaction.category.name : null);
     this.type = transaction.type;
     this.amount =
       typeof transaction.amount === 'number'

@@ -174,10 +174,19 @@ export class AgentEvaluationRunner {
             updatedAt: new Date(),
           };
         }),
+      findById: jest.fn().mockImplementation((id: string, userId: string) => {
+        if (userId === EVAL_USERS.USER_A && id === EVAL_TRANSACTIONS.TX_A1.id) {
+          return Promise.resolve(EVAL_TRANSACTIONS.TX_A1);
+        }
+        return Promise.resolve(null);
+      }),
       findByUserId: jest
         .fn()
         .mockImplementation(
-          async (userId: string, query?: { accountId?: string }) => {
+          async (
+            userId: string,
+            query?: { accountId?: string; categoryId?: string },
+          ) => {
             if (scenario.serviceOverrides?.transactionsFailure) {
               throw new Error('Transaction service failure');
             }
@@ -192,15 +201,45 @@ export class AgentEvaluationRunner {
                 const { NotFoundException } = await import('@nestjs/common');
                 throw new NotFoundException('Account not found');
               }
+            }
+            if (query?.categoryId) {
               if (
-                query.accountId === EVAL_ACCOUNTS.ACCOUNT_A1.id &&
-                userId === EVAL_USERS.USER_A
+                query.categoryId === EVAL_CATEGORIES.CROSS_USER_CAT?.id ||
+                query.categoryId === 'cat-cross-user-id'
               ) {
-                return [EVAL_TRANSACTIONS.TX_A1];
+                if (userId === EVAL_USERS.USER_A) {
+                  const { NotFoundException } = await import('@nestjs/common');
+                  throw new NotFoundException('Category not found');
+                }
+              }
+              if (userId === EVAL_USERS.USER_A) {
+                const allA = [
+                  EVAL_TRANSACTIONS.TX_A1,
+                  EVAL_TRANSACTIONS.TX_ALIMENTACAO,
+                  EVAL_TRANSACTIONS.TX_MERCADO_1,
+                  EVAL_TRANSACTIONS.TX_MERCADO_2,
+                  EVAL_TRANSACTIONS.TX_ALUGUEL,
+                  EVAL_TRANSACTIONS.TX_ASSINATURAS,
+                  EVAL_TRANSACTIONS.TX_CONTAS,
+                  EVAL_TRANSACTIONS.TX_MISLEADING_1,
+                  EVAL_TRANSACTIONS.TX_MISLEADING_2,
+                ];
+                return allA.filter((t) => t.categoryId === query.categoryId);
               }
             }
             if (userId === EVAL_USERS.USER_A) {
-              return [EVAL_TRANSACTIONS.TX_A1];
+              if (query?.accountId === EVAL_ACCOUNTS.ACCOUNT_A1.id) {
+                return [EVAL_TRANSACTIONS.TX_A1];
+              }
+              return [
+                EVAL_TRANSACTIONS.TX_A1,
+                EVAL_TRANSACTIONS.TX_ALIMENTACAO,
+                EVAL_TRANSACTIONS.TX_MERCADO_1,
+                EVAL_TRANSACTIONS.TX_MERCADO_2,
+                EVAL_TRANSACTIONS.TX_ALUGUEL,
+                EVAL_TRANSACTIONS.TX_ASSINATURAS,
+                EVAL_TRANSACTIONS.TX_CONTAS,
+              ];
             }
             if (userId === EVAL_USERS.USER_B) {
               return [EVAL_TRANSACTIONS.TX_B1];
@@ -740,7 +779,23 @@ export class AgentEvaluationRunner {
         {
           provide: CategoryService,
           useValue: {
-            findByUserId: jest.fn().mockResolvedValue([]),
+            findByUserId: jest.fn().mockImplementation((userId: string) => {
+              if (userId === EVAL_USERS.USER_A) {
+                return Promise.resolve([
+                  EVAL_CATEGORIES.CAT_ALIMENTACAO,
+                  EVAL_CATEGORIES.CAT_MERCADO,
+                  EVAL_CATEGORIES.CAT_ALUGUEL,
+                  EVAL_CATEGORIES.CAT_ASSINATURAS,
+                  EVAL_CATEGORIES.CAT_CONTAS,
+                  EVAL_CATEGORIES.INCOME_CAT,
+                  EVAL_CATEGORIES.CAT_A1,
+                ]);
+              }
+              if (userId === EVAL_USERS.USER_B) {
+                return Promise.resolve([EVAL_CATEGORIES.CROSS_USER_CAT]);
+              }
+              return Promise.resolve([]);
+            }),
             create: jest
               .fn()
               .mockResolvedValue({ id: 'cat-mock-1', name: 'Mock Cat' }),

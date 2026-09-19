@@ -129,7 +129,12 @@ export class AiAgentService {
         options,
       );
 
-      return new AgentResponse(refusalText, 'response', undefined, conversationId);
+      return new AgentResponse(
+        refusalText,
+        'response',
+        undefined,
+        conversationId,
+      );
     }
 
     // 0.1 Input size check
@@ -660,17 +665,19 @@ export class AiAgentService {
       this.logger.error(
         `Unexpected error executing confirmation action: ${error instanceof Error ? error.stack : String(error)}`,
       );
-      await this.observability.recordEvent({
-        event: AiEventName.TOOL_FAILED,
-        requestId: reqId,
-        aiRequestId: aiReqId,
-        userId,
-        toolName: tool.name,
-        confirmationId,
-        durationMs: Date.now() - startTime,
-        success: false,
-        errorCode: AiErrorCode.TOOL_EXECUTION_ERROR,
-      });
+      await this.observability
+        .recordEvent({
+          event: AiEventName.TOOL_FAILED,
+          requestId: reqId,
+          aiRequestId: aiReqId,
+          userId,
+          toolName: tool.name,
+          confirmationId,
+          durationMs: Date.now() - startTime,
+          success: false,
+          errorCode: AiErrorCode.TOOL_EXECUTION_ERROR,
+        })
+        .catch(() => null);
       throw new BadRequestException(
         error instanceof Error
           ? error.message

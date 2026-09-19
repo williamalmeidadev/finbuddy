@@ -77,9 +77,10 @@ export class AgentDomainGuardrailService {
       );
 
     // 1. Check prompt injection / jailbreak attempts (if NOT asking for financial operations)
-    const isFinancialIntent = AgentDomainGuardrailService.FINANCIAL_INTENTS.some(
-      (regex) => regex.test(trimmed),
-    );
+    const isFinancialIntent =
+      AgentDomainGuardrailService.FINANCIAL_INTENTS.some((regex) =>
+        regex.test(trimmed),
+      );
 
     const isPromptInjection =
       AgentDomainGuardrailService.PROMPT_INJECTION_PATTERNS.some((regex) =>
@@ -134,4 +135,3 @@ export class AgentDomainGuardrailService {
     return { allowed: true };
   }
 }
-

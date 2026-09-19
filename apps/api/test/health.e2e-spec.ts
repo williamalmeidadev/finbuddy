@@ -81,7 +81,7 @@ describe('Health Checks & Observability (e2e)', () => {
   beforeAll(async () => {
     await waitForDatabase(process.env.DATABASE_URL!);
     execSync(
-      `npx prisma db push --accept-data-loss --url "${process.env.DATABASE_URL}"`,
+      `DATABASE_URL="${process.env.DATABASE_URL}" npx prisma db push --accept-data-loss --schema=prisma/schema.prisma`,
       {
         stdio: 'inherit',
         env: {

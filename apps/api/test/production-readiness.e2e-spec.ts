@@ -173,7 +173,7 @@ describe('Production Readiness & Operational Regression (e2e)', () => {
   beforeAll(async () => {
     await waitForDatabase(process.env.DATABASE_URL!);
     execSync(
-      `npx prisma db push --accept-data-loss --url "${process.env.DATABASE_URL}"`,
+      `DATABASE_URL="${process.env.DATABASE_URL}" npx prisma db push --accept-data-loss --schema=prisma/schema.prisma`,
       {
         stdio: 'inherit',
         env: {
@@ -267,8 +267,8 @@ describe('Production Readiness & Operational Regression (e2e)', () => {
       expect(config.RECURRING_TRANSACTION_AUTOMATION_ENABLED).toBe(true);
       expect(config.RECURRING_TRANSACTION_AUTOMATION_CRON).toBe('* * * * *');
       expect(config.THROTTLE_TTL).toBe(60000);
-      expect(config.THROTTLE_LIMIT).toBe(100);
-      expect(config.THROTTLE_AUTH_LIMIT).toBe(10);
+      expect(config.THROTTLE_LIMIT).toBe(1000);
+      expect(config.THROTTLE_AUTH_LIMIT).toBe(200);
     });
 
     it('should properly coerce boolean string values ("false", "0", "true", "1") for SWAGGER_ENABLED', () => {

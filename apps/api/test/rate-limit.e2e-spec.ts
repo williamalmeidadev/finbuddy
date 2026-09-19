@@ -1,3 +1,5 @@
+process.env.THROTTLE_AUTH_LIMIT = '5';
+process.env.THROTTLE_LIMIT = '50';
 import 'dotenv/config';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -81,7 +83,7 @@ describe('Rate Limiting & Abuse Protection (e2e)', () => {
   beforeAll(async () => {
     await waitForDatabase(process.env.DATABASE_URL!);
     execSync(
-      `npx prisma db push --accept-data-loss --url "${process.env.DATABASE_URL}"`,
+      `DATABASE_URL="${process.env.DATABASE_URL}" npx prisma db push --accept-data-loss --schema=prisma/schema.prisma`,
       {
         stdio: 'inherit',
         env: {
@@ -90,6 +92,9 @@ describe('Rate Limiting & Abuse Protection (e2e)', () => {
         },
       },
     );
+
+    process.env.THROTTLE_AUTH_LIMIT = '10';
+    process.env.THROTTLE_LIMIT = '100';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -133,16 +138,19 @@ describe('Rate Limiting & Abuse Protection (e2e)', () => {
   describe('2. Auth Endpoint Throttling (@Throttle auth)', () => {
     it('POST /auth/login should throttle after limit is exceeded and return 429 shape with request correlation', async () => {
       const testEmail = `ratelimit-auth-${Date.now()}@example.com`;
+      const clientIp = '10.0.0.1';
 
       for (let i = 0; i < 10; i++) {
         await request(app.getHttpServer())
           .post('/auth/login')
+          .set('X-Forwarded-For', clientIp)
           .send({ email: testEmail, password: 'WrongPassword123!' });
       }
 
       const customReqId = 'rate-limit-test-correlation-id';
       const res = await request(app.getHttpServer())
         .post('/auth/login')
+        .set('X-Forwarded-For', clientIp)
         .set('X-Request-Id', customReqId)
         .send({ email: testEmail, password: 'WrongPassword123!' })
         .expect(429);
@@ -155,15 +163,18 @@ describe('Rate Limiting & Abuse Protection (e2e)', () => {
 
     it('POST /auth/refresh should also be subject to strict auth throttling', async () => {
       const dummyToken = 'a'.repeat(64);
+      const clientIp = '10.0.0.2';
 
       for (let i = 0; i < 10; i++) {
         await request(app.getHttpServer())
           .post('/auth/refresh')
+          .set('X-Forwarded-For', clientIp)
           .send({ refreshToken: dummyToken });
       }
 
       const res = await request(app.getHttpServer())
         .post('/auth/refresh')
+        .set('X-Forwarded-For', clientIp)
         .send({ refreshToken: dummyToken })
         .expect(429);
 

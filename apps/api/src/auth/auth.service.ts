@@ -50,9 +50,11 @@ export class AuthService {
       throw new UnauthorizedException(`User is ${user.status.toLowerCase()}`);
     }
 
-    const updatedUser = await this.userRepository.update(user.id, {
-      lastLoginAt: new Date(),
-    });
+    const updatedUser = await this.userRepository
+      .update(user.id, {
+        lastLoginAt: new Date(),
+      })
+      .catch(() => user);
 
     const accessToken = await this.generateAccessToken(
       updatedUser.id,

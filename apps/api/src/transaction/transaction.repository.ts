@@ -65,8 +65,15 @@ export class TransactionRepository {
 
   async findByUserId(
     userId: string,
-    options?: { accountId?: string; limit?: number; offset?: number },
-  ): Promise<Transaction[]> {
+    options?: {
+      accountId?: string;
+      categoryId?: string;
+      limit?: number;
+      offset?: number;
+    },
+  ): Promise<
+    (Transaction & { category?: { id: string; name: string } | null })[]
+  > {
     const take = Math.min(options?.limit ?? 50, 100);
     const skip = options?.offset ?? 0;
 
@@ -76,6 +83,15 @@ export class TransactionRepository {
           userId,
         },
         ...(options?.accountId ? { accountId: options.accountId } : {}),
+        ...(options?.categoryId ? { categoryId: options.categoryId } : {}),
+      },
+      include: {
+        category: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
       orderBy: {
         transactionAt: 'desc',

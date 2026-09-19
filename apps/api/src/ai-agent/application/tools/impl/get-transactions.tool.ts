@@ -23,6 +23,10 @@ export class GetTransactionsTool implements AgentTool {
         type: 'string',
         description: 'Optional account UUID filter',
       },
+      categoryId: {
+        type: 'string',
+        description: 'Optional category UUID filter',
+      },
       limit: {
         type: 'integer',
         minimum: 1,
@@ -56,6 +60,11 @@ export class GetTransactionsTool implements AgentTool {
           ? params.accountId.trim()
           : undefined;
 
+      const categoryId =
+        typeof params.categoryId === 'string' && params.categoryId.trim() !== ''
+          ? params.categoryId.trim()
+          : undefined;
+
       const limit =
         typeof params.limit === 'number' && Number.isInteger(params.limit)
           ? Math.min(Math.max(params.limit, 1), 100)
@@ -70,6 +79,7 @@ export class GetTransactionsTool implements AgentTool {
         context.userId,
         {
           accountId,
+          categoryId,
           limit,
           offset,
         },
@@ -79,6 +89,7 @@ export class GetTransactionsTool implements AgentTool {
         id: t.id,
         accountId: t.accountId,
         categoryId: t.categoryId,
+        categoryName: t.categoryName ?? null,
         type: t.type,
         amount: t.amount,
         description: t.description,

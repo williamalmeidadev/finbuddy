@@ -464,7 +464,10 @@ export class AiAgentOrchestratorService {
     const enriched = { ...argumentsObj };
 
     try {
-      if (enriched.transactionId) {
+      if (
+        enriched.transactionId &&
+        typeof this.transactionService?.findById === 'function'
+      ) {
         const tx = await this.transactionService
           .findById(String(enriched.transactionId), userId)
           .catch(() => null);

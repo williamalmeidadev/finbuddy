@@ -62,9 +62,7 @@ describe('CreateBudgetTool', () => {
   });
 
   it('should handle creation errors gracefully', async () => {
-    mockBudgetService.create.mockRejectedValue(
-      new Error('Category not found'),
-    );
+    mockBudgetService.create.mockRejectedValue(new Error('Category not found'));
 
     const result = await tool.execute(
       { userId: 'user-1' },

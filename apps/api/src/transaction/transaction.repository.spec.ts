@@ -164,6 +164,14 @@ describe('TransactionRepository', () => {
 
       expect(databaseService.transaction.findMany).toHaveBeenCalledWith({
         where: { account: { userId: 'user-1' }, accountId: 'acc-1' },
+        include: {
+          category: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
         orderBy: { transactionAt: 'desc' },
         take: 50,
         skip: 0,

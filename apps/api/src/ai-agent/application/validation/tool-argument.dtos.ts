@@ -298,4 +298,3 @@ export class DeleteBudgetArgsDto {
   @IsNotEmpty()
   budgetId!: string;
 }
-

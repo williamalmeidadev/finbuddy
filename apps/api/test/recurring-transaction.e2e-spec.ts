@@ -84,7 +84,7 @@ describe('RecurringTransactionController (e2e)', () => {
     await waitForDatabase(process.env.DATABASE_URL!);
 
     execSync(
-      `PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION="for sure" npx prisma db push --accept-data-loss --url "${process.env.DATABASE_URL}"`,
+      `PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION="for sure" DATABASE_URL="${process.env.DATABASE_URL}" npx prisma db push --accept-data-loss --schema=prisma/schema.prisma`,
       {
         stdio: 'inherit',
         env: {

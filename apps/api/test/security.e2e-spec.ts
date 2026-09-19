@@ -8,6 +8,7 @@ import { DatabaseService } from '../src/database/database.service';
 import { execSync } from 'child_process';
 import net from 'net';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 
 if (!process.env.JWT_SECRET) {
   throw new Error('JWT_SECRET environment variable is required');
@@ -99,7 +100,7 @@ describe('Security Hardening & Penetration-Test Preparation (e2e)', () => {
   beforeAll(async () => {
     await waitForDatabase(process.env.DATABASE_URL!);
     execSync(
-      `npx prisma db push --accept-data-loss --url "${process.env.DATABASE_URL}"`,
+      `DATABASE_URL="${process.env.DATABASE_URL}" npx prisma db push --accept-data-loss --schema=prisma/schema.prisma`,
       {
         stdio: 'inherit',
         env: {
@@ -114,6 +115,7 @@ describe('Security Hardening & Penetration-Test Preparation (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.use(cookieParser());
     app.use(helmet());
     app.useGlobalPipes(
       new ValidationPipe({
@@ -314,21 +316,22 @@ describe('Security Hardening & Penetration-Test Preparation (e2e)', () => {
         })
         .expect(201);
 
-      const refreshA = loginRes.body.refreshToken;
+      const setCookie = loginRes.get('Set-Cookie');
+      expect(setCookie).toBeDefined();
+      const cookieHeader = setCookie![0].split(';')[0];
 
       // Rotate token A -> token B
       const rotateRes = await request(app.getHttpServer())
         .post('/auth/refresh')
-        .send({ refreshToken: refreshA });
+        .set('Cookie', [cookieHeader])
+        .expect(200);
 
-      expect([200, 201]).toContain(rotateRes.status);
       expect(rotateRes.body).toHaveProperty('accessToken');
-      expect(rotateRes.body).toHaveProperty('refreshToken');
 
       // Attempt to reuse token A
       await request(app.getHttpServer())
         .post('/auth/refresh')
-        .send({ refreshToken: refreshA })
+        .set('Cookie', [cookieHeader])
         .expect(401);
     });
   });

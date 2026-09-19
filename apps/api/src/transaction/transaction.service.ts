@@ -100,8 +100,20 @@ export class TransactionService {
       }
     }
 
+    if (query?.categoryId) {
+      const category = await this.categoryRepository.findByIdAndUserId(
+        query.categoryId,
+        userId,
+      );
+
+      if (!category) {
+        throw new NotFoundException('Category not found');
+      }
+    }
+
     const transactions = await this.transactionRepository.findByUserId(userId, {
       accountId: query?.accountId,
+      categoryId: query?.categoryId,
       limit: query?.limit,
       offset: query?.offset,
     });
