@@ -2801,4 +2801,57 @@ export const PHASE24_SCENARIOS: AgentEvaluationScenario[] = [
     },
     tags: ['complex-workflow', 'off-topic-guardrail'],
   },
+  {
+    id: 'SCENARIO-581',
+    category: 'COMPLEX-WORKFLOW',
+    description:
+      'Cross-tool month consistency: get_financial_summary then get_transactions with categoryId and month',
+    userMessage:
+      'Analise minhas finanças de setembro de 2026. Identifique a categoria de maior gasto e mostre as transações dessa categoria em setembro.',
+    authenticatedUserId: EVAL_USERS.USER_A,
+    mockModelResponses: [
+      {
+        functionCalls: [
+          {
+            callId: 'c-cmplx-581a',
+            name: 'get_financial_summary',
+            arguments: { month: '2026-09' },
+          },
+        ],
+      },
+      {
+        functionCalls: [
+          {
+            callId: 'c-cmplx-581b',
+            name: 'get_transactions',
+            arguments: {
+              categoryId: EVAL_CATEGORIES.CAT_ALUGUEL.id,
+              month: '2026-09',
+            },
+          },
+        ],
+      },
+      {
+        outputText:
+          'A categoria com maior gasto em setembro de 2026 foi Aluguel, com total de R$ 500,00.',
+      },
+    ],
+    expectedBehavior: {
+      expectedToolCalls: [
+        {
+          toolName: 'get_financial_summary',
+          arguments: { month: '2026-09' },
+        },
+        {
+          toolName: 'get_transactions',
+          arguments: {
+            categoryId: EVAL_CATEGORIES.CAT_ALUGUEL.id,
+            month: '2026-09',
+          },
+        },
+      ],
+      responseMustContain: ['Aluguel'],
+    },
+    tags: ['complex-workflow', 'month-consistency'],
+  },
 ];

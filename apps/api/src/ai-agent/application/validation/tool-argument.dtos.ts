@@ -52,6 +52,16 @@ export class GetTransactionsArgsDto {
   accountId?: string;
 
   @IsOptional()
+  @IsUUID()
+  categoryId?: string;
+
+  @IsOptional()
+  @Matches(/^\d{4}-(0[1-9]|1[0-2])$/, {
+    message: 'month must be in YYYY-MM format',
+  })
+  month?: string;
+
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)

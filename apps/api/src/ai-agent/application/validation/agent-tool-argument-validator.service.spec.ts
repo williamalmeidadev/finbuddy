@@ -35,13 +35,23 @@ describe('AgentToolArgumentValidatorService', () => {
   });
 
   describe('get_transactions validation', () => {
-    it('should pass for valid parameters', async () => {
+    it('should pass for valid parameters including categoryId and month', async () => {
       const res = await service.validate('get_transactions', {
         accountId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+        categoryId: 'c1b2c3d4-e5f6-7890-abcd-ef1234567890',
+        month: '2026-09',
         limit: 20,
         offset: 0,
       });
       expect(res.valid).toBe(true);
+    });
+
+    it('should fail if month is not in YYYY-MM format', async () => {
+      const res = await service.validate('get_transactions', {
+        month: '2026-13',
+      });
+      expect(res.valid).toBe(false);
+      expect(res.errors.some((e) => e.includes('YYYY-MM'))).toBe(true);
     });
 
     it('should fail if accountId is not a valid UUID', async () => {
